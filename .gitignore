@@ -1,3 +1,5 @@
+/build
+
 # Prerequisites
 *.d
 
@@ -27,6 +29,5 @@
 *.lib
 
 # Executables
-*.exe
 *.out
 *.app
