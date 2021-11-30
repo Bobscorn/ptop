@@ -1,10 +1,10 @@
 FROM ubuntu
 
 WORKDIR /
-RUN cmake -B build && \
+RUN cmake -B build Release && \
     make
 
-CMD["./build/target/debug/mmr"]
+CMD["./build/mmr"]
 
 
 # FROM rust:1.50
