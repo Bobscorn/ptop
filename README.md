@@ -1,5 +1,6 @@
 # match-making
 
+## windows
 
 # build
 - cmake -B build
@@ -7,3 +8,5 @@
 
 # run
 - build\Debug\mmr.exe
+
+## linux
