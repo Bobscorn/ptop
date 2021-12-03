@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 project(mmr)
 
-file(GLOB sourceglob
-    "${PROJECT_SOURCE_DIR}/src/*.h" "${PROJECT_SOURCE_DIR}/src/*.cpp"
-)
+set(srcs "")
 
-add_executable(mmr ${sourceglob})
-
+add_executable(mmr_client ${PROJECT_SOURCE_DIR}/src/main.cpp ${srcs})
+add_executable(mmr_server ${PROJECT_SOURCE_DIR}/src/server.cpp ${srcs})
