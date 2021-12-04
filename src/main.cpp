@@ -37,6 +37,8 @@ int main(int argc, char** argv)
     // Initialized
     std::cout << "Winsock Initialized" << std::endl;
 
+    std::cout << "Using port " << DEFAULT_PORT << std::endl;
+
 
     struct addrinfo* result = NULL,
         * ptr = NULL,
@@ -47,13 +49,13 @@ int main(int argc, char** argv)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    std::cout << "Resolving server at with IP:port '" << argv[1] << '\'' << std::endl;
+    std::cout << "Resolving server with IP " << argv[1] << '\'' << std::endl;
 
     // Resolve the server address and port
     iResult = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
 
     if (iResult != 0) {
-        std::cerr << "Failed to resolve server with: " << iResult << std::endl;
+        std::cerr << "Failed to resolve server: " << iResult << std::endl;
         WSACleanup();
         return 1;
     }
