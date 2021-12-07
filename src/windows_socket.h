@@ -22,13 +22,15 @@ public:
 	windows_listen_socket();
 	~windows_listen_socket();
 
-	ISenderSocket* accept_connection() override;
+	IReceiverSocket* accept_connection() override;
 };
 
 class windows_send_socket : ISenderSocket
 {
+	SOCKET _socket;
+
 public:
-	windows_send_socket();
+	windows_send_socket(string peer_ip);
 	~windows_send_socket();
 
 	bool send_data(const vector<char>& data) override;
@@ -36,8 +38,10 @@ public:
 
 class windows_receive_socket : IReceiverSocket
 {
+	SOCKET _socket;
+
 public:
-	windows_receive_socket();
+	windows_receive_socket(SOCKET send_socket);
 	~windows_receive_socket();
 
 	vector<char> receive_data() override;

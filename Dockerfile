@@ -4,7 +4,7 @@ WORKDIR /
 RUN cmake -B build Release && \
     make
 
-CMD["./build/mmr"]
+CMD["./build/ptop"]
 
 
 # FROM rust:1.50
