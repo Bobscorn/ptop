@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.13.4)
-project(mmr)
+project(ptop)
 
 set(srcs "")
 
-add_executable(mmr_client ${PROJECT_SOURCE_DIR}/src/main.cpp ${srcs})
-add_executable(mmr_server ${PROJECT_SOURCE_DIR}/src/server.cpp ${srcs})
+add_executable(ptop ${PROJECT_SOURCE_DIR}/src/main.cpp ${srcs})
