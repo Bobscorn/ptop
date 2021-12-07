@@ -1,3 +1,5 @@
+#pragma once
+
 #include "socket.h"
 
 #ifdef WIN32
@@ -12,23 +14,39 @@
 #endif
 
 #include <memory>
+#include <string>
 
+using namespace std;
 
-class windows_listen_socket : IListenSocket
+class windows_internet
 {
+protected:
+	WSAData _data;
+public:
+	windows_internet(WORD versionRequested);
+	~windows_internet();
+};
+
+class IWindowsSocket : public virtual ISocket
+{
+protected:
 	SOCKET _socket;
 
+public:
+	void shutdown() override;
+};
+
+class windows_listen_socket : public IWindowsSocket, public IListenSocket
+{
 public:
 	windows_listen_socket();
 	~windows_listen_socket();
 
-	IReceiverSocket* accept_connection() override;
+	std::unique_ptr<IReceiverSocket> accept_connection() override;
 };
 
-class windows_send_socket : ISenderSocket
+class windows_send_socket : public IWindowsSocket, public ISenderSocket
 {
-	SOCKET _socket;
-
 public:
 	windows_send_socket(string peer_ip);
 	~windows_send_socket();
@@ -36,13 +54,12 @@ public:
 	bool send_data(const vector<char>& data) override;
 };
 
-class windows_receive_socket : IReceiverSocket
+class windows_receive_socket : public IWindowsSocket, public IReceiverSocket
 {
-	SOCKET _socket;
-
 public:
 	windows_receive_socket(SOCKET send_socket);
 	~windows_receive_socket();
 
 	vector<char> receive_data() override;
+	bool has_data() override;
 };
