@@ -30,8 +30,9 @@ int main(int argc, char** argv)
 
     std::cout << "Insert Address: ";
     std::string address{};
-    std::cin >> address;
-    std::cout << std::endl;
+    std::cin >> address; //places the data from cin into address
+    std::cout << std::endl; //prints the current data in the terminal buffer (address) and then carriage returns
+
     try
     {
         auto send_socket = Sockets::CreateSenderSocket(address);

@@ -32,8 +32,8 @@ int main(int argc, char** argv)
 	try
 	{
 		auto listen_socket = Sockets::CreateListenSocket();
-
-		//std::cout << "Found ip as: " << get_external_ip() << std::endl;
+		auto ip_address = get_external_ip();
+		std::cout << "server ip address is: " << ip_address << std::endl;
 
 		auto receive_socket = listen_socket->accept_connection();
 
