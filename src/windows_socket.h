@@ -20,25 +20,26 @@ using namespace std;
 
 class windows_internet
 {
-protected:
+	protected:
 	WSAData _data;
-public:
+
+	public:
 	windows_internet(WORD versionRequested);
 	~windows_internet();
 };
 
 class IWindowsSocket : public virtual ISocket
 {
-protected:
+	protected:
 	SOCKET _socket;
 
-public:
+	public:
 	void shutdown() override;
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
 {
-public:
+	public:
 	windows_listen_socket();
 	~windows_listen_socket();
 
@@ -47,7 +48,7 @@ public:
 
 class windows_send_socket : public IWindowsSocket, public ISenderSocket
 {
-public:
+	public:
 	windows_send_socket(string peer_ip);
 	~windows_send_socket();
 
@@ -56,7 +57,7 @@ public:
 
 class windows_receive_socket : public IWindowsSocket, public IReceiverSocket
 {
-public:
+	public:
 	windows_receive_socket(SOCKET send_socket);
 	~windows_receive_socket();
 

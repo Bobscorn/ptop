@@ -10,7 +10,7 @@ using namespace std;
 
 class ISocket
 {
-public:
+	public:
 	virtual ~ISocket() {}
 
 	virtual void shutdown() = 0;
@@ -18,8 +18,8 @@ public:
 
 class IReceiverSocket
 {
-public:
-	
+	public:
+		
 	virtual ~IReceiverSocket() {}
 
 	virtual vector<char> receive_data() = 0;
@@ -28,7 +28,7 @@ public:
 
 class IListenSocket
 {
-public:
+	public:
 	virtual ~IListenSocket() {}
 
 	virtual std::unique_ptr<IReceiverSocket> accept_connection() = 0;
@@ -36,7 +36,7 @@ public:
 
 class ISenderSocket
 {
-public:
+	public:
 
 	virtual ~ISenderSocket() {}
 
@@ -45,7 +45,7 @@ public:
 
 class Sockets
 {
-public:
+	public:
 	static std::unique_ptr<IListenSocket> CreateListenSocket();
 	static std::unique_ptr<ISenderSocket> CreateSenderSocket(string peer_ip);
 };
