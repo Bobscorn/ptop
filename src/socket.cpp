@@ -1,7 +1,7 @@
 #include "socket.h"
 #include "windows_socket.h"
 
-std::unique_ptr<IListenSocket> Sockets::CreateListenSocket()
+unique_ptr<IListenSocket> Sockets::CreateListenSocket()
 {
 #ifdef WIN32
 	return make_unique<windows_listen_socket>();
@@ -10,7 +10,7 @@ std::unique_ptr<IListenSocket> Sockets::CreateListenSocket()
 #endif
 }
 
-std::unique_ptr<ISenderSocket> Sockets::CreateSenderSocket(string peer_ip)
+unique_ptr<ISenderSocket> Sockets::CreateSenderSocket(string peer_ip)
 {
 #ifdef WIN32
 	return make_unique<windows_send_socket>(peer_ip);

@@ -19,29 +19,29 @@
 
 int create_client(int argc, char** argv)
 {
-    std::cout << "Starting Client (:" << std::endl;
+    cout << "Starting Client (:" << endl;
 
 #ifdef WIN32
     windows_internet garbo(MAKEWORD(2,2));
 #endif
 
-    std::cout << "Insert Address: ";
-    std::string address{};
-    std::cin >> address; //places the data from cin into address
-    std::cout << std::endl; //prints the current data in the terminal buffer (address) and then carriage returns
+    cout << "Insert Address: ";
+    string address{};
+    cin >> address; //places the data from cin into address
+    cout << endl; //prints the current data in the terminal buffer (address) and then carriage returns
 
     try
     {
         auto send_socket = Sockets::CreateSenderSocket(address);
 
-        std::string input;
+        string input;
         do
         {
-            std::cout << "Send a message (enter \"disconnect\" to stop): ";
-            std::getline(std::cin, input);
-            std::cout << std::endl;
+            cout << "Send a message (enter \"disconnect\" to stop): ";
+            getline(cin, input);
+            cout << endl;
 
-            send_socket->send_data(std::vector<char>(input.begin(), input.end()));
+            send_socket->send_data(vector<char>(input.begin(), input.end()));
 
             if (input == "disconnect")
                 break;
@@ -49,9 +49,9 @@ int create_client(int argc, char** argv)
         } while (true);
     }
 
-    catch (std::exception& e)
+    catch (exception& e)
     {
-        std::cerr << "Exception Caught: \"" << e.what() << '\"' << std::endl;
+        cerr << "Exception Caught: \"" << e.what() << '\"' << endl;
         return -1;
     }
     return 0;

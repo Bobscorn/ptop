@@ -24,7 +24,7 @@ string get_last_error()
         0,
         NULL);
 
-    std::string message((char*)lpMsgBuf, (char*)lpMsgBuf + lstrlen((LPCTSTR)lpMsgBuf));
+    string message((char*)lpMsgBuf, (char*)lpMsgBuf + lstrlen((LPCTSTR)lpMsgBuf));
 
     LocalFree(lpMsgBuf);
     return message;
@@ -44,7 +44,7 @@ windows_listen_socket::windows_listen_socket()
     iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
     if (iResult != 0)
     {
-        throw exception((string("Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
+        throw exception((string("Failed to create windows socket: getaddrinfo failed with") + to_string(iResult)).c_str());
     }
 
     _socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
@@ -61,16 +61,16 @@ windows_listen_socket::windows_listen_socket()
     }
 }
 
-std::unique_ptr<IReceiverSocket> windows_listen_socket::accept_connection() {
+unique_ptr<IReceiverSocket> windows_listen_socket::accept_connection() {
     if (listen(_socket, SOMAXCONN) == SOCKET_ERROR)
-        throw exception((std::string("Failed to listen with: ") + get_last_error()).c_str());
+        throw exception((string("Failed to listen with: ") + get_last_error()).c_str());
 
     SOCKET send_socket = INVALID_SOCKET;
 
     send_socket = accept(_socket, NULL, NULL);
     if (send_socket != INVALID_SOCKET)
     {
-        return std::make_unique<windows_receive_socket>(send_socket);
+        return make_unique<windows_receive_socket>(send_socket);
     }
     return nullptr;
 }
@@ -89,14 +89,14 @@ windows_send_socket::windows_send_socket(string peer_address) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    std::cout << "Resolving server with IP Address \'" << peer_address << '\'' << std::endl;
+    cout << "Resolving server with IP Address \'" << peer_address << '\'' << endl;
 
     // Resolve the server address and port
     int iResult = getaddrinfo(peer_address.c_str(), DEFAULT_PORT, &hints, &result);
 
     if (iResult != 0) {
-        std::cerr << "Failed to resolve server: " << iResult << std::endl;
-        throw exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
+        cerr << "Failed to resolve server: " << iResult << endl;
+        throw exception((string("Failed to resolve peer address, error: ") + to_string(iResult)).c_str());
     }
 
     SOCKET ConnectSocket = INVALID_SOCKET;
@@ -109,7 +109,7 @@ windows_send_socket::windows_send_socket(string peer_address) {
         if (ConnectSocket == INVALID_SOCKET)
         {
             auto last_error = get_last_error();
-            std::cerr << "Error creating client socket (socket()):" << last_error << std::endl;
+            cerr << "Error creating client socket (socket()):" << last_error << endl;
             freeaddrinfo(result);
             throw exception((string("Failed to create client socket with: ") + last_error).c_str());
         }
@@ -138,7 +138,7 @@ bool windows_send_socket::send_data(const vector<char>& data) {
     int iSendResult = send(_socket, data.data(), data.size(), 0);
     if (iSendResult == SOCKET_ERROR)
     {
-        std::cerr << "Failed to echo data back on send(): " << WSAGetLastError() << std::endl;
+        cerr << "Failed to echo data back on send(): " << WSAGetLastError() << endl;
         return false;
     }
     return true;
@@ -162,12 +162,12 @@ vector<char> windows_receive_socket::receive_data() {
     int iResult = recv(_socket, recv_data.data(), recv_data.size(), 0);
     if (iResult > 0)
     {
-        cout << "Received " << iResult << " bytes" << std::endl;
+        cout << "Received " << iResult << " bytes" << endl;
     }
     else if (iResult == SOCKET_ERROR)
     {
-        cerr << "Receiving data failed: " << get_last_error() << std::endl;
-        return std::vector<char>();
+        cerr << "Receiving data failed: " << get_last_error() << endl;
+        return vector<char>();
     }
     recv_data.resize(iResult);
     return recv_data;
@@ -196,7 +196,7 @@ windows_internet::windows_internet(WORD versionRequested)
 {
     int iResult = WSAStartup(versionRequested, &_data);
     if (iResult != 0)
-        throw exception((std::string("Winsock API initialization failed: ") + std::to_string(iResult)).c_str());
+        throw exception((string("Winsock API initialization failed: ") + to_string(iResult)).c_str());
 }
 
 windows_internet::~windows_internet()

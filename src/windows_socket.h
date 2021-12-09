@@ -41,7 +41,7 @@ class windows_listen_socket : public IWindowsSocket, public IListenSocket
 	windows_listen_socket();
 	~windows_listen_socket();
 
-	std::unique_ptr<IReceiverSocket> accept_connection() override;
+	unique_ptr<IReceiverSocket> accept_connection() override;
 };
 
 class windows_send_socket : public IWindowsSocket, public ISenderSocket

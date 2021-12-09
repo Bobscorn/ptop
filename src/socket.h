@@ -31,7 +31,7 @@ class IListenSocket
 	public:
 	virtual ~IListenSocket() {}
 
-	virtual std::unique_ptr<IReceiverSocket> accept_connection() = 0;
+	virtual unique_ptr<IReceiverSocket> accept_connection() = 0;
 };
 
 class ISenderSocket
@@ -46,6 +46,6 @@ class ISenderSocket
 class Sockets
 {
 	public:
-	static std::unique_ptr<IListenSocket> CreateListenSocket();
-	static std::unique_ptr<ISenderSocket> CreateSenderSocket(string peer_ip);
+	static unique_ptr<IListenSocket> CreateListenSocket();
+	static unique_ptr<ISenderSocket> CreateSenderSocket(string peer_ip);
 };

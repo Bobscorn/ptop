@@ -5,7 +5,7 @@
 #include <string>
 #include <iostream>
 
-std::string get_external_ip() {
+string get_external_ip() {
 
     HINTERNET net = InternetOpen("IP retriever",
         INTERNET_OPEN_TYPE_PRECONFIG,
@@ -26,5 +26,5 @@ std::string get_external_ip() {
     InternetReadFile(conn, buffer, sizeof(buffer) / sizeof(buffer[0]), &read);
     InternetCloseHandle(net);
 
-    return std::string(buffer, read);
+    return string(buffer, read);
 }

@@ -21,7 +21,7 @@
 
 int create_server(int argc, char** argv)
 {
-	std::cout << "Starting server! :D" << std::endl;
+	cout << "Starting server! :D" << endl;
 
 #ifdef WIN32
 	windows_internet epico{ MAKEWORD(2, 2) };
@@ -31,7 +31,7 @@ int create_server(int argc, char** argv)
 	{
 		auto listen_socket = Sockets::CreateListenSocket();
 		auto ip_address = get_external_ip();
-		std::cout << "server ip address is: " << ip_address << std::endl;
+		cout << "server ip address is: " << ip_address << endl;
 
 		auto receive_socket = listen_socket->accept_connection();
 
@@ -44,21 +44,21 @@ int create_server(int argc, char** argv)
 			{
 				vector<char> received_data = receive_socket->receive_data();
 
-				cout << "Received data: " << std::string(received_data.begin(), received_data.end()) << endl;
+				cout << "Received data: " << string(received_data.begin(), received_data.end()) << endl;
 
-				if (std::string(received_data.begin(), received_data.end()) == "disconnect" || received_data.size() == 0)
+				if (string(received_data.begin(), received_data.end()) == "disconnect" || received_data.size() == 0)
 				{
-					std::cout << "Stopping..." << std::endl;
+					cout << "Stopping..." << endl;
 					break;
 				}
 			}
 
-			std::this_thread::sleep_for(1000ms);
+			this_thread::sleep_for(1000ms);
 		} while (true);
 	}
-	catch (std::exception& e)
+	catch (exception& e)
 	{
-		std::cerr << "Caught exception: \"" << e.what() << '\"' << std::endl;
+		cerr << "Caught exception: \"" << e.what() << '\"' << endl;
 		return -1;
 	}
 	return 0;
