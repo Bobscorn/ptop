@@ -1,8 +1,5 @@
 #include "socket.h"
-
-#ifdef WIN32
 #include "windows_socket.h"
-#endif
 
 std::unique_ptr<IListenSocket> Sockets::CreateListenSocket()
 {

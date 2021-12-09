@@ -4,7 +4,6 @@
 #include "socket.h"
 #include "ip.h"
 
-#ifdef WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -19,7 +18,6 @@
 #pragma comment(lib, "wininet.lib")
 
 #include "windows_socket.h"
-#endif
 
 int main(int argc, char** argv)
 {

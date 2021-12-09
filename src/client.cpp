@@ -1,9 +1,7 @@
 #include <iostream>
 #include <string>
-
 #include "socket.h"
 
-#ifdef WIN32
 #include "windows_socket.h"
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -17,7 +15,6 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 #pragma comment(lib, "wininet.lib")
-#endif
 
 
 int main(int argc, char** argv)
