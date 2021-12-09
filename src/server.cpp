@@ -19,7 +19,7 @@
 
 #include "windows_socket.h"
 
-int main(int argc, char** argv)
+int create_server(int argc, char** argv)
 {
 	std::cout << "Starting server! :D" << std::endl;
 

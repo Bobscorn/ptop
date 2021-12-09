@@ -17,7 +17,7 @@
 #pragma comment(lib, "wininet.lib")
 
 
-int main(int argc, char** argv)
+int create_client(int argc, char** argv)
 {
     std::cout << "Starting Client (:" << std::endl;
 

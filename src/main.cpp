@@ -14,12 +14,20 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
+#include "server.h"
+#include "client.h"
+
 int main(int argc, char* argv) {
-    TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
- 
-    int last_error = WAGetLastError();
+    while(true) {
+        auto message{};
+        cin >> message;
 
-    if(last_error) != 0) {
+        TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
+    
+        int last_error = WAGetLastError();
 
+        if(last_error) != 0) {
+
+        }
     }
 }
