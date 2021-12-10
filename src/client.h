@@ -1,3 +1,6 @@
 #pragma once
 
-int create_client(char argc, char** argv);
+#include <stdio.h>
+#include "socket.h"
+
+std::unique_ptr<ISenderSocket> create_client();

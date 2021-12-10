@@ -16,8 +16,7 @@
 #pragma comment(lib, "AdvApi32.lib")
 #pragma comment(lib, "wininet.lib")
 
-
-int create_client(int argc, char** argv)
+unique_ptr<ISenderSocket> create_client()
 {
     cout << "Starting Client (:" << endl;
 
@@ -33,26 +32,25 @@ int create_client(int argc, char** argv)
     try
     {
         auto send_socket = Sockets::CreateSenderSocket(address);
+        return send_socket;
 
-        string input;
-        do
-        {
-            cout << "Send a message (enter \"disconnect\" to stop): ";
-            getline(cin, input);
-            cout << endl;
+        // do
+        // {
+        //     cout << "Send a message (enter \"disconnect\" to stop): ";
+        //     getline(cin, input);
+        //     cout << endl;
 
-            send_socket->send_data(vector<char>(input.begin(), input.end()));
+        //     send_socket->send_data(vector<char>(input.begin(), input.end()));
 
-            if (input == "disconnect")
-                break;
+        //     if (input == "disconnect")
+        //         break;
 
-        } while (true);
+        // } while (true);
     }
 
     catch (exception& e)
     {
         cerr << "Exception Caught: \"" << e.what() << '\"' << endl;
-        return -1;
+        return NULL;
     }
-    return 0;
 }

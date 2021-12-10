@@ -19,7 +19,7 @@
 
 #include "windows_socket.h"
 
-int create_server(int argc, char** argv)
+unique_ptr<IReceiverSocket> create_server()
 {
 	cout << "Starting server! :D" << endl;
 
@@ -34,31 +34,32 @@ int create_server(int argc, char** argv)
 		cout << "server ip address is: " << ip_address << endl;
 
 		auto receive_socket = listen_socket->accept_connection();
+		listen_socket = nullptr;
+		return receive_socket;
 
 		// destroy listen socket
-		listen_socket = nullptr;
 
-		do
-		{
-			if (receive_socket->has_data())
-			{
-				vector<char> received_data = receive_socket->receive_data();
+		// do
+		// {
+		// 	if (receive_socket->has_data())
+		// 	{
+		// 		vector<char> received_data = receive_socket->receive_data();
 
-				cout << "Received data: " << string(received_data.begin(), received_data.end()) << endl;
+		// 		cout << "Received data: " << string(received_data.begin(), received_data.end()) << endl;
 
-				if (string(received_data.begin(), received_data.end()) == "disconnect" || received_data.size() == 0)
-				{
-					cout << "Stopping..." << endl;
-					break;
-				}
-			}
+		// 		if (string(received_data.begin(), received_data.end()) == "disconnect" || received_data.size() == 0)
+		// 		{
+		// 			cout << "Stopping..." << endl;
+		// 			break;
+		// 		}
+		// 	}
 
-			this_thread::sleep_for(1000ms);
-		} while (true);
+		// 	this_thread::sleep_for(1000ms);
+		// } while (true);
 	}
 	catch (exception& e)
 	{
 		cerr << "Caught exception: \"" << e.what() << '\"' << endl;
-		return -1;
+		return NULL;
 	}
-	return 0;
+}

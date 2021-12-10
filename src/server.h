@@ -1,2 +1,6 @@
+#pragma once 
 
-int create_server(char argc, char** argv);
+#include <stdio.h>
+#include "socket.h"
+
+std::unique_ptr<IReceiverSocket> create_server();
