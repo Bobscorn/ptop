@@ -23,10 +23,6 @@ unique_ptr<IReceiverSocket> create_server()
 {
 	cout << "Starting server! :D" << endl;
 
-#ifdef WIN32
-	windows_internet epico{ MAKEWORD(2, 2) };
-#endif
-
 	try
 	{
 		auto listen_socket = Sockets::CreateListenSocket();

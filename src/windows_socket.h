@@ -16,6 +16,9 @@
 
 using namespace std;
 
+/// <summary>
+/// An RAII Wrapper over WSAStartup and WSACleanup, called in constructors and destructors
+/// </summary>
 class windows_internet
 {
 	protected:

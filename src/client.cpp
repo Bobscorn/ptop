@@ -20,10 +20,6 @@ unique_ptr<ISenderSocket> create_client()
 {
     cout << "Starting Client (:" << endl;
 
-#ifdef WIN32
-    windows_internet garbo(MAKEWORD(2,2));
-#endif
-
     cout << "Insert Address: ";
     string address{};
     cin >> address; //places the data from cin into address
