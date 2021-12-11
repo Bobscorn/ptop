@@ -34,6 +34,8 @@ class IWindowsSocket : public virtual ISocket
 	protected:
 	SOCKET _socket;
 
+	virtual ~IWindowsSocket();
+
 	public:
 	void shutdown() override;
 };
@@ -41,27 +43,42 @@ class IWindowsSocket : public virtual ISocket
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
 {
 	public:
-	windows_listen_socket();
-	~windows_listen_socket();
+	windows_listen_socket(string port);
 
-	unique_ptr<IReceiverSocket> accept_connection() override;
+	void listen() override;
+	bool has_connection() override;
+	unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class windows_send_socket : public IWindowsSocket, public ISenderSocket
+class windows_data_socket : public IWindowsSocket, public IDataSocket
 {
-	public:
-	windows_send_socket(string peer_ip);
-	~windows_send_socket();
+public:
+	windows_data_socket(SOCKET source_socket);
+	windows_data_socket(string peer_address, string peer_port);
+
+	vector<char> receive_data() override;
+	bool has_data() override;
 
 	bool send_data(const vector<char>& data) override;
 };
 
-class windows_receive_socket : public IWindowsSocket, public IReceiverSocket
+class windows_reusable_nonblocking_listen_socket : public IWindowsSocket, public IReusableNonBlockingListenSocket
 {
-	public:
-	windows_receive_socket(SOCKET send_socket);
-	~windows_receive_socket();
+public:
+	windows_reusable_nonblocking_listen_socket(string port);
 
-	vector<char> receive_data() override;
-	bool has_data() override;
+	void listen() override;
+	bool has_connection() override;
+	unique_ptr<IReusableNonBlockingConnectSocket> accept_connection() override;
+
+};
+
+class windows_reusable_nonblocking_connection_socket : public IWindowsSocket, public IReusableNonBlockingConnectSocket
+{
+public:
+	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed
+	windows_reusable_nonblocking_connection_socket(string peer_ip, string port);
+
+	void connect(string ip_address, string port) override;
+	ConnectionStatus has_connected() override;
 };

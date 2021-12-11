@@ -28,3 +28,15 @@ string get_external_ip() {
 
     return string(buffer, read);
 }
+
+peer_data read_peer_data(char* data, int& index, int data_len)
+{
+    if (index + 1 >= data_len)
+        throw exception("Not enough data to read a string for peer_data");
+    peer_data out_data;
+    out_data.ip_address = std::string(data + index);
+    index += out_data.ip_address.length() + 1;
+    out_data.port = std::string(data + index);
+    index += out_data.port.length() + 1;
+    return out_data;
+}
