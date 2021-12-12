@@ -1,5 +1,4 @@
 #include "windows_socket.h"
-#include "windows_socket.h"
 
 #include <exception>
 #include <string>
@@ -226,6 +225,16 @@ peer_data IWindowsSocket::get_peer_data()
     return out_data;
 }
 
+name_data IWindowsSocket::get_sock_data()
+{
+    name_data name;
+    name.name_len = sizeof(sockaddr);
+    int iResult = getsockname(_socket, &name.name, &name.name_len);
+    if (iResult == SOCKET_ERROR)
+        throw exception((string("Failed to get socket name: ") + get_last_error()).c_str());
+    return name;
+}
+
 windows_internet::windows_internet(WORD versionRequested)
 {
     int iResult = WSAStartup(versionRequested, &_data);
@@ -322,7 +331,7 @@ unique_ptr<IDataSocket> windows_reusable_nonblocking_listen_socket::accept_conne
     return make_unique<windows_data_socket>(accepted_socket);
 }
 
-windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket()
+windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket(name_data name)
 {
     SOCKET ConnectSocket = INVALID_SOCKET;
 
@@ -351,6 +360,13 @@ windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_con
     {
         closesocket(ConnectSocket);
         throw exception((string("Failed to make socket non-blocking with: ") + get_last_error()).c_str());
+    }
+
+    iResult = bind(ConnectSocket, &name.name, name.name_len);
+    if (iResult == SOCKET_ERROR)
+    {
+        closesocket(ConnectSocket);
+        throw exception((string("Failed to bind connect socket with: ") + get_last_error()).c_str());
     }
 
     _socket = ConnectSocket;

@@ -35,10 +35,10 @@ unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBlockingL
 #endif
 }
 
-unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket()
+unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(name_data data)
 {
 #ifdef WIN32
-	return make_unique<windows_reusable_nonblocking_connection_socket>();
+	return make_unique<windows_reusable_nonblocking_connection_socket>(data);
 #elif __linux__
 
 #endif

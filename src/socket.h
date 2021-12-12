@@ -8,6 +8,27 @@
 
 using namespace std;
 
+#ifdef WIN32
+
+#include <winsock2.h>
+
+struct windows_name_data
+{
+	sockaddr name;
+	int name_len;
+};
+
+typedef windows_name_data name_data;
+#elif defined(__linux__)
+
+struct linux_name_data
+{
+	pee pee poo poo
+};
+
+typedef linux_name_data name_data;
+#endif
+
 enum class ConnectionStatus
 {
 	PENDING = 0,
@@ -23,6 +44,7 @@ class ISocket
 	virtual void shutdown() = 0;
 
 	virtual peer_data get_peer_data() = 0;
+	virtual name_data get_sock_data() = 0;
 };
 
 class IDataSocket : virtual public ISocket
@@ -85,5 +107,5 @@ class Sockets
 	static unique_ptr<IListenSocket> CreateListenSocket(string port);
 	static unique_ptr<IDataSocket> CreateConnectionSocket(string peer_ip, string port);
 	static unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(string port);
-	static unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket();
+	static unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(name_data name);
 };

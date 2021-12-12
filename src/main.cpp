@@ -21,6 +21,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <thread>
+#include <future>
+#include <chrono>
 
 #include "server.h"
 #include "client.h"
@@ -31,8 +33,9 @@
 enum class EXECUTION_STATUS
 {
     CONTINUE = 0,
-    COMPLETE = 1,
-    FAILED = 2,
+    CONNECTED,
+    COMPLETE,
+    FAILED,
 };
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
@@ -66,7 +69,7 @@ std::string read_string(char* data, int& index, int data_len)
         throw exception("Not enough data to read string length");
 
     size_T len = read_data<size_T>(data, index, data_len);
-    if (index + len * sizeof(char) >= data_len)
+    if (index + len * sizeof(char) > data_len)
         throw exception("Not enough data to read string characters");
 
     index += len;
@@ -146,22 +149,23 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
     case MESSAGE_TYPE::MSG:
     {
         string msg = read_string(data, i, data_len);
-        cout << "Message received: " << msg << std::endl;
+        cout << "Message received from server: " << msg << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::FILE:
-        cout << "Received file" << endl;
+        cout << "Received file from server" << endl;
         // TODO: actually read the file
         return EXECUTION_STATUS::CONTINUE;
         
     case MESSAGE_TYPE::CONNECT_PEER:
     {
         auto peer = read_peer_data(data, i, data_len);
+        name_data old_name = data_socket->get_sock_data();
         data_socket = nullptr;
 
         unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
-        auto peer_connect = Sockets::CreateReusableConnectSocket();
+        auto peer_connect = Sockets::CreateReusableConnectSocket(old_name);
         peer_connect->connect(peer.ip_address, peer.port);
 
         auto start_time = std::chrono::system_clock::now();
@@ -171,13 +175,13 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
             {
                 cout << "Successfully accepted peer connection" << endl;
                 data_socket = listen_sock->accept_connection();
-                return EXECUTION_STATUS::CONTINUE;
+                return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::SUCCESS)
             {
                 cout << "Successfully connected to peer" << endl;
                 data_socket = peer_connect->convert_to_datasocket();
-                return EXECUTION_STATUS::CONTINUE;
+                return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::FAILED)
             {
@@ -202,6 +206,49 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
     }
 
     return EXECUTION_STATUS::CONTINUE;
+}
+
+EXECUTION_STATUS process_data_peer(char* data, int data_len)
+{
+    if (data_len < 1)
+        return EXECUTION_STATUS::CONTINUE;
+
+    int i = 0;
+
+    auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
+    switch (msg_type)
+    {
+    case MESSAGE_TYPE::MSG:
+    {
+        string msg = read_string(data, i, data_len);
+        cout << "Message received from peer: " << msg << endl;
+        return EXECUTION_STATUS::CONTINUE;
+    }
+    case MESSAGE_TYPE::FILE:
+        cout << "Received file from peer" << endl;
+        // TODO: actually read the file
+        return EXECUTION_STATUS::CONTINUE;
+
+    case MESSAGE_TYPE::CONNECT_PEER:
+    {
+        cout << "Received Connect Peer message when already connected" << endl;
+
+        return EXECUTION_STATUS::CONTINUE;
+    }
+    case MESSAGE_TYPE::NONE:
+    default:
+        return EXECUTION_STATUS::CONTINUE;
+    }
+
+    return EXECUTION_STATUS::CONTINUE;
+}
+
+string get_message_to_send()
+{
+    string responce;
+    cout << "Send a message! ";
+    getline(cin, responce);
+    return responce;
 }
 
 int main(int argc, char** argv) {
@@ -246,7 +293,7 @@ int main(int argc, char** argv) {
         else
         {
             cout << "Starting p2p client!" << endl;
-
+            cout << "Connecting to rendezvous server" << endl;
             unique_ptr<IDataSocket> server_conn = Sockets::CreateConnectionSocket("localhost", Sockets::DefaultPort);
 
             server_conn->send_data(create_message(MESSAGE_TYPE::HELLO, 0));
@@ -263,6 +310,32 @@ int main(int argc, char** argv) {
                 }
 
                 this_thread::sleep_for(100ms);
+            }
+            if (status == EXECUTION_STATUS::CONNECTED)
+            {
+                status = EXECUTION_STATUS::CONTINUE;
+                cout << "Starting connection loop" << endl;
+                std::future<std::string> input_future = std::async(get_message_to_send);
+                string input_message = "";
+                do
+                {
+                    if (server_conn->has_data())
+                    {
+                        auto data = server_conn->receive_data();
+                        status = process_data_peer(data.data(), data.size());
+                    }
+
+                    if (input_future.wait_for(10ms) == std::future_status::ready)
+                    {
+                        input_message = input_future.get();
+                        input_future = std::async(get_message_to_send);
+
+                        server_conn->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
+                    }
+
+                    this_thread::sleep_for(100ms);
+                } while (status == EXECUTION_STATUS::CONTINUE);
+                cout << "Closing program" << endl;
             }
 
 
