@@ -29,7 +29,7 @@ class windows_internet
 	~windows_internet();
 };
 
-class IWindowsSocket : public virtual ISocket
+class IWindowsSocket : virtual public ISocket
 {
 	protected:
 	SOCKET _socket;
@@ -38,6 +38,7 @@ class IWindowsSocket : public virtual ISocket
 
 	public:
 	void shutdown() override;
+	peer_data get_peer_data() override;
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
@@ -50,7 +51,7 @@ class windows_listen_socket : public IWindowsSocket, public IListenSocket
 	unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class windows_data_socket : public IWindowsSocket, public IDataSocket
+class windows_data_socket : public IWindowsSocket, public virtual IDataSocket
 {
 public:
 	windows_data_socket(SOCKET source_socket);
@@ -69,16 +70,17 @@ public:
 
 	void listen() override;
 	bool has_connection() override;
-	unique_ptr<IReusableNonBlockingConnectSocket> accept_connection() override;
-
+	unique_ptr<IDataSocket> accept_connection() override;
 };
 
 class windows_reusable_nonblocking_connection_socket : public IWindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
 	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed
-	windows_reusable_nonblocking_connection_socket(string peer_ip, string port);
+	windows_reusable_nonblocking_connection_socket();
 
 	void connect(string ip_address, string port) override;
 	ConnectionStatus has_connected() override;
+
+	unique_ptr<IDataSocket> convert_to_datasocket() override;
 };

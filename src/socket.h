@@ -4,9 +4,9 @@
 #include <memory>
 #include <string>
 
-using namespace std;
+#include "ip.h"
 
-#define DEFAULT_PORT "27015"
+using namespace std;
 
 enum class ConnectionStatus
 {
@@ -21,9 +21,11 @@ class ISocket
 	virtual ~ISocket() {}
 
 	virtual void shutdown() = 0;
+
+	virtual peer_data get_peer_data() = 0;
 };
 
-class IDataSocket
+class IDataSocket : virtual public ISocket
 {
 public:
 	virtual ~IDataSocket() {}
@@ -45,28 +47,13 @@ class IListenSocket
 	virtual unique_ptr<IDataSocket> accept_connection() = 0;
 };
 
-class IReusableSocket
+class IReusableSocket : virtual public ISocket
 {
 	protected:
 	IReusableSocket() {}
 
 	public:
 	virtual ~IReusableSocket() {}
-
-	virtual bool send_data(const std::vector<char>& data) = 0;
-
-	virtual bool has_data() = 0;
-	virtual vector<char> receive_data() = 0;
-};
-
-class IReusableNonBlockingListenSocket : public IReusableSocket
-{
-	public:
-	virtual ~IReusableNonBlockingListenSocket() {}
-
-	virtual void listen() = 0;
-	virtual bool has_connection() = 0;
-	virtual unique_ptr<IReusableNonBlockingConnectSocket> accept_connection() = 0;
 };
 
 class IReusableNonBlockingConnectSocket : public IReusableSocket
@@ -76,13 +63,27 @@ class IReusableNonBlockingConnectSocket : public IReusableSocket
 
 	virtual void connect(string ip_address, string port) = 0;
 	virtual ConnectionStatus has_connected() = 0;
+
+	virtual unique_ptr<IDataSocket> convert_to_datasocket() = 0;
+};
+
+class IReusableNonBlockingListenSocket : public IReusableSocket
+{
+	public:
+	virtual ~IReusableNonBlockingListenSocket() {}
+
+	virtual void listen() = 0;
+	virtual bool has_connection() = 0;
+	virtual unique_ptr<IDataSocket> accept_connection() = 0;
 };
 
 class Sockets
 {
 	public:
+	static const std::string DefaultPort;
+
 	static unique_ptr<IListenSocket> CreateListenSocket(string port);
 	static unique_ptr<IDataSocket> CreateConnectionSocket(string peer_ip, string port);
 	static unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(string port);
-	static unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(string peer_ip, string port);
+	static unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket();
 };

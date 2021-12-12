@@ -40,3 +40,22 @@ peer_data read_peer_data(char* data, int& index, int data_len)
     index += out_data.port.length() + 1;
     return out_data;
 }
+
+vector<char> peer_data::to_bytes()
+{
+    /*vector<char> bytes(sizeof(size_t) * 2 + ip_address.length() + port.length(), '0');
+    size_t i = 0;
+    size_t len = ip_address.length();
+    memcpy(bytes.data() + i, &len, sizeof(size_t));
+    i += sizeof(size_t);
+    memcpy(bytes.data() + i, ip_address.data(), len);
+    i += len;
+    len = port.length();
+    memcpy(bytes.data() + i, &len, sizeof(size_t));
+    i += sizeof(size_t);
+    memcpy(bytes.data() + i, port.data(), len);*/
+    vector<char> bytes(ip_address.length() + port.length() + 2);
+    memcpy(bytes.data(), ip_address.data(), ip_address.length() + 1);
+    memcpy(bytes.data() + ip_address.length() + 1, port.data(), port.length() + 1);
+    return bytes;
+}
