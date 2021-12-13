@@ -1,68 +1,128 @@
-//#include <iostream>
-//#include <thread>
-//
-//#include "socket.h"
-//#include "ip.h"
-//
-//#ifndef WIN32_LEAN_AND_MEAN
-//#define WIN32_LEAN_AND_MEAN
-//#endif
-//#include <windows.h>
-//#include <winsock2.h>
-//#include <ws2tcpip.h>
-//#include <iphlpapi.h>
-//#include <stdio.h>
-//#include <thread>
-//#pragma comment(lib, "Ws2_32.lib")
-//#pragma comment(lib, "Mswsock.lib")
-//#pragma comment(lib, "AdvApi32.lib")
-//#pragma comment(lib, "wininet.lib")
-//
-//#include "windows_socket.h"
-//
-//unique_ptr<IReceiverSocket> create_server()
-//{
-//	cout << "Starting server! :D" << endl;
-//
-//#ifdef WIN32
-//	windows_internet epico{ MAKEWORD(2, 2) };
-//#endif
-//
-//	try
-//	{
-//		auto listen_socket = Sockets::CreateListenSocket();
-//		auto ip_address = get_external_ip();
-//		cout << "server ip address is: " << ip_address << endl;
-//
-//		auto receive_socket = listen_socket->accept_connection();
-//		listen_socket = nullptr; // destroy listen socket
-//
-//		thread do_server_stuff(func);
-//
-//		return receive_socket;
-//	}
-//	catch (exception& e)
-//	{
-//		cerr << "Caught exception: \"" << e.what() << '\"' << endl;
-//		return NULL;
-//	}
-//}
-//
-//void do_server_stuff(windows_receive_socket receiver) {
-//	do {
-//		if (receiver.has_data())
-//		{
-//			vector<char> received_data = receive_socket.receive_data();
-//
-//			cout << "Received data: " << string(received_data.begin(), received_data.end()) << endl;
-//
-//			if (string(received_data.begin(), received_data.end()) == "disconnect" || received_data.size() == 0)
-//			{
-//				cout << "Stopping..." << endl;
-//				break;
-//			}
-//		}
-//
-//		this_thread::sleep_for(1000ms);
-//	} while (true);
-//}
+#include "server.h"
+
+#include <iostream>
+#include <vector>
+#include <thread>
+
+#include "loop.h"
+#include "message.h"
+#include "socket.h"
+
+using namespace std;
+
+
+void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
+{
+    peer_data dataA, dataB;
+    dataA = clientA->get_peer_data();
+    dataB = clientB->get_peer_data();
+
+    std::cout << "Hole punching clients: A(" << dataA.ip_address << ":" << dataA.port << "), B(" << dataB.ip_address << ":" << dataB.port << ")" << std::endl;
+
+    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataB.to_bytes()));
+    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataA.to_bytes()));
+
+    clientA = nullptr;
+    clientB = nullptr;
+}
+
+EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source, int data_len, string port, IDataSocket*& clientA, IDataSocket*& clientB)
+{
+    if (data_len < 1)
+    {
+        cout << "Received empty data from a client, disconnecting client" << endl;
+        source = nullptr;
+        return EXECUTION_STATUS::CONTINUE;
+    }
+
+    int i = 0;
+
+    auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
+    switch (msg_type)
+    {
+    case MESSAGE_TYPE::HELLO:
+        if (clientA && clientB)
+        {
+            hole_punch_clients(clientA, clientB);
+            return EXECUTION_STATUS::COMPLETE;
+        }
+
+        if (clientA)
+        {
+            if (source.get() != clientA)
+            {
+                cout << "Received ClientB hello" << endl;
+                clientB = source.get();
+                hole_punch_clients(clientA, clientB);
+                return EXECUTION_STATUS::COMPLETE;
+            }
+        }
+        else if (clientB)
+        {
+            if (source.get() != clientB)
+            {
+                cout << "Received new ClientA hello" << endl;
+                clientA = source.get();
+                hole_punch_clients(clientA, clientB);
+                return EXECUTION_STATUS::COMPLETE;
+            }
+        }
+        else
+        {
+            cout << "Received ClientA hello" << endl;
+            clientA = source.get();
+        }
+        return EXECUTION_STATUS::CONTINUE;
+
+    case MESSAGE_TYPE::NONE:
+    default:
+        return EXECUTION_STATUS::CONTINUE;
+    }
+}
+
+void server_loop()
+{
+    cout << "Starting Rendezvous server!" << endl;
+
+    unique_ptr<IDataSocket> clientA{}, clientB{};
+    IDataSocket* cA = nullptr, * cB = nullptr;
+
+    auto server_socket = Sockets::CreateListenSocket(Sockets::DefaultPort);
+
+    server_socket->listen();
+    std::vector<char> recv_data{};
+
+    EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
+    while (status == EXECUTION_STATUS::CONTINUE)
+    {
+        if ((!clientA || !clientB) && server_socket->has_connection())
+            (clientA ? clientB : clientA) = server_socket->accept_connection();
+
+        if (clientA && clientA->has_data())
+        {
+            recv_data = clientA->receive_data();
+            status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::DefaultPort, cA, cB);
+            if (status == EXECUTION_STATUS::COMPLETE)
+            {
+                cout << "Resetting server" << endl;
+                clientA = nullptr;
+                clientB = nullptr;
+                status = EXECUTION_STATUS::CONTINUE;
+            }
+        }
+
+        if (clientB && clientB->has_data())
+        {
+            recv_data = clientB->receive_data();
+            status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::DefaultPort, cA, cB);
+            if (status == EXECUTION_STATUS::COMPLETE)
+            {
+                cout << "Resetting server" << endl;
+                clientA = nullptr;
+                clientB = nullptr;
+                status = EXECUTION_STATUS::CONTINUE;
+            }
+        }
+        this_thread::sleep_for(100ms);
+    }
+}
