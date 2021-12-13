@@ -23,12 +23,24 @@
 #include <thread>
 #include <future>
 #include <chrono>
+#include <shared_mutex>
+#include <mutex>
+#include <queue>
 
 #include "server.h"
 #include "client.h"
 #include "socket.h"
 #include "ip.h"
 #include "message.h"
+
+struct thread_queue
+{
+    thread_queue() : messages(), queue_mutex() {}
+    thread_queue(const thread_queue& other) = delete;
+
+    queue<string> messages;
+    shared_mutex queue_mutex;
+};
 
 enum class EXECUTION_STATUS
 {
@@ -94,7 +106,11 @@ void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
 EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source, int data_len, string port, IDataSocket*& clientA, IDataSocket*& clientB)
 {
     if (data_len < 1)
+    {
+        cout << "Received empty data from a client, disconnecting client" << endl;
+        source = nullptr;
         return EXECUTION_STATUS::CONTINUE;
+    }
 
     int i = 0;
 
@@ -112,6 +128,7 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
         {
             if (source.get() != clientA)
             {
+                cout << "Received ClientB hello" << endl;
                 clientB = source.get();
                 hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
@@ -121,13 +138,17 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
         {
             if (source.get() != clientB)
             {
+                cout << "Received new ClientA hello" << endl;
                 clientA = source.get();
                 hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
             }
         }
         else
+        {
+            cout << "Received ClientA hello" << endl;
             clientA = source.get();
+        }
         return EXECUTION_STATUS::CONTINUE;
 
     case MESSAGE_TYPE::NONE:
@@ -139,7 +160,10 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
 EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<IDataSocket>& data_socket, unique_ptr<IDataSocket>& peer_connect_socket)
 {
     if (data_len < 1)
-        return EXECUTION_STATUS::CONTINUE;
+    {
+        cout << "Received empty data, disconnecting" << endl;
+        return EXECUTION_STATUS::COMPLETE;
+    }
 
     int i = 0;
 
@@ -211,7 +235,10 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
 EXECUTION_STATUS process_data_peer(char* data, int data_len)
 {
     if (data_len < 1)
-        return EXECUTION_STATUS::CONTINUE;
+    {
+        cout << "Received empty data, disconnecting" << endl;
+        return EXECUTION_STATUS::COMPLETE;
+    }
 
     int i = 0;
 
@@ -261,7 +288,7 @@ int main(int argc, char** argv) {
     {
         if (argc > 1 && !strcmp(argv[1], "server"))
         {
-            cout << "Starting Rondezvous server!" << endl;
+            cout << "Starting Rendezvous server!" << endl;
 
             unique_ptr<IDataSocket> clientA{}, clientB{};
             IDataSocket* cA = nullptr, * cB = nullptr;
@@ -271,7 +298,8 @@ int main(int argc, char** argv) {
             server_socket->listen();
             std::vector<char> recv_data{};
 
-            while (true)
+            EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
+            while (status == EXECUTION_STATUS::CONTINUE)
             {
                 if ((!clientA || !clientB) && server_socket->has_connection())
                     (clientA ? clientB : clientA) = server_socket->accept_connection();
@@ -279,13 +307,27 @@ int main(int argc, char** argv) {
                 if (clientA && clientA->has_data())
                 {
                     recv_data = clientA->receive_data();
-                    process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::DefaultPort, cA, cB);
+                    status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::DefaultPort, cA, cB);
+                    if (status == EXECUTION_STATUS::COMPLETE)
+                    {
+                        cout << "Resetting server" << endl;
+                        clientA = nullptr;
+                        clientB = nullptr;
+                        status = EXECUTION_STATUS::CONTINUE;
+                    }
                 }
 
                 if (clientB && clientB->has_data())
                 {
                     recv_data = clientB->receive_data();
-                    process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::DefaultPort, cA, cB);
+                    status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::DefaultPort, cA, cB);
+                    if (status == EXECUTION_STATUS::COMPLETE)
+                    {
+                        cout << "Resetting server" << endl;
+                        clientA = nullptr;
+                        clientB = nullptr;
+                        status = EXECUTION_STATUS::CONTINUE;
+                    }
                 }
                 this_thread::sleep_for(100ms);
             }
@@ -315,8 +357,25 @@ int main(int argc, char** argv) {
             {
                 status = EXECUTION_STATUS::CONTINUE;
                 cout << "Starting connection loop" << endl;
-                std::future<std::string> input_future = std::async(get_message_to_send);
-                string input_message = "";
+                thread_queue message_queue{};
+
+                thread input_thread = thread([&message_queue]()
+                    {
+                        std::string input;
+                        do
+                        {
+                            getline(cin, input);
+
+                            {
+                                std::unique_lock<shared_mutex> lock(message_queue.queue_mutex);
+                                message_queue.messages.push(input);
+                            }
+
+                            this_thread::sleep_for(100ms);
+                        } while (true);
+                    });
+
+                std::unique_lock<shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
                 do
                 {
                     if (server_conn->has_data())
@@ -325,12 +384,17 @@ int main(int argc, char** argv) {
                         status = process_data_peer(data.data(), data.size());
                     }
 
-                    if (input_future.wait_for(10ms) == std::future_status::ready)
                     {
-                        input_message = input_future.get();
-                        input_future = std::async(get_message_to_send);
-
-                        server_conn->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
+                        if (take_message_lock.try_lock())
+                        {
+                            if (!message_queue.messages.empty())
+                            {
+                                string input_message = message_queue.messages.front();
+                                message_queue.messages.pop();
+                                server_conn->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
+                            }
+                            take_message_lock.unlock();
+                        }
                     }
 
                     this_thread::sleep_for(100ms);
