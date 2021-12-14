@@ -13,14 +13,14 @@ enum class EXECUTION_STATUS
     FAILED,
 };
 
-template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
+template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> // Only allow Plain-old-data to use this method
 T read_data(char* data, int& index, int data_len)
 {
     int size = sizeof(T);
     if (index + size >= data_len)
         throw runtime_error("Not enough data to read");
 
-    T* ptr = (T*)&data[index];
+    T* ptr = (T*)&(data[index]);
     index += size;
     return *ptr;
 }

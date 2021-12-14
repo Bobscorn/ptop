@@ -58,14 +58,6 @@ int main(int argc, char** argv) {
 
             //while (true) {
 
-            //    //start server in separate threads
-
-            //    //print your IP address
-
-            //    //read terminal message for send command
-
-            //    //start client in separate thread
-
             //    std::string message{};
             //    std::cin >> message;
 

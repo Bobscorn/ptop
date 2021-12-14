@@ -15,7 +15,7 @@ using namespace std;
 struct thread_queue
 {
     thread_queue() : messages(), queue_mutex() {}
-    thread_queue(const thread_queue& other) = delete;
+    thread_queue(const thread_queue& other) = delete; // Removes the default copy constructor
 
     queue<string> messages;
     shared_mutex queue_mutex;
@@ -50,17 +50,17 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
     {
         // Server giving us a peer to connect to
         // Attempt to connect to peer by connecting to it and listening for a connection
-        // The connect socket must have same binding as the socket connecting to the server
+        // The connect socket must have same local address binding as the socket that connected to the server
         // And we must disconnect the connection to the server
 
-        auto peer = read_peer_data(data, i, data_len);
+        auto peer_public = read_peer_data(data, i, data_len);
         name_data old_name = conn_socket->get_sock_data();
         conn_socket = nullptr;
 
         unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
         auto peer_connect = Sockets::CreateReusableConnectSocket(old_name);
-        peer_connect->connect(peer.ip_address, peer.port);
+        peer_connect->connect(peer_public.ip_address, peer_public.port);
 
         auto start_time = std::chrono::system_clock::now();
         do
