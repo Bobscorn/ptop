@@ -80,7 +80,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
             if (peer_connect->has_connected() == ConnectionStatus::FAILED)
             {
                 cout << "Connecting failed, retrying" << endl;
-                peer_connect->connect(peer.ip_address, peer.port);
+                peer_connect->connect(peer_public.ip_address, peer_public.port);
             }
             this_thread::sleep_for(100ms);
 

@@ -245,7 +245,7 @@ unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connection()
 	return make_unique<linux_data_socket>(accepted_socket);
 }
 
-linux_reuse_nonblock_connect_socket::linux_reuse_nonblock_connect_socket(name_data data)
+linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(name_data data)
 {
 	_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 	if (_socket < 0)
@@ -273,7 +273,7 @@ linux_reuse_nonblock_connect_socket::linux_reuse_nonblock_connect_socket(name_da
 	}
 }
 
-void linux_reuse_nonblock_connect_socket::connect(string ip_address, string port)
+void linux_reuse_nonblock_connection_socket::connect(string ip_address, string port)
 {
 	struct sockaddr_in serv_addr;
 	struct hostent* serv_ent;
@@ -291,7 +291,7 @@ void linux_reuse_nonblock_connect_socket::connect(string ip_address, string port
 		throw runtime_error(string("Unexpected error attempting to connect on nonblocking socket: ") + linux_error());
 }
 
-ConnectionStatus linux_reuse_nonblock_connect_socket::has_connected()
+ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 {
 	fd_set write_set;
 	FD_ZERO(&write_set);
@@ -304,6 +304,7 @@ ConnectionStatus linux_reuse_nonblock_connect_socket::has_connected()
 
 	if (n < 0)
 		throw runtime_error(string("Failed to select nonblock connect socket write-ability (whether it has connected): ") + linux_error());
+
 	if (n < 1)
 	{
 		fd_set except_set;
@@ -324,9 +325,11 @@ ConnectionStatus linux_reuse_nonblock_connect_socket::has_connected()
 
 		return ConnectionStatus::FAILED;
 	}
+
+	return ConnectionStatus::SUCCESS;
 }
 
-unique_ptr<IDataSocket> linux_reuse_nonblock_connect_socket::convert_to_datasocket()
+unique_ptr<IDataSocket> linux_reuse_nonblock_connection_socket::convert_to_datasocket()
 {
 	int flags = fcntl(_socket, F_GETFL);
 	if (flags < 0)

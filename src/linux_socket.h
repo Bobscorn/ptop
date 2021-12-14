@@ -54,10 +54,10 @@ public:
 	unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class linux_reuse_nonblock_connect_socket : public ILinuxSocket, public IReusableNonBlockingConnectSocket
+class linux_reuse_nonblock_connection_socket : public ILinuxSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	linux_reuse_nonblock_connect_socket(name_data data);
+	linux_reuse_nonblock_connection_socket(name_data data);
 
 	void connect(string ip_address, string port) override;
 	ConnectionStatus has_connected() override;
