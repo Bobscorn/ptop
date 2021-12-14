@@ -36,7 +36,7 @@ unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBlockingL
 #ifdef WIN32
 	return make_unique<windows_reusable_nonblocking_listen_socket>(port);
 #elif __linux__
-
+	return make_unique<linux_reuse_nonblock_listen_socket>(port);
 #endif
 }
 
@@ -45,6 +45,6 @@ unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSock
 #ifdef WIN32
 	return make_unique<windows_reusable_nonblocking_connection_socket>(data);
 #elif __linux__
-
+	return make_unique<linux_reuse_nonblock_connection_socket>(data);
 #endif
 }
