@@ -10,7 +10,6 @@ using namespace std;
 enum class MESSAGE_TYPE
 {
 	NONE = 0,
-	PEER_DATA,
 	MSG,
 	FILE,
 	SET_NAME,
