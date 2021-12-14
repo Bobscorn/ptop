@@ -21,9 +21,11 @@ struct windows_name_data
 typedef windows_name_data name_data;
 #elif defined(__linux__)
 
+#include <netinet/in.h>
+
 struct linux_name_data
 {
-	pee pee poo poo
+	sockaddr_in addr;
 };
 
 typedef linux_name_data name_data;

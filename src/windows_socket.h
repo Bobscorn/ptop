@@ -2,6 +2,7 @@
 
 #include "socket.h"
 
+#ifdef WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -85,3 +86,4 @@ public:
 
 	unique_ptr<IDataSocket> convert_to_datasocket() override;
 };
+#endif

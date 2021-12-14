@@ -40,7 +40,7 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
     auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
     switch (msg_type)
     {
-    case MESSAGE_TYPE::HELLO:
+    case MESSAGE_TYPE::READY_FOR_P2P:
         if (clientA && clientB)
         {
             hole_punch_clients(clientA, clientB);

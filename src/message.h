@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <cstring>
 
 using namespace std;
 
@@ -14,15 +15,22 @@ enum class MESSAGE_TYPE
 	FILE,
 	SET_NAME,
 	CONNECT_PEER,
-	HELLO,
+	READY_FOR_P2P,
 };
 
-template<class T, typename = std::enable_if_t<std::is_pod_v<T>>>
+template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
 vector<char> create_message(MESSAGE_TYPE type, T other_data)
 {
 	vector<char> out(sizeof(type) + sizeof(other_data), '0');
 	std::memcpy(out.data(), &type, sizeof(type));
 	std::memcpy(out.data() + sizeof(type), &other_data, sizeof(other_data));
+	return out;
+}
+
+inline vector<char> create_message(MESSAGE_TYPE type)
+{
+	vector<char> out(sizeof(type), '0');
+	memcpy(out.data(), &type, sizeof(type));
 	return out;
 }
 

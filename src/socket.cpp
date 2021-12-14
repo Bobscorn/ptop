@@ -1,10 +1,15 @@
 #include "socket.h"
 
+#include <string>
+#include <memory>
+
 #ifdef WIN32
 #include "windows_socket.h"
 #elif __linux__
-
+#include "linux_socket.h"
 #endif
+
+using namespace std;
 
 const string Sockets::DefaultPort = "27069";
 
@@ -22,7 +27,7 @@ unique_ptr<IDataSocket> Sockets::CreateConnectionSocket(string peer_ip, string p
 #ifdef WIN32
 	return make_unique<windows_data_socket>(peer_ip, port);
 #elif __linux__
-	return make_unique<linux_send_socket>(peer_ip, port);
+	return make_unique<linux_data_socket>(peer_ip, port);
 #endif
 }
 

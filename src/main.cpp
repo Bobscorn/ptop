@@ -26,6 +26,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include <queue>
+#include <string.h>
 
 #include "server.h"
 #include "client.h"
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
     // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order
     windows_internet wsa_wrapper(MAKEWORD(2, 2));
 #endif
+
     try
     {
         if (argc > 1 && !strcmp(argv[1], "server"))

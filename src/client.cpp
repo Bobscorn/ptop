@@ -21,7 +21,7 @@ struct thread_queue
     shared_mutex queue_mutex;
 };
 
-EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<IDataSocket>& data_socket, unique_ptr<IDataSocket>& peer_connect_socket)
+EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<IDataSocket>& conn_socket)
 {
     if (data_len < 1)
     {
@@ -41,15 +41,21 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::FILE:
+    {
         cout << "Received file from server" << endl;
         // TODO: actually read the file
         return EXECUTION_STATUS::CONTINUE;
-
+    }
     case MESSAGE_TYPE::CONNECT_PEER:
     {
+        // Server giving us a peer to connect to
+        // Attempt to connect to peer by connecting to it and listening for a connection
+        // The connect socket must have same binding as the socket connecting to the server
+        // And we must disconnect the connection to the server
+
         auto peer = read_peer_data(data, i, data_len);
-        name_data old_name = data_socket->get_sock_data();
-        data_socket = nullptr;
+        name_data old_name = conn_socket->get_sock_data();
+        conn_socket = nullptr;
 
         unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
@@ -62,13 +68,13 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
             if (listen_sock->has_connection())
             {
                 cout << "Successfully accepted peer connection" << endl;
-                data_socket = listen_sock->accept_connection();
+                conn_socket = listen_sock->accept_connection();
                 return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::SUCCESS)
             {
                 cout << "Successfully connected to peer" << endl;
-                data_socket = peer_connect->convert_to_datasocket();
+                conn_socket = peer_connect->convert_to_datasocket();
                 return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::FAILED)
@@ -116,10 +122,11 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::FILE:
+    {
         cout << "Received file from peer" << endl;
         // TODO: actually read the file
         return EXECUTION_STATUS::CONTINUE;
-
+    }
     case MESSAGE_TYPE::CONNECT_PEER:
     {
         cout << "Received Connect Peer message when already connected" << endl;
@@ -139,23 +146,24 @@ void client_loop()
 {
     cout << "Starting p2p client!" << endl;
     cout << "Connecting to rendezvous server" << endl;
-    unique_ptr<IDataSocket> server_conn = Sockets::CreateConnectionSocket("localhost", Sockets::DefaultPort);
 
-    server_conn->send_data(create_message(MESSAGE_TYPE::HELLO, 0));
+    unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket("localhost", Sockets::DefaultPort);
 
-    unique_ptr<IDataSocket> peer_socket{};
+    // Indicate to server we're ready for p2p
+    conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
 
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
     while (status == EXECUTION_STATUS::CONTINUE)
     {
-        if (server_conn->has_data())
+        if (conn_socket->has_data())
         {
-            auto data = server_conn->receive_data();
-            status = process_data(data.data(), data.size(), "6969", server_conn, peer_socket);
+            auto data = conn_socket->receive_data();
+            status = process_data(data.data(), data.size(), "6969", conn_socket);
         }
 
         this_thread::sleep_for(100ms);
     }
+
     if (status == EXECUTION_STATUS::CONNECTED)
     {
         status = EXECUTION_STATUS::CONTINUE;
@@ -181,9 +189,9 @@ void client_loop()
         std::unique_lock<shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
         do
         {
-            if (server_conn->has_data())
+            if (conn_socket->has_data())
             {
-                auto data = server_conn->receive_data();
+                auto data = conn_socket->receive_data();
                 status = process_data_peer(data.data(), data.size());
             }
 
@@ -194,7 +202,7 @@ void client_loop()
                     {
                         string input_message = message_queue.messages.front();
                         message_queue.messages.pop();
-                        server_conn->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
+                        conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
                     }
                     take_message_lock.unlock();
                 }

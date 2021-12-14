@@ -1,10 +1,16 @@
 #include "ip.h"
 
+#ifdef WIN32
 #include <windows.h>
 #include <wininet.h>
+#endif
 #include <string>
 #include <iostream>
+#include <cstring>
 
+using namespace std;
+
+#ifdef WIN32
 string get_external_ip() {
 
     HINTERNET net = InternetOpen("IP retriever",
@@ -28,11 +34,12 @@ string get_external_ip() {
 
     return string(buffer, read);
 }
+#endif
 
 peer_data read_peer_data(char* data, int& index, int data_len)
 {
     if (index + 1 >= data_len)
-        throw exception("Not enough data to read a string for peer_data");
+        throw runtime_error("Not enough data to read a string for peer_data");
     peer_data out_data;
     out_data.ip_address = std::string(data + index);
     index += out_data.ip_address.length() + 1;
