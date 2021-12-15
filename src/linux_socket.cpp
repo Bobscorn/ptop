@@ -300,7 +300,7 @@ bool linux_data_socket::has_data()
 	FD_ZERO(&poll_read_set);
 	FD_SET(_socket, &poll_read_set);
 
-	int n = select(1, &poll_read_set, 0, 0, &timeout);
+	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
 		throw std::runtime_error(std::string("[Data] Failed to poll linux socket readability: ") + linux_error());
 
@@ -318,6 +318,22 @@ bool linux_data_socket::send_data(const std::vector<char>& data)
 	}
 	_sent_bytes += data.size();
 	return true;
+}
+
+bool linux_data_socket::has_died()
+{
+	if (has_data())
+	{
+		std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
+		int n = recv(_socket, recv_data.data(), recv_data.size(), MSG_PEEK);
+		if (n < -1)
+		{
+			std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << linux_error() << std::endl;
+			return true;
+		}
+		return n == 0;
+	}
+	return false;
 }
 
 linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port)
@@ -372,7 +388,7 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 	FD_ZERO(&poll_read_set);
 	FD_SET(_socket, &poll_read_set);
 
-	int n = select(1, &poll_read_set, 0, 0, &timeout);
+	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
 		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to poll linux socket readability (has connection): ") + linux_error());
 
@@ -463,7 +479,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 	struct timeval timeout;
 	timeout.tv_sec = timeout.tv_usec = 0;
 
-	int n = select(1, NULL, &write_set, NULL, &timeout);
+	int n = select(_socket + 1, NULL, &write_set, NULL, &timeout);
 
 	if (n < 0)
 		throw std::runtime_error(std::string("Failed to select nonblock connect socket write-ability (whether it has connected): ") + linux_error());
@@ -473,7 +489,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 		fd_set except_set;
 		FD_ZERO(&except_set);
 		FD_SET(_socket, &except_set);
-		n = select(1, NULL, NULL, &except_set, &timeout);
+		n = select(_socket + 1, NULL, NULL, &except_set, &timeout);
 		if (n < 0)
 			throw std::runtime_error(std::string("Failed to select socket error status with: ") + linux_error());
 		if (n < 1)

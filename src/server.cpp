@@ -30,7 +30,7 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
 {
     if (data_len < 1)
     {
-        std::cout << "Received empty data from a client, disconnecting client" << std::endl;
+        std::cout << "Received empty data from a client (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << "), disconnecting client" << std::endl;
         source = nullptr;
         return EXECUTION_STATUS::CONTINUE;
     }
@@ -133,7 +133,7 @@ void server_loop()
             }
             else
             {
-                std::cout << "Found available connection but both ClientA and ClientB already assigned";
+                std::cout << "Found available connection but both ClientA and ClientB already assigned" << std::endl;
             }
         }
 
