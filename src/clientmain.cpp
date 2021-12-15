@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
 
     try
     {
+        std::cout << "Please enter the rendezvous server's IP:" << std::endl;
         do {
 
             std::string message{};

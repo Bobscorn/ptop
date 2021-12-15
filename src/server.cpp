@@ -84,6 +84,28 @@ void init_server() {
 
 }
 
+void input_thread_func(thread_queue& message_queue)
+{
+    try
+    {
+        std::string input;
+        do
+        {
+            std::getline(std::cin, input); //waits until cin input
+            {
+                std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
+                message_queue.messages.push(input);
+            }
+
+            std::this_thread::sleep_for(100ms);
+        } while (true);
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Input Thread encountered exception: " << e.what() << std::endl;
+    }
+}
+
 void server_loop()
 {
     std::cout << "Starting Rendezvous server!" << std::endl;
@@ -97,20 +119,8 @@ void server_loop()
     std::vector<char> recv_data{};
     thread_queue message_queue{};
 
-    std::thread input_thread = std::thread([&message_queue]()
-        {
-            std::string input;
-            do
-            {
-                std::getline(std::cin, input); //waits until cin input
-                {
-                    std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
-                    message_queue.messages.push(input);
-                }
-
-                std::this_thread::sleep_for(100ms);
-            } while (true);
-        });
+    std::thread input_thread{ input_thread_func, std::ref(message_queue) };
+    input_thread.detach();
 
     std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 

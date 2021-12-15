@@ -80,8 +80,6 @@ public:
 	bool has_data() override;
 
 	bool send_data(const std::vector<char>& data) override;
-
-	bool has_died() override;
 };
 
 class windows_reusable_nonblocking_listen_socket : public IWindowsSocket, public IReusableNonBlockingListenSocket

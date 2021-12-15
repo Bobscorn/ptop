@@ -44,13 +44,8 @@ int main(int argc, char** argv) {
 
     try
     {
-        do {
-            server_loop();
-        }
-        
-        while(true);
+        server_loop();
     }
-    
     catch (const std::exception& e)
     {
         std::cout << "Caught exception: " << e.what() << std::endl;

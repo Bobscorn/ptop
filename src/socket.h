@@ -81,8 +81,6 @@ public:
 
 	inline size_t bytes_seen() { return _seen_data; }
 	inline size_t bytes_sent() { return _sent_bytes; }
-
-	virtual bool has_died() = 0;
 };
 
 class IListenSocket

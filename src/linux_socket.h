@@ -61,7 +61,7 @@ public:
 
 	bool send_data(const std::vector<char>& data) override;
 
-	bool has_died() override;
+	bool has_died();
 };
 
 class linux_reuse_nonblock_listen_socket : public ILinuxSocket, public IReusableNonBlockingListenSocket
