@@ -29,6 +29,24 @@ std::string get_last_error()
     return message;
 }
 
+
+readable_ip_info convert_to_readable(name_data name)
+{
+    std::vector<char> name_buf(100, '0');
+    DWORD name_buf_len = name_buf.size();
+    int iResult = WSAAddressToString(&name.name, name.name_len, NULL, name_buf.data(), &name_buf_len);
+    if (iResult == SOCKET_ERROR)
+        throw std::exception((std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error()).c_str());
+
+    uint16_t port = htons(((sockaddr_in*)&name.name)->sin_port);
+    std::string port_str = std::to_string(port);
+
+    readable_ip_info out_data;
+    out_data.ip_address = std::string(name_buf.data(), name_buf.data() + name_buf_len - 7);
+    out_data.port = std::move(port_str);
+    return out_data;
+}
+
 windows_listen_socket::windows_listen_socket(std::string port)
 {
    std::cout << "Binding on port: " << port <<std::endl;
@@ -65,6 +83,7 @@ void windows_listen_socket::listen()
 {
     if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR)
         throw std::exception((std::string("Failed to listen with: ") + get_last_error()).c_str());
+    std::cout << "Listening on: " << convert_to_readable(get_sock_data()).ip_address << ":" << convert_to_readable(get_sock_data()).port << std::endl;
 }
 
 bool windows_listen_socket::has_connection()
@@ -79,6 +98,7 @@ bool windows_listen_socket::has_connection()
 std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
     SOCKET send_socket = INVALID_SOCKET;
 
+    std::cout << "Accepting a connection" << std::endl;
     send_socket = accept(_socket, NULL, NULL);
     if (send_socket != INVALID_SOCKET)
     {
@@ -130,6 +150,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
             ConnectSocket = INVALID_SOCKET;
             continue;
         }
+        //std::cout << "Successfully connected to: " << get_peer_data().ip_address << ":" << get_peer_data().port << std::endl;
         break;
     }
 
@@ -144,6 +165,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
 }
 
 bool windows_data_socket::send_data(const std::vector<char>& data) {
+    std::cout << "Sent " << data.size() << " bytes to: " << get_peer_data().ip_address << ":" << get_peer_data().port << std::endl;
     int iSendResult = send(_socket, data.data(), data.size(), 0);
     if (iSendResult == SOCKET_ERROR)
     {
@@ -173,6 +195,8 @@ std::vector<char> windows_data_socket::receive_data() {
         std::cerr << "Receiving data failed: " << get_last_error() << std::endl;
         return std::vector<char>();
     }
+    else
+        std::cout << "Received empty data from: " << get_peer_data().ip_address << ":" << get_peer_data().port << std::endl;
     recv_data.resize(iResult);
     return recv_data;
 }
@@ -200,7 +224,7 @@ void IWindowsSocket::shutdown()
     ::shutdown(_socket, SD_SEND);
 }
 
-peer_data IWindowsSocket::get_peer_data()
+readable_ip_info IWindowsSocket::get_peer_data()
 {
     sockaddr name;
     int name_len = sizeof(sockaddr);
@@ -217,7 +241,7 @@ peer_data IWindowsSocket::get_peer_data()
     uint16_t port = htons(((sockaddr_in*)&name)->sin_port);
     std::string port_str = std::to_string(port);
 
-    peer_data out_data;
+    readable_ip_info out_data;
     out_data.ip_address = std::string(name_buf.data(), name_buf.data() + name_buf_len - 7);
     out_data.port = std::move(port_str);
     return out_data;

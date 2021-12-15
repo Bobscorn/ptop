@@ -28,6 +28,8 @@ class windows_internet
 	~windows_internet();
 };
 
+readable_ip_info convert_to_readable(name_data);
+
 class IWindowsSocket : virtual public ISocket
 {
 	protected:
@@ -37,7 +39,7 @@ class IWindowsSocket : virtual public ISocket
 
 	public:
 	void shutdown() override;
-	peer_data get_peer_data() override;
+	readable_ip_info get_peer_data() override;
 	name_data get_sock_data() override;
 };
 

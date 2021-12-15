@@ -16,7 +16,7 @@ struct windows_name_data
 	int name_len;
 };
 
-typedef windows_name_data name_data;
+typedef windows_name_data raw_name_data;
 #elif defined(__linux__)
 
 #include <netinet/in.h>
@@ -26,7 +26,7 @@ struct linux_name_data
 	sockaddr_in addr;
 };
 
-typedef linux_name_data name_data;
+typedef linux_name_data raw_name_data;
 #endif
 
 enum class ConnectionStatus
@@ -43,8 +43,18 @@ class ISocket
 
 	virtual void shutdown() = 0;
 
-	virtual peer_data get_peer_data() = 0;
-	virtual name_data get_sock_data() = 0;
+	virtual readable_ip_info get_peer_data() = 0;
+	virtual raw_name_data get_sock_data() = 0;
+
+	virtual raw_name_data get_peername_raw() = 0;
+	virtual raw_name_data get_myname_raw() = 0;
+	virtual readable_ip_info get_peername_readable() = 0;
+	virtual readable_ip_info get_myname_readable() = 0;
+
+	virtual std::string get_my_ip() = 0;
+	virtual std::string get_my_port() = 0;
+	virtual std::string get_endpoint_ip() = 0;
+	virtual std::string get_endpoint_port() = 0;
 };
 
 class IDataSocket : virtual public ISocket
@@ -108,5 +118,5 @@ class Sockets
 	static std::unique_ptr<IListenSocket> CreateListenSocket(std::string port);
 	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port);
 	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port);
-	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(name_data name);
+	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name);
 };

@@ -17,16 +17,31 @@
 
 std::string linux_error()
 {
-	std::string error = "Err code: 8 (";
+	auto err_code = errno;
+	std::string error = "Err code: " + std::to_string(err_code) + " (";
 	error += strerror(errno);
 	return error + ")";
+}
+
+void ILinuxSocket::update_name_info()
+{
+	auto name = get_myname_readable();
+	_address = name.ip_address;
+	_port = name.port;
+}
+
+void ILinuxSocket::update_endpoint_info()
+{
+	auto name = get_peername_readable();
+	_endpoint_address = name.ip_address;
+	_endpoint_port = name.port;
 }
 
 void ILinuxSocket::shutdown()
 {
 }
 
-peer_data ILinuxSocket::get_peer_data()
+readable_ip_info ILinuxSocket::get_peer_data()
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -40,30 +55,95 @@ peer_data ILinuxSocket::get_peer_data()
 	std::string address = str;
 
 	std::string port = std::to_string(peer_name.sin_port);
-	peer_data out;
+	readable_ip_info out;
 	out.ip_address = address;
 	out.port = port;
 	return out;
 }
 
-name_data ILinuxSocket::get_sock_data()
+raw_name_data ILinuxSocket::get_sock_data()
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
 
-	name_data out;
+	raw_name_data out;
 	out.addr = peer_name;
 	return out;
 }
 
+raw_name_data ILinuxSocket::get_peername_raw()
+{
+	sockaddr_in peer_name;
+	socklen_t peer_size = sizeof(peer_name);
+	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
+	if (n < 0)
+		throw std::runtime_error(std::string("[Socket] Failed to getpeername with: ") + linux_error());
+
+	raw_name_data raw_data;
+	raw_data.addr = peer_name;
+	return raw_data;
+}
+
+raw_name_data ILinuxSocket::get_myname_raw()
+{
+	sockaddr_in peer_name;
+	socklen_t peer_size = sizeof(peer_name);
+	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
+	if (n < 0)
+		throw std::runtime_error(std::string("[Socket] Failed to getpeername with: ") + linux_error());
+
+	raw_name_data raw_data;
+	raw_data.addr = peer_name;
+	return raw_data;
+}
+
+readable_ip_info ILinuxSocket::get_peername_readable()
+{
+	return convert_to_readable(get_peername_raw());
+}
+
+readable_ip_info ILinuxSocket::get_myname_readable()
+{
+	return convert_to_readable(get_myname_raw());
+}
+
+std::string ILinuxSocket::get_my_ip()
+{
+	if (_address == "Unassigned")
+		update_name_info();
+	return _address;
+}
+
+std::string ILinuxSocket::get_my_port()
+{
+	if (_port == "Unassigned")
+		update_name_info();
+	return _port;
+}
+
+std::string ILinuxSocket::get_endpoint_ip()
+{
+	if (_endpoint_address == "Unassigned")
+		update_endpoint_info();
+	return _endpoint_address;
+}
+
+std::string ILinuxSocket::get_endpoint_port()
+{
+	if (_endpoint_port == "Unassigned")
+		update_endpoint_info();
+	return _endpoint_port;
+}
+
 linux_listen_socket::linux_listen_socket(std::string port)
 {
+	std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	socklen_t cli_len;
 	if (_socket < 0)
-		throw std::runtime_error(std::string("Failed to create linux socket: ") + linux_error());
+		throw std::runtime_error(std::string("[Listen] Failed to create linux socket: ") + linux_error());
 
 	struct sockaddr_in serv_addr, cli_addr;
 
@@ -73,14 +153,16 @@ linux_listen_socket::linux_listen_socket(std::string port)
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(portno);
 
+	std::cout << "Binding..." << std::endl;
 	if (bind(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-		throw std::runtime_error(std::string("Failed to bind linux socket: ") + linux_error());
+		throw std::runtime_error(std::string("[Listen] Failed to bind linux socket: ") + linux_error());
 }
 
 void linux_listen_socket::listen()
 {
+	std::cout << "[Listen] Socket now Listening (*)" << std::endl;
 	if (::listen(_socket, 5) < 0)
-		throw std::runtime_error(std::string("Error when listening: ") + linux_error());
+		throw std::runtime_error(std::string("[Listen] Error when listening: ") + linux_error());
 }
 
 bool linux_listen_socket::has_connection()
@@ -95,13 +177,14 @@ bool linux_listen_socket::has_connection()
 
 	int n = select(1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw std::runtime_error(std::string("Failed to poll linux socket readability: ") + linux_error());
+		throw std::runtime_error(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
 
 	return n > 0;
 }
 
 std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 {
+	std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
 	sockaddr_in client_addr;
 	socklen_t client_len;
 	int new_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
@@ -113,10 +196,12 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 
 linux_data_socket::linux_data_socket(int socket) : ILinuxSocket(socket)
 {
+	std::cout << "[Data] Copy Constructor Data socket" << std::endl;
 }
 
 linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port)
 {
+	std::cout << "[Data] Creating a Linux Data Socket on: " << peer_address << ":" << peer_port << std::endl;
 	struct sockaddr_in serv_addr;
 	struct hostent* serv_ent;
 	int portno = atoi(peer_port.c_str());
@@ -130,17 +215,19 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
+	std::cout << "[Data] Attempting to connect to endpoint" << std::endl;
 	if (connect(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
 		throw std::runtime_error(std::string("Socket failed to connect with: ") + linux_error());
 }
 
 std::vector<char> linux_data_socket::receive_data()
 {
+	std::cout << "[Data] Trying to received data from Socket" << std::endl;
 	std::vector<char> recv_data{ 500, '0', std::allocator<char>() };
 	int n = read(_socket, recv_data.data(), 500);
 	if (n < -1)
 	{
-		std::cerr << "Failed to read data from linux socket: " << linux_error() << std::endl;
+		std::cerr << "[Data] Failed to read data from linux socket: " << linux_error() << std::endl;
 		return std::vector<char>();
 	}
 	recv_data.resize(n);
@@ -159,7 +246,7 @@ bool linux_data_socket::has_data()
 
 	int n = select(1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw std::runtime_error(std::string("Failed to poll linux socket readability: ") + linux_error());
+		throw std::runtime_error(std::string("[Data] Failed to poll linux socket readability: ") + linux_error());
 
 	return n > 0;
 }
@@ -243,7 +330,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	return std::make_unique<linux_data_socket>(accepted_socket);
 }
 
-linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(name_data data)
+linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data)
 {
 	_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 	if (_socket < 0)

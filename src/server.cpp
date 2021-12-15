@@ -13,7 +13,7 @@ using namespace std::chrono;
 
 void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
 {
-    peer_data dataA, dataB;
+    readable_ip_info dataA, dataB;
     dataA = clientA->get_peer_data();
     dataB = clientB->get_peer_data();
 

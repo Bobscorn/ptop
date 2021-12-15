@@ -34,11 +34,11 @@ std::string get_external_ip() {
 }
 #endif
 
-peer_data read_peer_data(char* data, int& index, int data_len)
+readable_ip_info read_peer_data(char* data, int& index, int data_len)
 {
     if (index + 1 >= data_len)
-        throw std::runtime_error("Not enough data to read a string for peer_data");
-    peer_data out_data;
+        throw std::runtime_error("Not enough data to read a string for readable_ip_info");
+    readable_ip_info out_data;
     out_data.ip_address = std::string(data + index);
     index += out_data.ip_address.length() + 1;
     out_data.port = std::string(data + index);
@@ -46,7 +46,7 @@ peer_data read_peer_data(char* data, int& index, int data_len)
     return out_data;
 }
 
-std::vector<char> peer_data::to_bytes()
+std::vector<char> readable_ip_info::to_bytes()
 {
     /*vector<char> bytes(sizeof(size_t) * 2 + ip_address.length() + port.length(), '0');
     size_t i = 0;

@@ -150,6 +150,7 @@ void client_loop(std::string server_address_pair)
     std::unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
 
     // Indicate to server we're ready for p2p
+    auto last_send = std::chrono::system_clock::now();
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
 
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
@@ -159,6 +160,12 @@ void client_loop(std::string server_address_pair)
         {
             auto data = conn_socket->receive_data();
             status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket);
+        }
+        auto now = std::chrono::system_clock::now();
+        if (now - last_send > 3s)
+        {
+            conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
+            last_send = now;
         }
 
         std::this_thread::sleep_for(100ms);
