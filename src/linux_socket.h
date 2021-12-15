@@ -7,8 +7,6 @@
 
 #include "socket.h"
 
-using namespace std;
-
 class ILinuxSocket : virtual public ISocket
 {
 protected:
@@ -25,33 +23,33 @@ public:
 class linux_listen_socket : public ILinuxSocket, public IListenSocket
 {
 public:
-	linux_listen_socket(string port);
+	linux_listen_socket(std::string port);
 
 	void listen() override;
 	bool has_connection() override;
-	unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
 class linux_data_socket : public ILinuxSocket, public IDataSocket
 {
 public:
 	linux_data_socket(int socket);
-	linux_data_socket(string peer_address, string peer_port);
+	linux_data_socket(std::string peer_address, std::string peer_port);
 
-	vector<char> receive_data() override;
+	std::vector<char> receive_data() override;
 	bool has_data() override;
 
-	bool send_data(const vector<char>& data) override;
+	bool send_data(const std::vector<char>& data) override;
 };
 
 class linux_reuse_nonblock_listen_socket : public ILinuxSocket, public IReusableNonBlockingListenSocket
 {
 public:
-	linux_reuse_nonblock_listen_socket(string port);
+	linux_reuse_nonblock_listen_socket(std::string port);
 
 	void listen() override;
 	bool has_connection() override;
-	unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
 class linux_reuse_nonblock_connection_socket : public ILinuxSocket, public IReusableNonBlockingConnectSocket
@@ -59,8 +57,8 @@ class linux_reuse_nonblock_connection_socket : public ILinuxSocket, public IReus
 public:
 	linux_reuse_nonblock_connection_socket(name_data data);
 
-	void connect(string ip_address, string port) override;
+	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;
 
-	unique_ptr<IDataSocket> convert_to_datasocket() override;
+	std::unique_ptr<IDataSocket> convert_to_datasocket() override;
 };

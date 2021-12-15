@@ -6,8 +6,6 @@
 
 #include "ip.h"
 
-using namespace std;
-
 #ifdef WIN32
 
 #include <winsock2.h>
@@ -55,10 +53,10 @@ public:
 	virtual ~IDataSocket() {}
 
 
-	virtual vector<char> receive_data() = 0;
+	virtual std::vector<char> receive_data() = 0;
 	virtual bool has_data() = 0;
 
-	virtual bool send_data(const vector<char>& data) = 0;
+	virtual bool send_data(const std::vector<char>& data) = 0;
 };
 
 class IListenSocket
@@ -68,7 +66,7 @@ class IListenSocket
 
 	virtual void listen() = 0;
 	virtual bool has_connection() = 0;
-	virtual unique_ptr<IDataSocket> accept_connection() = 0;
+	virtual std::unique_ptr<IDataSocket> accept_connection() = 0;
 };
 
 class IReusableSocket : virtual public ISocket
@@ -85,10 +83,10 @@ class IReusableNonBlockingConnectSocket : public IReusableSocket
 	public:
 	virtual ~IReusableNonBlockingConnectSocket() {}
 
-	virtual void connect(string ip_address, string port) = 0;
+	virtual void connect(std::string ip_address, std::string port) = 0;
 	virtual ConnectionStatus has_connected() = 0;
 
-	virtual unique_ptr<IDataSocket> convert_to_datasocket() = 0;
+	virtual std::unique_ptr<IDataSocket> convert_to_datasocket() = 0;
 };
 
 class IReusableNonBlockingListenSocket : public IReusableSocket
@@ -98,7 +96,7 @@ class IReusableNonBlockingListenSocket : public IReusableSocket
 
 	virtual void listen() = 0;
 	virtual bool has_connection() = 0;
-	virtual unique_ptr<IDataSocket> accept_connection() = 0;
+	virtual std::unique_ptr<IDataSocket> accept_connection() = 0;
 };
 
 class Sockets
@@ -107,8 +105,8 @@ class Sockets
 	static const std::string ServerListenPort;
 	static const std::string ClientListenPort;
 
-	static unique_ptr<IListenSocket> CreateListenSocket(string port);
-	static unique_ptr<IDataSocket> CreateConnectionSocket(string peer_ip, string port);
-	static unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(string port);
-	static unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(name_data name);
+	static std::unique_ptr<IListenSocket> CreateListenSocket(std::string port);
+	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port);
+	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port);
+	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(name_data name);
 };

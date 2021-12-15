@@ -15,8 +15,6 @@
 #include <memory>
 #include <string>
 
-using namespace std;
-
 /// <summary>
 /// An RAII Wrapper over WSAStartup and WSACleanup, called in constructors and destructors
 /// </summary>
@@ -46,33 +44,33 @@ class IWindowsSocket : virtual public ISocket
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
 {
 	public:
-	windows_listen_socket(string port);
+	windows_listen_socket(std::string port);
 
 	void listen() override;
 	bool has_connection() override;
-	unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
 class windows_data_socket : public IWindowsSocket, public virtual IDataSocket
 {
 public:
 	windows_data_socket(SOCKET source_socket);
-	windows_data_socket(string peer_address, string peer_port);
+	windows_data_socket(std::string peer_address, std::string peer_port);
 
-	vector<char> receive_data() override;
+	std::vector<char> receive_data() override;
 	bool has_data() override;
 
-	bool send_data(const vector<char>& data) override;
+	bool send_data(const std::vector<char>& data) override;
 };
 
 class windows_reusable_nonblocking_listen_socket : public IWindowsSocket, public IReusableNonBlockingListenSocket
 {
 public:
-	windows_reusable_nonblocking_listen_socket(string port);
+	windows_reusable_nonblocking_listen_socket(std::string port);
 
 	void listen() override;
 	bool has_connection() override;
-	unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
 class windows_reusable_nonblocking_connection_socket : public IWindowsSocket, public IReusableNonBlockingConnectSocket
@@ -81,9 +79,9 @@ public:
 	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed
 	windows_reusable_nonblocking_connection_socket(name_data data);
 
-	void connect(string ip_address, string port) override;
+	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;
 
-	unique_ptr<IDataSocket> convert_to_datasocket() override;
+	std::unique_ptr<IDataSocket> convert_to_datasocket() override;
 };
 #endif

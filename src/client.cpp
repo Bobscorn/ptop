@@ -10,22 +10,22 @@
 #include "message.h"
 #include "socket.h"
 
-using namespace std;
+using namespace std::chrono;
 
 struct thread_queue
 {
     thread_queue() : messages(), queue_mutex() {}
     thread_queue(const thread_queue& other) = delete; // Removes the default copy constructor
 
-    queue<string> messages;
-    shared_mutex queue_mutex;
+    std::queue<std::string> messages;
+    std::shared_mutex queue_mutex;
 };
 
-EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<IDataSocket>& conn_socket)
+EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket)
 {
     if (data_len < 1)
     {
-        cout << "Received empty data, disconnecting" << endl;
+        std::cout << "Received empty data, disconnecting" << std::endl;
         return EXECUTION_STATUS::COMPLETE;
     }
 
@@ -36,13 +36,13 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
     {
     case MESSAGE_TYPE::MSG:
     {
-        string msg = read_string(data, i, data_len);
-        cout << "Message received from server: " << msg << std::endl;
+        std::string msg = read_string(data, i, data_len);
+        std::cout << "Message received from server: " << msg << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::FILE:
     {
-        cout << "Received file from server" << endl;
+        std::cout << "Received file from server" << std::endl;
         // TODO: actually read the file
         return EXECUTION_STATUS::CONTINUE;
     }
@@ -57,7 +57,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
         name_data old_name = conn_socket->get_sock_data();
         conn_socket = nullptr;
 
-        unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
+        std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
         auto peer_connect = Sockets::CreateReusableConnectSocket(old_name);
         peer_connect->connect(peer_public.ip_address, peer_public.port);
@@ -67,27 +67,27 @@ EXECUTION_STATUS process_data(char* data, int data_len, string port, unique_ptr<
         {
             if (listen_sock->has_connection())
             {
-                cout << "Successfully accepted peer connection" << endl;
+                std::cout << "Successfully accepted peer connection" << std::endl;
                 conn_socket = listen_sock->accept_connection();
                 return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::SUCCESS)
             {
-                cout << "Successfully connected to peer" << endl;
+                std::cout << "Successfully connected to peer" << std::endl;
                 conn_socket = peer_connect->convert_to_datasocket();
                 return EXECUTION_STATUS::CONNECTED;
             }
             if (peer_connect->has_connected() == ConnectionStatus::FAILED)
             {
-                cout << "Connecting failed, retrying" << endl;
+                std::cout << "Connecting failed, retrying" << std::endl;
                 peer_connect->connect(peer_public.ip_address, peer_public.port);
             }
-            this_thread::sleep_for(100ms);
+            std::this_thread::sleep_for(100ms);
 
-            auto cur_time = chrono::system_clock::now();
+            auto cur_time = std::chrono::system_clock::now();
             if (cur_time - start_time > 10s)
             {
-                cerr << "Time out trying to hole punch reached" << endl;
+                std::cerr << "Time out trying to hole punch reached" << std::endl;
                 return EXECUTION_STATUS::FAILED;
             }
         } while (true);
@@ -106,7 +106,7 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
 {
     if (data_len < 1)
     {
-        cout << "Received empty data, disconnecting" << endl;
+        std::cout << "Received empty data, disconnecting" << std::endl;
         return EXECUTION_STATUS::COMPLETE;
     }
 
@@ -117,19 +117,19 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
     {
     case MESSAGE_TYPE::MSG:
     {
-        string msg = read_string(data, i, data_len);
-        cout << "Message received from peer: " << msg << endl;
+        std::string msg = read_string(data, i, data_len);
+        std::cout << "Message received from peer: " << msg << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::FILE:
     {
-        cout << "Received file from peer" << endl;
+        std::cout << "Received file from peer" << std::endl;
         // TODO: actually read the file
         return EXECUTION_STATUS::CONTINUE;
     }
     case MESSAGE_TYPE::CONNECT_PEER:
     {
-        cout << "Received Connect Peer message when already connected" << endl;
+        std::cout << "Received Connect Peer message when already connected" << std::endl;
 
         return EXECUTION_STATUS::CONTINUE;
     }
@@ -142,12 +142,12 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
 }
 
 
-void client_loop(string server_address_pair)
+void client_loop(std::string server_address_pair)
 {
-    cout << "Starting ptop!" << endl;
-    cout << "Connecting to rendezvous server: " << server_address_pair << endl;
+    std::cout << "Starting ptop!" << std::endl;
+    std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
 
-    unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
+    std::unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
 
     // Indicate to server we're ready for p2p
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
@@ -161,31 +161,31 @@ void client_loop(string server_address_pair)
             status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket);
         }
 
-        this_thread::sleep_for(100ms);
+        std::this_thread::sleep_for(100ms);
     }
 
     if (status == EXECUTION_STATUS::CONNECTED)
     {
         status = EXECUTION_STATUS::CONTINUE;
-        cout << "connected to peer. enter your message!" << endl;
+        std::cout << "connected to peer. enter your message!" << std::endl;
         thread_queue message_queue{};
 
-        thread input_thread = thread([&message_queue]()
+        std::thread input_thread = std::thread([&message_queue]()
             {
                 std::string input;
                 do
                 {
-                    getline(cin, input); //waits until cin input
+                    std::getline(std::cin, input); //waits until cin input
                     {
-                        std::unique_lock<shared_mutex> lock(message_queue.queue_mutex);
+                        std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
                         message_queue.messages.push(input);
                     }
 
-                    this_thread::sleep_for(100ms);
+                    std::this_thread::sleep_for(100ms);
                 } while (true);
             });
 
-        std::unique_lock<shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
+        std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 
         do {
             if (conn_socket->has_data())
@@ -199,7 +199,7 @@ void client_loop(string server_address_pair)
                 {
                     if (!message_queue.messages.empty())
                     {
-                        string input_message = message_queue.messages.front();
+                        std::string input_message = message_queue.messages.front();
                         message_queue.messages.pop();
                         conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
                     }
@@ -207,9 +207,9 @@ void client_loop(string server_address_pair)
                 }
             }
 
-            this_thread::sleep_for(100ms);
+            std::this_thread::sleep_for(100ms);
         } while (status == EXECUTION_STATUS::CONTINUE);
 
-        cout << "finished sending to peer" << endl;
+        std::cout << "finished sending to peer" << std::endl;
     }
 }

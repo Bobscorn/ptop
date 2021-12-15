@@ -3,13 +3,13 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <chrono>
 
 #include "loop.h"
 #include "message.h"
 #include "socket.h"
 
-using namespace std;
-
+using namespace std::chrono;
 
 void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
 {
@@ -26,11 +26,11 @@ void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
     clientB = nullptr;
 }
 
-EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source, int data_len, string port, IDataSocket*& clientA, IDataSocket*& clientB)
+EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, int data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB)
 {
     if (data_len < 1)
     {
-        cout << "Received empty data from a client, disconnecting client" << endl;
+        std::cout << "Received empty data from a client, disconnecting client" << std::endl;
         source = nullptr;
         return EXECUTION_STATUS::CONTINUE;
     }
@@ -51,7 +51,7 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
         {
             if (source.get() != clientA)
             {
-                cout << "Received ClientB hello" << endl;
+                std::cout << "Received ClientB hello" << std::endl;
                 clientB = source.get();
                 hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
@@ -61,7 +61,7 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
         {
             if (source.get() != clientB)
             {
-                cout << "Received new ClientA hello" << endl;
+                std::cout << "Received new ClientA hello" << std::endl;
                 clientA = source.get();
                 hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
@@ -69,7 +69,7 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
         }
         else
         {
-            cout << "Received ClientA hello" << endl;
+            std::cout << "Received ClientA hello" << std::endl;
             clientA = source.get();
         }
         return EXECUTION_STATUS::CONTINUE;
@@ -86,9 +86,9 @@ void init_server() {
 
 void server_loop()
 {
-    cout << "Starting Rendezvous server!" << endl;
+    std::cout << "Starting Rendezvous server!" << std::endl;
 
-    unique_ptr<IDataSocket> clientA{}, clientB{};
+    std::unique_ptr<IDataSocket> clientA{}, clientB{};
     IDataSocket* cA = nullptr, * cB = nullptr;
 
     auto server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort);
@@ -108,7 +108,7 @@ void server_loop()
             status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::ServerListenPort, cA, cB);
             if (status == EXECUTION_STATUS::COMPLETE)
             {
-                cout << "Resetting server" << endl;
+                std::cout << "Resetting server" << std::endl;
                 clientA = nullptr;
                 clientB = nullptr;
                 status = EXECUTION_STATUS::CONTINUE;
@@ -121,12 +121,12 @@ void server_loop()
             status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::ServerListenPort, cA, cB);
             if (status == EXECUTION_STATUS::COMPLETE)
             {
-                cout << "Resetting server" << endl;
+                std::cout << "Resetting server" << std::endl;
                 clientA = nullptr;
                 clientB = nullptr;
                 status = EXECUTION_STATUS::CONTINUE;
             }
         }
-        this_thread::sleep_for(100ms);
+        std::this_thread::sleep_for(100ms);
     }
 }

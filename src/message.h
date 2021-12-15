@@ -5,8 +5,6 @@
 #include <string>
 #include <cstring>
 
-using namespace std;
-
 enum class MESSAGE_TYPE
 {
 	NONE = 0,
@@ -18,7 +16,7 @@ enum class MESSAGE_TYPE
 };
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
-vector<char> create_message(MESSAGE_TYPE type, T other_data)
+std::vector<char> create_message(MESSAGE_TYPE type, T other_data)
 {
 	vector<char> out(sizeof(type) + sizeof(other_data), '0');
 	std::memcpy(out.data(), &type, sizeof(type));
@@ -26,26 +24,26 @@ vector<char> create_message(MESSAGE_TYPE type, T other_data)
 	return out;
 }
 
-inline vector<char> create_message(MESSAGE_TYPE type)
+inline std::vector<char> create_message(MESSAGE_TYPE type)
 {
-	vector<char> out(sizeof(type), '0');
-	memcpy(out.data(), &type, sizeof(type));
+	std::vector<char> out(sizeof(type), '0');
+	std::memcpy(out.data(), &type, sizeof(type));
 	return out;
 }
 
-inline vector<char> create_message(MESSAGE_TYPE type, vector<char> data)
+inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> data)
 {
 	data.insert(data.begin(), sizeof(type), '0');
-	memcpy(data.data(), &type, sizeof(type));
+	std::memcpy(data.data(), &type, sizeof(type));
 	return data;
 }
 
-inline vector<char> create_message(MESSAGE_TYPE type, string data)
+inline std::vector<char> create_message(MESSAGE_TYPE type, std::string data)
 {
 	std::vector<char> out_data(sizeof(type) + sizeof(int), '0');
 	int len = data.length();
-	memcpy(out_data.data(), &type, sizeof(type));
-	memcpy(out_data.data() + sizeof(type), &len, sizeof(int));
+	std::memcpy(out_data.data(), &type, sizeof(type));
+	std::memcpy(out_data.data() + sizeof(type), &len, sizeof(int));
 	out_data.reserve(sizeof(type) + sizeof(size_t) + data.length());
 	out_data.insert(out_data.end(), data.begin(), data.end());
 	return out_data;
