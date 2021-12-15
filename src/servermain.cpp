@@ -44,37 +44,13 @@ int main(int argc, char** argv) {
 
     try
     {
-        if (argc > 1 && !strcmp(argv[1], "server"))
-        {
+        do {
             server_loop();
         }
-        else
-        {
-            client_loop();
-
-
-            //auto receiver = create_server();
-            //auto sender = create_client();
-
-            //while (true) {
-
-            //    std::string message{};
-            //    std::cin >> message;
-
-            //    if (message == "") {
-            //        continue;
-            //    }
-
-            //    //TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
-
-            //    int last_error = WSAGetLastError();
-
-            //    if (last_error != 0) {
-
-            //    }
-            //}
-        }
+        
+        while(true);
     }
+    
     catch (const std::exception& e)
     {
         cout << "Caught exception: " << e.what() << std::endl;

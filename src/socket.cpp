@@ -11,7 +11,9 @@
 
 using namespace std;
 
-const string Sockets::DefaultPort = "27069";
+const string Sockets::ServerListenPort = "27069";
+const string Sockets::ClientListenPort = "6969";
+
 
 unique_ptr<IListenSocket> Sockets::CreateListenSocket(string port)
 {

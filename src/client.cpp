@@ -142,23 +142,23 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
 }
 
 
-void client_loop()
+void client_loop(string server_address_pair)
 {
-    cout << "Starting p2p client!" << endl;
-    cout << "Connecting to rendezvous server" << endl;
+    cout << "Starting ptop!" << endl;
+    cout << "Connecting to rendezvous server: " << server_address_pair << endl;
 
-    unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket("localhost", Sockets::DefaultPort);
+    unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
 
     // Indicate to server we're ready for p2p
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
 
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
-    while (status == EXECUTION_STATUS::CONTINUE)
+    while (status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
     {
         if (conn_socket->has_data())
         {
             auto data = conn_socket->receive_data();
-            status = process_data(data.data(), data.size(), "6969", conn_socket);
+            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket);
         }
 
         this_thread::sleep_for(100ms);
@@ -167,7 +167,7 @@ void client_loop()
     if (status == EXECUTION_STATUS::CONNECTED)
     {
         status = EXECUTION_STATUS::CONTINUE;
-        cout << "Starting connection loop" << endl;
+        cout << "connected to peer. enter your message!" << endl;
         thread_queue message_queue{};
 
         thread input_thread = thread([&message_queue]()
@@ -175,8 +175,7 @@ void client_loop()
                 std::string input;
                 do
                 {
-                    getline(cin, input);
-
+                    getline(cin, input); //waits until cin input
                     {
                         std::unique_lock<shared_mutex> lock(message_queue.queue_mutex);
                         message_queue.messages.push(input);
@@ -187,8 +186,8 @@ void client_loop()
             });
 
         std::unique_lock<shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
-        do
-        {
+
+        do {
             if (conn_socket->has_data())
             {
                 auto data = conn_socket->receive_data();
@@ -210,6 +209,7 @@ void client_loop()
 
             this_thread::sleep_for(100ms);
         } while (status == EXECUTION_STATUS::CONTINUE);
-        cout << "Closing program" << endl;
+
+        cout << "finished sending to peer" << endl;
     }
 }

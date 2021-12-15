@@ -1,5 +1,7 @@
 #pragma once
 
-//std::unique_ptr<ISenderSocket> create_client();
+#include <string>
 
-void client_loop();
+using namespace std;
+
+void client_loop(string server_address_pair);

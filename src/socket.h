@@ -104,7 +104,8 @@ class IReusableNonBlockingListenSocket : public IReusableSocket
 class Sockets
 {
 	public:
-	static const std::string DefaultPort;
+	static const std::string ServerListenPort;
+	static const std::string ClientListenPort;
 
 	static unique_ptr<IListenSocket> CreateListenSocket(string port);
 	static unique_ptr<IDataSocket> CreateConnectionSocket(string peer_ip, string port);

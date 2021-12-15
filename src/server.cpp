@@ -80,6 +80,10 @@ EXECUTION_STATUS process_data_server(char* data, unique_ptr<IDataSocket>& source
     }
 }
 
+void init_server() {
+
+}
+
 void server_loop()
 {
     cout << "Starting Rendezvous server!" << endl;
@@ -87,7 +91,7 @@ void server_loop()
     unique_ptr<IDataSocket> clientA{}, clientB{};
     IDataSocket* cA = nullptr, * cB = nullptr;
 
-    auto server_socket = Sockets::CreateListenSocket(Sockets::DefaultPort);
+    auto server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort);
 
     server_socket->listen();
     std::vector<char> recv_data{};
@@ -101,7 +105,7 @@ void server_loop()
         if (clientA && clientA->has_data())
         {
             recv_data = clientA->receive_data();
-            status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::DefaultPort, cA, cB);
+            status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::ServerListenPort, cA, cB);
             if (status == EXECUTION_STATUS::COMPLETE)
             {
                 cout << "Resetting server" << endl;
@@ -114,7 +118,7 @@ void server_loop()
         if (clientB && clientB->has_data())
         {
             recv_data = clientB->receive_data();
-            status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::DefaultPort, cA, cB);
+            status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::ServerListenPort, cA, cB);
             if (status == EXECUTION_STATUS::COMPLETE)
             {
                 cout << "Resetting server" << endl;
