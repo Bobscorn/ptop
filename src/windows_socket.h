@@ -28,7 +28,7 @@ class windows_internet
 	~windows_internet();
 };
 
-readable_ip_info convert_to_readable(name_data);
+readable_ip_info convert_to_readable(raw_name_data);
 
 class IWindowsSocket : virtual public ISocket
 {
@@ -40,7 +40,7 @@ class IWindowsSocket : virtual public ISocket
 	public:
 	void shutdown() override;
 	readable_ip_info get_peer_data() override;
-	name_data get_sock_data() override;
+	raw_name_data get_sock_data() override;
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
@@ -79,7 +79,7 @@ class windows_reusable_nonblocking_connection_socket : public IWindowsSocket, pu
 {
 public:
 	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed
-	windows_reusable_nonblocking_connection_socket(name_data data);
+	windows_reusable_nonblocking_connection_socket(raw_name_data data);
 
 	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;

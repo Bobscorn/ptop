@@ -14,6 +14,7 @@ class ILinuxSocket : virtual public ISocket
 protected:
 	ILinuxSocket() : _socket(-1), _address("Unassigned"), _port("Unassigned") {}
 	ILinuxSocket(ILinuxSocket&& socket) : _socket(std::move(socket._socket)) { socket._socket = -1; }
+	ILinuxSocket(int socket, raw_name_data name) : _socket(socket) { auto readable = convert_to_readable(name); _endpoint_address = readable.ip_address; _endpoint_port = readable.port; }
 	int _socket;
 	std::string _address;
 	std::string _port;
@@ -50,7 +51,7 @@ public:
 class linux_data_socket : public ILinuxSocket, public IDataSocket
 {
 public:
-	linux_data_socket(int socket);
+	linux_data_socket(int socket, raw_name_data name);
 	linux_data_socket(std::string peer_address, std::string peer_port);
 
 	std::vector<char> receive_data() override;

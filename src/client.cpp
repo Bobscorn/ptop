@@ -54,7 +54,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
         // And we must disconnect the connection to the server
 
         auto peer_public = read_peer_data(data, i, data_len);
-        name_data old_name = conn_socket->get_sock_data();
+        raw_name_data old_name = conn_socket->get_sock_data();
         conn_socket = nullptr;
 
         std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);

@@ -40,7 +40,7 @@ std::unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBloc
 #endif
 }
 
-std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(name_data data)
+std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(raw_name_data data)
 {
 #ifdef WIN32
 	return std::make_unique<windows_reusable_nonblocking_connection_socket>(data);

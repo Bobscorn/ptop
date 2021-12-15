@@ -30,7 +30,7 @@ std::string get_last_error()
 }
 
 
-readable_ip_info convert_to_readable(name_data name)
+readable_ip_info convert_to_readable(raw_name_data name)
 {
     std::vector<char> name_buf(100, '0');
     DWORD name_buf_len = name_buf.size();
@@ -247,9 +247,9 @@ readable_ip_info IWindowsSocket::get_peer_data()
     return out_data;
 }
 
-name_data IWindowsSocket::get_sock_data()
+raw_name_data IWindowsSocket::get_sock_data()
 {
-    name_data name;
+    raw_name_data name;
     name.name_len = sizeof(sockaddr);
     int iResult = getsockname(_socket, &name.name, &name.name_len);
     if (iResult == SOCKET_ERROR)
@@ -353,7 +353,7 @@ std::unique_ptr<IDataSocket> windows_reusable_nonblocking_listen_socket::accept_
     return std::make_unique<windows_data_socket>(accepted_socket);
 }
 
-windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket(name_data name)
+windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket(raw_name_data name)
 {
     SOCKET ConnectSocket = INVALID_SOCKET;
 

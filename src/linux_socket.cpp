@@ -23,6 +23,22 @@ std::string linux_error()
 	return error + ")";
 }
 
+readable_ip_info convert_to_readable(raw_name_data data)
+{
+	std::vector<char> buf{ 50, '0', std::allocator<char>() };
+	const char* str = inet_ntop(AF_INET, &data.addr, buf.data(), buf.size());
+	if (!str)
+		throw std::runtime_error(std::string("Failed to convert sockaddr to string: ") + linux_error());
+
+	std::string address = str;
+
+	std::string port = std::to_string(ntohs(data.addr.sin_port));
+	readable_ip_info out;
+	out.ip_address = address;
+	out.port = port;
+	return out;
+}
+
 void ILinuxSocket::update_name_info()
 {
 	auto name = get_myname_readable();
@@ -156,11 +172,12 @@ linux_listen_socket::linux_listen_socket(std::string port)
 	std::cout << "Binding..." << std::endl;
 	if (bind(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
 		throw std::runtime_error(std::string("[Listen] Failed to bind linux socket: ") + linux_error());
+	std::cout << "[Listen] Post Bind Check: Bound to: " << get_my_ip() << ":" << get_my_port() << std::endl;
 }
 
 void linux_listen_socket::listen()
 {
-	std::cout << "[Listen] Socket now Listening (*)" << std::endl;
+	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	if (::listen(_socket, 5) < 0)
 		throw std::runtime_error(std::string("[Listen] Error when listening: ") + linux_error());
 }
@@ -191,17 +208,22 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 	if (new_socket < 0)
 		return nullptr;
 
-	return std::make_unique<linux_data_socket>(new_socket);
+	raw_name_data name;
+	name.addr = client_addr;
+	auto readable = convert_to_readable(name);
+	std::cout << "[Listen] Accepted a connection: " << readable.ip_address << ":" << readable.port << std::endl;
+	return std::make_unique<linux_data_socket>(new_socket, name);
 }
 
-linux_data_socket::linux_data_socket(int socket) : ILinuxSocket(socket)
+linux_data_socket::linux_data_socket(int socket, raw_name_data name) : ILinuxSocket(socket, name)
 {
-	std::cout << "[Data] Copy Constructor Data socket" << std::endl;
+	auto readable = convert_to_readable(name);
+	std::cout << "[Data] Copy Constructor Data socket with endpoint: " << readable.ip_address << ":" << readable.port << std::endl;
 }
 
 linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port)
 {
-	std::cout << "[Data] Creating a Linux Data Socket on: " << peer_address << ":" << peer_port << std::endl;
+	std::cout << "[Data] Creating a Linux Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
 	struct sockaddr_in serv_addr;
 	struct hostent* serv_ent;
 	int portno = atoi(peer_port.c_str());
@@ -215,14 +237,13 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	std::cout << "[Data] Attempting to connect to endpoint" << std::endl;
 	if (connect(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
 		throw std::runtime_error(std::string("Socket failed to connect with: ") + linux_error());
 }
 
 std::vector<char> linux_data_socket::receive_data()
 {
-	std::cout << "[Data] Trying to received data from Socket" << std::endl;
+	std::cout << "[Data] Trying to received data from Socket: (" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ")" << std::endl;
 	std::vector<char> recv_data{ 500, '0', std::allocator<char>() };
 	int n = read(_socket, recv_data.data(), 500);
 	if (n < -1)
@@ -253,6 +274,7 @@ bool linux_data_socket::has_data()
 
 bool linux_data_socket::send_data(const std::vector<char>& data)
 {
+	std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
 	int n = write(_socket, data.data(), data.size());
 	if (n < 0)
 	{
@@ -265,7 +287,7 @@ bool linux_data_socket::send_data(const std::vector<char>& data)
 
 linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port)
 {
-	std::cout << "Attempting to bind on port " << port << std::endl;
+	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
 
 	int portno = atoi(port.c_str());
 
@@ -277,7 +299,7 @@ linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::stri
 
 	_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 	if (_socket < 0)
-		throw std::runtime_error(std::string("Failed to create reusable nonblocking listen socket: ") + linux_error());
+		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to create reusable nonblocking listen socket: ") + linux_error());
 
 	int reuseVal = 1;
 	int n = setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
@@ -285,7 +307,7 @@ linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::stri
 	{
 		auto err = linux_error();
 		close(_socket);
-		throw std::runtime_error(std::string("Failed to set socket SO_REUSEADDR: ") + err);
+		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to set socket SO_REUSEADDR: ") + err);
 	}
 
 	n = ::bind(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
@@ -293,15 +315,16 @@ linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::stri
 	{
 		auto err = linux_error();
 		close(_socket);
-		throw std::runtime_error(std::string("Failed to bind reuseable nonblocking socket: ") + err);
+		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to bind reuseable nonblocking socket: ") + err);
 	}
 }
 
 void linux_reuse_nonblock_listen_socket::listen()
 {
+	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	auto n = ::listen(_socket, 4);
 	if (n < 1 && n != EINPROGRESS)
-		throw std::runtime_error(std::string("Failed to listen with: ") + linux_error());
+		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to listen with: ") + linux_error());
 }
 
 bool linux_reuse_nonblock_listen_socket::has_connection()
@@ -316,28 +339,37 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 
 	int n = select(1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw std::runtime_error(std::string("Failed to poll linux socket readability (has connection): ") + linux_error());
+		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to poll linux socket readability (has connection): ") + linux_error());
 
 	return n > 0;
 }
 
 std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connection()
 {
-	int accepted_socket = accept(_socket, 0, 0);
+	std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
+	sockaddr_in client_addr;
+	socklen_t client_len;
+	int accepted_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
 
 	if (accepted_socket < 0)
 		return nullptr;
-	return std::make_unique<linux_data_socket>(accepted_socket);
+	raw_name_data name;
+	name.addr = client_addr;
+	auto readable = convert_to_readable(name);
+	std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
+	return std::make_unique<linux_data_socket>(accepted_socket, name);
 }
 
 linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data)
 {
+	auto readable = convert_to_readable(data);
+	std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
 	_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 	if (_socket < 0)
 	{
 		auto err = linux_error();
 		close(_socket);
-		throw std::runtime_error(std::string("Failed to create nonblocking socket: ") + err);
+		throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + err);
 	}
 
 	int reuseVal = 1;
@@ -346,7 +378,7 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 	{
 		auto err = linux_error();
 		close(_socket);
-		throw std::runtime_error(std::string("Failed to set socket SO_REUSEADDR with: ") + err);
+		throw std::runtime_error(std::string("[DataReuseNoB] Failed to set socket SO_REUSEADDR with: ") + err);
 	}
 
 	n = ::bind(_socket, (struct sockaddr*)&data.addr, sizeof(data.addr));
@@ -354,12 +386,14 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 	{
 		auto err = linux_error();
 		close(_socket);
-		throw std::runtime_error(std::string("Failed to bind connect socket with: ") + err);
+		throw std::runtime_error(std::string("[DataReuseNoB] Failed to bind connect socket with: ") + err);
 	}
+	std::cout << "[DataReuseNoB] Successfully bound Data socket to: " << readable.ip_address << ":" << readable.port << std::endl;
 }
 
 void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std::string port)
 {
+	std::cout << "[DataReuseNoB] Tring to connect to: " << ip_address << ":" << port << std::endl;
 	struct sockaddr_in serv_addr;
 	struct hostent* serv_ent;
 	int portno = atoi(port.c_str());
@@ -374,6 +408,7 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 	int n = ::connect(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 	if (n < 0 && n != EINPROGRESS)
 		throw std::runtime_error(std::string("Unexpected error attempting to connect on nonblocking socket: ") + linux_error());
+	std::cout << "[DataReuseNoB] Successfully Connected to: " << ip_address << ":" << port << std::endl;
 }
 
 ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
@@ -416,6 +451,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 
 std::unique_ptr<IDataSocket> linux_reuse_nonblock_connection_socket::convert_to_datasocket()
 {
+	std::cout << "[DataReuseNoB] Converting to regular Data socket " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
 	int flags = fcntl(_socket, F_GETFL);
 	if (flags < 0)
 		throw std::runtime_error(std::string("Failed to query socket's flags: ") + linux_error());
@@ -423,7 +459,8 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_connection_socket::convert_to_
 	if (n < 0)
 		throw std::runtime_error(std::string("Failed to set socket as blocking again: ") + linux_error());
 
-	std::unique_ptr<IDataSocket> out = std::make_unique<linux_data_socket>(_socket);
+	auto raw_name = get_peername_raw();
+	std::unique_ptr<IDataSocket> out = std::make_unique<linux_data_socket>(_socket, raw_name);
 	_socket = -1;
 	return out;
 }
