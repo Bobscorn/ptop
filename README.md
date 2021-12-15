@@ -6,12 +6,15 @@ A Peer to Peer program suite for sending files directly to your mates, using the
 
 # build
 - cmake -B build
-- msbuild build\mmr.sln
+- msbuild build\ptop.sln
 
-# run
-- build\Debug\mmr.exe
+# run on windows
+- build\Debug\ptop.exe
 
 ## linux
 - cmake -B build
 - cd build
 - make
+
+# run on linux
+- ./build/ptop
