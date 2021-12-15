@@ -18,7 +18,7 @@ enum class MESSAGE_TYPE
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
 std::vector<char> create_message(MESSAGE_TYPE type, T other_data)
 {
-	vector<char> out(sizeof(type) + sizeof(other_data), '0');
+	std::vector<char> out(sizeof(type) + sizeof(other_data), '0');
 	std::memcpy(out.data(), &type, sizeof(type));
 	std::memcpy(out.data() + sizeof(type), &other_data, sizeof(other_data));
 	return out;
