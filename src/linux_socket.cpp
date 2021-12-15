@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <poll.h>
 
 std::string linux_error()
 {
@@ -192,11 +193,17 @@ bool linux_listen_socket::has_connection()
 	FD_ZERO(&poll_read_set);
 	FD_SET(_socket, &poll_read_set);
 
-	int n = select(1, &poll_read_set, 0, 0, &timeout);
+	pollfd poll_thing;
+	poll_thing.fd = _socket;
+	poll_thing.events = POLLRDNORM;
+	poll_thing.revents = 0;
+
+	int n = poll(&poll_thing, 1, 0);
+	if (n > 0)
+		return poll_thing.revents | POLLRDNORM;
 	if (n < 0)
 		throw std::runtime_error(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
-
-	return n > 0;
+	return false;
 }
 
 std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()

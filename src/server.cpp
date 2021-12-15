@@ -175,6 +175,7 @@ void server_loop()
                 if (input_message == "report" || input_message == "debug")
                 {
                     std::cout << "Reporting:" << std::endl;
+                    std::cout << "Server Socket " << (server_socket->has_connection() ? "does " : "does NOT ") << "have a connection available" << std::endl;
                     if (!clientA)
                         std::cout << "ClientA: NULL" << std::endl << "ClientA has sent and received 0 bytes (it is NULL)" << std::endl;
                     else
