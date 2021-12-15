@@ -231,21 +231,48 @@ linux_data_socket::linux_data_socket(int socket, raw_name_data name) : ILinuxSoc
 linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port)
 {
 	std::cout << "[Data] Creating a Linux Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
-	struct sockaddr_in serv_addr;
-	struct hostent* serv_ent;
-	int portno = atoi(peer_port.c_str());
 
-	serv_ent = gethostbyname(peer_address.c_str());
+	struct addrinfo* result = NULL,
+		* ptr = NULL,
+		hints;
 
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	memcpy(&serv_addr.sin_addr.s_addr, &serv_ent->h_addr, serv_ent->h_length);
-	serv_addr.sin_port = htons(portno);
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
-	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
-	if (connect(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-		throw std::runtime_error(std::string("Socket failed to connect with: ") + linux_error());
+	if (n < 0)
+		throw std::runtime_error(std::string("Failed to get address info for: ") + peer_address + ":" + peer_port + " with: " + linux_error());
+
+	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
+	{
+		_socket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+		if (_socket < 0)
+		{
+			auto last_err = linux_error();
+			freeaddrinfo(result);
+			throw std::runtime_error(std::string("[Data] Failed to create data socket with: ") + last_err);
+		}
+
+		n = connect(_socket, ptr->ai_addr, ptr->ai_addrlen);
+		if (n < 0)
+		{
+			close(_socket);
+			_socket = -1;
+			continue;
+		}
+		auto readable = convert_to_readable(*(sockaddr_in*)ptr->ai_addr);
+		std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
+		break;
+	}
+
+	freeaddrinfo(result);
+
+	if (_socket < 0)
+		throw std::runtime_error("[Data] No sockets successfully connected to peer");
+
 }
 
 std::vector<char> linux_data_socket::receive_data()
@@ -402,20 +429,28 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std::string port)
 {
 	std::cout << "[DataReuseNoB] Tring to connect to: " << ip_address << ":" << port << std::endl;
-	struct sockaddr_in serv_addr;
-	struct hostent* serv_ent;
-	int portno = atoi(port.c_str());
+	struct addrinfo* results, hints;
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
-	serv_ent = gethostbyname(ip_address.c_str());
+	int iResult = 0;
 
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	memcpy(&serv_addr.sin_addr.s_addr, &serv_ent->h_addr, serv_ent->h_length);
-	serv_addr.sin_port = htons(portno);
+	iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
+	if (iResult != 0)
+		throw std::runtime_error((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
 
-	int n = ::connect(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-	if (n < 0 && n != EINPROGRESS)
-		throw std::runtime_error(std::string("Unexpected error attempting to connect on nonblocking socket: ") + linux_error());
+	if (results == nullptr)
+		throw std::runtime_error((std::string("Could not resolve '") + ip_address + ":" + port + "'").c_str());
+
+	iResult = ::connect(_socket, results->ai_addr, (int)results->ai_addrlen);
+	if (iResult < 0)
+	{
+		auto last_err = errno;
+		if (last_err != EAGAIN)
+			throw std::runtime_error((std::string("Failed when attempting to connect to '") + ip_address + ":" + port + "' with error code: " + std::to_string(last_err)).c_str());
+	}
 	std::cout << "[DataReuseNoB] Successfully Connected to: " << ip_address << ":" << port << std::endl;
 }
 

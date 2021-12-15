@@ -28,6 +28,9 @@ typedef windows_name_data raw_name_data;
 
 struct linux_name_data
 {
+	linux_name_data() = default;
+	linux_name_data(sockaddr_in addr) : addr(addr) {}
+
 	sockaddr_in addr;
 };
 
