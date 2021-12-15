@@ -277,7 +277,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 
 std::vector<char> linux_data_socket::receive_data()
 {
-	std::cout << "[Data] Trying to received data from Socket: (" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ")" << std::endl;
+	std::cout << "[Data] Receiving data from Socket: (" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ") (priv, pub)"  << std::endl;
 	std::vector<char> recv_data{ 500, '0', std::allocator<char>() };
 	int n = read(_socket, recv_data.data(), 500);
 	if (n < -1)
