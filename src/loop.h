@@ -2,6 +2,10 @@
 
 #include <exception>
 #include <stdexcept>
+#include <queue>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
 
 enum class EXECUTION_STATUS
 {
@@ -48,3 +52,12 @@ std::string read_string(char* data, int& index, int data_len)
     index += len;
     return std::string(data + index - len, data + index);
 }
+
+struct thread_queue
+{
+    thread_queue() : messages(), queue_mutex() {}
+    thread_queue(const thread_queue& other) = delete; // Removes the default copy constructor
+
+    std::queue<std::string> messages;
+    std::shared_mutex queue_mutex;
+};

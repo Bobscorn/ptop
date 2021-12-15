@@ -1,25 +1,12 @@
 #include "client.h"
 
 #include <iostream>
-#include <queue>
-#include <mutex>
-#include <shared_mutex>
-#include <thread>
 
 #include "loop.h"
 #include "message.h"
 #include "socket.h"
 
 using namespace std::chrono;
-
-struct thread_queue
-{
-    thread_queue() : messages(), queue_mutex() {}
-    thread_queue(const thread_queue& other) = delete; // Removes the default copy constructor
-
-    std::queue<std::string> messages;
-    std::shared_mutex queue_mutex;
-};
 
 EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket)
 {

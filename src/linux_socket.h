@@ -24,6 +24,8 @@ protected:
 	void update_name_info();
 	void update_endpoint_info();
 
+	virtual ~ILinuxSocket() {}
+
 public:
 	void shutdown() override;
 	readable_ip_info get_peer_data() override;

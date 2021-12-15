@@ -95,13 +95,49 @@ void server_loop()
 
     server_socket->listen();
     std::vector<char> recv_data{};
+    thread_queue message_queue{};
+
+    std::thread input_thread = std::thread([&message_queue]()
+        {
+            std::string input;
+            do
+            {
+                std::getline(std::cin, input); //waits until cin input
+                {
+                    std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
+                    message_queue.messages.push(input);
+                }
+
+                std::this_thread::sleep_for(100ms);
+            } while (true);
+        });
+
+    std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
     while (status == EXECUTION_STATUS::CONTINUE)
     {
-        if ((!clientA || !clientB) && server_socket->has_connection())
-            (clientA ? clientB : clientA) = server_socket->accept_connection();
+        // Look for clients
+        if (server_socket->has_connection())
+        {
+            std::cout << "Listen socket has available connection" << std::endl;
+            if (!clientA)
+            {
+                clientA = server_socket->accept_connection();
+                std::cout << "Setting ClientA to available connection (" << clientA->get_endpoint_ip() << ":" << clientA->get_endpoint_port() << ")" << std::endl;
+            }
+            else if (!clientB)
+            {
+                clientB = server_socket->accept_connection();
+                std::cout << "Setting ClientB to available connection (" << clientB->get_endpoint_ip() << ":" << clientB->get_endpoint_port() << ")" << std::endl;
+            }
+            else
+            {
+                std::cout << "Found available connection but both ClientA and ClientB already assigned";
+            }
+        }
 
+        // Look for incoming data
         if (clientA && clientA->has_data())
         {
             recv_data = clientA->receive_data();
@@ -127,6 +163,31 @@ void server_loop()
                 status = EXECUTION_STATUS::CONTINUE;
             }
         }
+
+        // Process input from other thread
+
+        if (take_message_lock.try_lock())
+        {
+            if (!message_queue.messages.empty())
+            {
+                std::string input_message = message_queue.messages.front();
+                message_queue.messages.pop();
+                if (input_message == "report" || input_message == "debug")
+                {
+                    std::cout << "Reporting:" << std::endl;
+                    if (!clientA)
+                        std::cout << "ClientA: NULL" << std::endl << "ClientA has sent and received 0 bytes (it is NULL)" << std::endl;
+                    else
+                        std::cout << "ClientA: " << clientA->get_endpoint_ip() << ":" << clientA->get_endpoint_port() << std::endl << "ClientA has seen " << clientA->bytes_seen() << " bytes and sent " << clientA->bytes_sent() << " bytes" << std::endl;
+                    if (!clientB)
+                        std::cout << "ClientB: NULL" << std::endl << "ClientB has sent and received 0 bytes (is it NULL)" << std::endl;
+                    else
+                        std::cout << "ClientB: " << clientB->get_endpoint_ip() << ":" << clientB->get_endpoint_port() << std::endl << "ClientB has seen " << clientB->bytes_seen() << " bytes and sent " << clientB->bytes_sent() << " bytes" << std::endl;
+                }
+            }
+            take_message_lock.unlock();
+        }
+
         std::this_thread::sleep_for(100ms);
     }
 }

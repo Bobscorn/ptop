@@ -9,9 +9,14 @@
 #ifdef WIN32
 
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 struct windows_name_data
 {
+	windows_name_data() = default;
+	windows_name_data(sockaddr addr) : name(addr), name_len(sizeof(addr)) {}
+	windows_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
+
 	sockaddr name;
 	int name_len;
 };
@@ -59,6 +64,9 @@ class ISocket
 
 class IDataSocket : virtual public ISocket
 {
+protected:
+	size_t _seen_data = 0;
+	size_t _sent_bytes = 0;
 public:
 	virtual ~IDataSocket() {}
 
@@ -67,6 +75,9 @@ public:
 	virtual bool has_data() = 0;
 
 	virtual bool send_data(const std::vector<char>& data) = 0;
+
+	inline size_t bytes_seen() { return _seen_data; }
+	inline size_t bytes_sent() { return _sent_bytes; }
 };
 
 class IListenSocket
