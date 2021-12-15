@@ -282,7 +282,7 @@ bool linux_data_socket::send_data(const std::vector<char>& data)
 		std::cerr << "Error sending data: " << linux_error() << std::endl;
 		return false;
 	}
-	_send_bytes += data.size();
+	_sent_bytes += data.size();
 	return true;
 }
 
