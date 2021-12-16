@@ -77,6 +77,9 @@
         "fstream": "cpp",
         "future": "cpp",
         "mutex": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "list": "cpp",
+        "queue": "cpp",
+        "xhash": "cpp"
     }
 }

@@ -4,6 +4,7 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <functional>
 
 #include "loop.h"
 #include "message.h"
@@ -11,7 +12,28 @@
 
 using namespace std::chrono;
 
-void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB)
+server_init_kit::server_init_kit(std::function<void(thread_queue&)> thread_func) : message_queue() {
+    clientA = std::unique_ptr<IDataSocket>();
+    clientB = std::unique_ptr<IDataSocket>();
+    cA = nullptr;
+    cB = nullptr;
+    server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort);
+    server_socket->listen();
+    recv_data = std::vector<char>();
+    //dont need to initialize structs. it will default its params by itself
+
+    input_thread = std::thread {
+        thread_func,
+        std::ref(message_queue)
+    };
+    input_thread.detach();
+    take_message_lock = std::unique_lock<std::shared_mutex>(message_queue.queue_mutex, std::defer_lock);
+    status = EXECUTION_STATUS::CONTINUE;
+}
+
+server_init_kit::~server_init_kit() {}
+
+void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB) //pointer reference allows changing the underlying data
 {
     readable_ip_info dataA, dataB;
     dataA = clientA->get_peer_data();
@@ -80,10 +102,6 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
     }
 }
 
-void init_server() {
-
-}
-
 void input_thread_func(thread_queue& message_queue)
 {
     try
@@ -110,36 +128,23 @@ void server_loop()
 {
     std::cout << "Starting Rendezvous server!" << std::endl;
 
-    std::unique_ptr<IDataSocket> clientA{}, clientB{};
-    IDataSocket* cA = nullptr, * cB = nullptr;
+    auto init = server_init_kit(input_thread_func);
 
-    auto server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort);
-
-    server_socket->listen();
-    std::vector<char> recv_data{};
-    thread_queue message_queue{};
-
-    std::thread input_thread{ input_thread_func, std::ref(message_queue) };
-    input_thread.detach();
-
-    std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
-
-    EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
-    while (status == EXECUTION_STATUS::CONTINUE)
+    while (init.status == EXECUTION_STATUS::CONTINUE)
     {
         // Look for clients
-        if (server_socket->has_connection())
+        if (init.server_socket->has_connection())
         {
             std::cout << "Listen socket has available connection" << std::endl;
-            if (!clientA)
+            if (!init.clientA)
             {
-                clientA = server_socket->accept_connection();
-                std::cout << "Setting ClientA to available connection (" << clientA->get_endpoint_ip() << ":" << clientA->get_endpoint_port() << ")" << std::endl;
+                init.clientA = init.server_socket->accept_connection();
+                std::cout << "Setting ClientA to available connection (" << init.clientA->get_endpoint_ip() << ":" << init.clientA->get_endpoint_port() << ")" << std::endl;
             }
-            else if (!clientB)
+            else if (!init.clientB)
             {
-                clientB = server_socket->accept_connection();
-                std::cout << "Setting ClientB to available connection (" << clientB->get_endpoint_ip() << ":" << clientB->get_endpoint_port() << ")" << std::endl;
+                init.clientB = init.server_socket->accept_connection();
+                std::cout << "Setting ClientB to available connection (" << init.clientB->get_endpoint_ip() << ":" << init.clientB->get_endpoint_port() << ")" << std::endl;
             }
             else
             {
@@ -148,57 +153,58 @@ void server_loop()
         }
 
         // Look for incoming data
-        if (clientA && clientA->has_data())
+        if (init.clientA && init.clientA->has_data())
         {
-            recv_data = clientA->receive_data();
-            status = process_data_server(recv_data.data(), clientA, recv_data.size(), Sockets::ServerListenPort, cA, cB);
-            if (status == EXECUTION_STATUS::COMPLETE)
+            init.recv_data = init.clientA->receive_data();
+            init.status = process_data_server(init.recv_data.data(), init.clientA, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB);
+            if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;
-                clientA = nullptr;
-                clientB = nullptr;
-                status = EXECUTION_STATUS::CONTINUE;
+                init.clientA = nullptr;
+                init.clientB = nullptr;
+                init.status = EXECUTION_STATUS::CONTINUE;
             }
         }
 
-        if (clientB && clientB->has_data())
+        if (init.clientB && init.clientB->has_data())
         {
-            recv_data = clientB->receive_data();
-            status = process_data_server(recv_data.data(), clientB, recv_data.size(), Sockets::ServerListenPort, cA, cB);
-            if (status == EXECUTION_STATUS::COMPLETE)
+            init.recv_data = init.clientB->receive_data();
+            init.status = process_data_server(init.recv_data.data(), init.clientB, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB);
+            if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;
-                clientA = nullptr;
-                clientB = nullptr;
-                status = EXECUTION_STATUS::CONTINUE;
+                init.clientA = nullptr;
+                init.clientB = nullptr;
+                init.status = EXECUTION_STATUS::CONTINUE;
             }
         }
 
         // Process input from other thread
 
-        if (take_message_lock.try_lock())
+        if (init.take_message_lock.try_lock())
         {
-            if (!message_queue.messages.empty())
+            if (!init.message_queue.messages.empty())
             {
-                std::string input_message = message_queue.messages.front();
-                message_queue.messages.pop();
+                std::string input_message = init.message_queue.messages.front();
+                init.message_queue.messages.pop();
                 if (input_message == "report" || input_message == "debug")
                 {
                     std::cout << "Reporting:" << std::endl;
-                    std::cout << "Server Socket " << (server_socket->has_connection() ? "does " : "does NOT ") << "have a connection available" << std::endl;
-                    if (!clientA)
+                    std::cout << "Server Socket " << (init.server_socket->has_connection() ? "does " : "does NOT ") << "have a connection available" << std::endl;
+                    if (!init.clientA)
                         std::cout << "ClientA: NULL" << std::endl << "ClientA has sent and received 0 bytes (it is NULL)" << std::endl;
                     else
-                        std::cout << "ClientA: " << clientA->get_endpoint_ip() << ":" << clientA->get_endpoint_port() << std::endl << "ClientA has seen " << clientA->bytes_seen() << " bytes and sent " << clientA->bytes_sent() << " bytes" << std::endl;
-                    if (!clientB)
+                        std::cout << "ClientA: " << init.clientA->get_endpoint_ip() << ":" << init.clientA->get_endpoint_port() << std::endl << "ClientA has seen " << init.clientA->bytes_seen() << " bytes and sent " << init.clientA->bytes_sent() << " bytes" << std::endl;
+                    if (!init.clientB)
                         std::cout << "ClientB: NULL" << std::endl << "ClientB has sent and received 0 bytes (is it NULL)" << std::endl;
                     else
-                        std::cout << "ClientB: " << clientB->get_endpoint_ip() << ":" << clientB->get_endpoint_port() << std::endl << "ClientB has seen " << clientB->bytes_seen() << " bytes and sent " << clientB->bytes_sent() << " bytes" << std::endl;
+                        std::cout << "ClientB: " << init.clientB->get_endpoint_ip() << ":" << init.clientB->get_endpoint_port() << std::endl << "ClientB has seen " << init.clientB->bytes_seen() << " bytes and sent " << init.clientB->bytes_sent() << " bytes" << std::endl;
                 }
             }
-            take_message_lock.unlock();
+            init.take_message_lock.unlock();
         }
 
         std::this_thread::sleep_for(100ms);
     }
 }
+
