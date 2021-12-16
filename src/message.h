@@ -63,7 +63,7 @@ struct copy_to_message_template
 	constexpr static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
 	{
 		static_assert(std::is_pod<T>::value || std::is_same<std::vector<char>, T>::value, "Can only use POD or std::vector<char> in create_message");
-		T* back = (T*)&dst.back();
+		T* back = ((T*)&dst.back()) + 1;
 		dst.resize(dst.size() + sizeof(T));
 		*back = arg;
 		copy_to_message_struct::copy_to_message(dst, other_args...);
