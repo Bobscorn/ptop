@@ -8,7 +8,34 @@
 
 using namespace std::chrono;
 
-EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket)
+EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr<IDataSocket>& socket, int my_auth)
+{
+    const char* data = data_vec.data();
+    int data_len = data_vec.size();
+    int i = 0;
+    int auth_key = 0;
+    MESSAGE_TYPE type;
+    if (!try_read_data<MESSAGE_TYPE>(data, i, data_len, type))
+        return EXECUTION_STATUS::FAILED;
+
+    switch (type)
+    {
+    case MESSAGE_TYPE::AUTH_PLS:
+        socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
+        return EXECUTION_STATUS::CONTINUE;
+    case MESSAGE_TYPE::HERES_YOUR_AUTH:
+        if (!try_read_data<int>(data, i, data_len, auth_key))
+            return EXECUTION_STATUS::FAILED;
+
+        if (auth_key == my_auth)
+            return EXECUTION_STATUS::CONNECTED;
+        return EXECUTION_STATUS::FAILED;
+    default:
+        return EXECUTION_STATUS::CONTINUE;
+    }
+}
+
+EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
 {
     if (data_len < 1)
     {
@@ -41,6 +68,8 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
         // And we must disconnect the connection to the server
 
         auto peer_public = read_peer_data(data, i, data_len);
+        auto peer_private = read_peer_data(data, i, data_len);
+        auth_key_out = read_data<int>(data, i, data_len);
         raw_name_data old_name = conn_socket->get_sock_data();
         conn_socket = nullptr;
 
@@ -48,31 +77,66 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
         listen_sock->listen();
         auto peer_connect = Sockets::CreateReusableConnectSocket(old_name);
         peer_connect->connect(peer_public.ip_address, peer_public.port);
+        auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_name);
+        peer_priv_connect->connect(peer_private.ip_address, peer_private.port);
+
+        std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
 
         auto start_time = std::chrono::system_clock::now();
         do
         {
+            for (int i = unauthed_sockets.size(); i-- > 0; )
+            {
+                auto& sock = unauthed_sockets[i];
+                if (sock->has_data())
+                {
+                    auto status = process_auth(sock->receive_data(), sock, auth_key_out);
+                    if (status == EXECUTION_STATUS::FAILED)
+                    {
+                        std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has failed to authenticate" << std::endl;
+                        unauthed_sockets.pop_back();
+                    }
+                    else if (status == EXECUTION_STATUS::CONNECTED)
+                    {
+                        std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has successfully authenticated" << std::endl;
+                        conn_socket = std::move(sock);
+                        return EXECUTION_STATUS::CONNECTED;
+                    }
+                }
+            }
             if (listen_sock->has_connection())
             {
-                std::cout << "Successfully accepted peer connection" << std::endl;
-                conn_socket = listen_sock->accept_connection();
-                return EXECUTION_STATUS::CONNECTED;
+                std::cout << "Successfully accepted peer connection, now authenticating them" << std::endl;
+                unauthed_sockets.emplace_back(listen_sock->accept_connection());
+                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+                std::this_thread::sleep_for(100ms);
+                continue;
+            }
+            if (peer_priv_connect->has_connected() == ConnectionStatus::SUCCESS)
+            {
+                std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
+                unauthed_sockets.emplace_back(peer_priv_connect->convert_to_datasocket());
+                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+                std::this_thread::sleep_for(100ms);
+                continue;
             }
             if (peer_connect->has_connected() == ConnectionStatus::SUCCESS)
             {
-                std::cout << "Successfully connected to peer" << std::endl;
-                conn_socket = peer_connect->convert_to_datasocket();
-                return EXECUTION_STATUS::CONNECTED;
+                std::cout << "Public Connection has connected, now authenticating" << std::endl;
+                unauthed_sockets.emplace_back(peer_connect->convert_to_datasocket());
+                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+                std::this_thread::sleep_for(100ms);
+                continue;
             }
             if (peer_connect->has_connected() == ConnectionStatus::FAILED)
             {
-                std::cout << "Connecting failed, retrying" << std::endl;
+                std::cout << "Public Connection has failed, retrying" << std::endl;
                 peer_connect->connect(peer_public.ip_address, peer_public.port);
             }
             std::this_thread::sleep_for(100ms);
 
             auto cur_time = std::chrono::system_clock::now();
-            if (cur_time - start_time > 10s)
+            if (cur_time - start_time > 15s)
             {
                 std::cerr << "Time out trying to hole punch reached" << std::endl;
                 return EXECUTION_STATUS::FAILED;
@@ -89,7 +153,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
     return EXECUTION_STATUS::CONTINUE;
 }
 
-EXECUTION_STATUS process_data_peer(char* data, int data_len)
+EXECUTION_STATUS process_data_peer(char* data, int data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
 {
     if (data_len < 1)
     {
@@ -120,6 +184,14 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len)
 
         return EXECUTION_STATUS::CONTINUE;
     }
+    case MESSAGE_TYPE::AUTH_PLS:
+    {
+        std::cout << "Peer requesting authentication" << std::endl;
+
+        peer->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, auth_key));
+
+        return EXECUTION_STATUS::CONTINUE;
+    }
     case MESSAGE_TYPE::NONE:
     default:
         return EXECUTION_STATUS::CONTINUE;
@@ -140,13 +212,15 @@ void client_loop(std::string server_address_pair)
     auto last_send = std::chrono::system_clock::now();
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
 
+    int auth_key = 0;
+
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
     while (status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
     {
         if (conn_socket->has_data())
         {
             auto data = conn_socket->receive_data();
-            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket);
+            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket, auth_key);
         }
         auto now = std::chrono::system_clock::now();
         if (now - last_send > 3s)
@@ -185,7 +259,7 @@ void client_loop(std::string server_address_pair)
             if (conn_socket->has_data())
             {
                 auto data = conn_socket->receive_data();
-                status = process_data_peer(data.data(), data.size());
+                status = process_data_peer(data.data(), data.size(), conn_socket, auth_key);
             }
 
             {

@@ -46,7 +46,7 @@ readable_ip_info read_peer_data(char* data, int& index, int data_len)
     return out_data;
 }
 
-std::vector<char> readable_ip_info::to_bytes()
+std::vector<char> readable_ip_info::to_bytes() const
 {
     /*vector<char> bytes(sizeof(size_t) * 2 + ip_address.length() + port.length(), '0');
     size_t i = 0;

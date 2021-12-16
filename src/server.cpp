@@ -63,7 +63,7 @@ server_init_kit& server_init_kit::operator=(server_init_kit&& other)
     return *this;
 }
 
-void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB) //pointer reference allows changing the underlying data
+void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
 {
     readable_ip_info dataA, dataB;
     dataA = clientA->get_peer_data();
@@ -71,14 +71,25 @@ void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB) //pointer 
 
     std::cout << "Hole punching clients: A(" << dataA.ip_address << ":" << dataA.port << "), B(" << dataB.ip_address << ":" << dataB.port << ")" << std::endl;
 
-    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataB.to_bytes()));
-    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataA.to_bytes()));
+    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataB.to_bytes(), privB.to_bytes(), 69));
+    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataA.to_bytes(), privA.to_bytes(), 69));
 
     clientA = nullptr;
     clientB = nullptr;
 }
 
-EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, int data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB)
+bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std::unique_ptr<readable_ip_info>& privA, const std::unique_ptr<readable_ip_info>& privB)
+{
+    if (clientA && clientB && privA && privB)
+    {
+        std::cout << "Ready for Hole Punch!" << std::endl;
+        hole_punch_clients(clientA, clientB, *privA, *privB);
+        return true;
+    }
+    return false;
+}
+
+EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, int data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
 {
     if (data_len < 1)
     {
@@ -92,10 +103,48 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
     auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
     switch (msg_type)
     {
-    case MESSAGE_TYPE::READY_FOR_P2P:
-        if (clientA && clientB)
+    case MESSAGE_TYPE::MY_DATA:
+
+        if (source.get() == clientA)
         {
-            hole_punch_clients(clientA, clientB);
+            std::cout << "Received ClientA (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << ")'s Private :3 data" << std::endl;
+            privA = std::make_unique<readable_ip_info>(read_peer_data(data, i, data_len));
+            if (hole_punch_if_ready(clientA, clientB, privA, privB))
+                return EXECUTION_STATUS::COMPLETE;
+        }
+        else if (source.get() == clientB)
+        {
+            std::cout << "Received ClientB (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << ")'s Private :3 data" << std::endl;
+            privB = std::make_unique<readable_ip_info>(read_peer_data(data, i, data_len));
+            if (hole_punch_if_ready(clientA, clientB, privA, privB))
+                return EXECUTION_STATUS::COMPLETE;
+        }
+        else if (!clientA)
+        {
+            std::cout << "Received Private :3 Data for a new Client (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << ") setting them to ClientA" << std::endl;
+            clientA = source.get();
+            privA = std::make_unique<readable_ip_info>(read_peer_data(data, i, data_len));
+            if (hole_punch_if_ready(clientA, clientB, privA, privB))
+                return EXECUTION_STATUS::COMPLETE;
+        }
+        else if (!clientB)
+        {
+            std::cout << "Received Private :3 Data for a new Client (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << ") setting them to ClientB" << std::endl;
+            clientB = source.get();
+            privB = std::make_unique<readable_ip_info>(read_peer_data(data, i, data_len));
+            if (hole_punch_if_ready(clientA, clientB, privA, privB))
+                return EXECUTION_STATUS::COMPLETE;
+        }
+        else
+        {
+            std::cout << "Received Private :3 Data (from: " << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << ") when both clients already exist(which might be a bug ? )" << std::endl;
+        }
+
+        return EXECUTION_STATUS::CONTINUE;
+    case MESSAGE_TYPE::READY_FOR_P2P:
+        if (clientA && clientB && privA && privB)
+        {
+            hole_punch_clients(clientA, clientB, *privA, *privB);
             return EXECUTION_STATUS::COMPLETE;
         }
 
@@ -105,7 +154,6 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
             {
                 std::cout << "Received ClientB hello" << std::endl;
                 clientB = source.get();
-                hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
             }
         }
@@ -115,7 +163,6 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
             {
                 std::cout << "Received new ClientA hello" << std::endl;
                 clientA = source.get();
-                hole_punch_clients(clientA, clientB);
                 return EXECUTION_STATUS::COMPLETE;
             }
         }
@@ -186,7 +233,7 @@ void server_loop()
         if (init.clientA && init.clientA->has_data())
         {
             init.recv_data = init.clientA->receive_data();
-            init.status = process_data_server(init.recv_data.data(), init.clientA, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB);
+            init.status = process_data_server(init.recv_data.data(), init.clientA, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
             if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;
@@ -199,7 +246,7 @@ void server_loop()
         if (init.clientB && init.clientB->has_data())
         {
             init.recv_data = init.clientB->receive_data();
-            init.status = process_data_server(init.recv_data.data(), init.clientB, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB);
+            init.status = process_data_server(init.recv_data.data(), init.clientB, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
             if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;

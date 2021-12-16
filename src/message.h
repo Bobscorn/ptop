@@ -13,6 +13,9 @@ enum class MESSAGE_TYPE
 	SET_NAME,
 	CONNECT_PEER,
 	READY_FOR_P2P,
+	MY_DATA,
+	AUTH_PLS,
+	HERES_YOUR_AUTH,
 };
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
@@ -37,6 +40,85 @@ inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> dat
 	std::memcpy(data.data(), &type, sizeof(type));
 	return data;
 }
+
+inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> data, std::vector<char> dataB)
+{
+	data.insert(data.begin(), sizeof(type), '0');
+	std::memcpy(data.data(), &type, sizeof(type));
+	data.insert(data.end(), dataB.begin(), dataB.end());
+	return data;
+}
+
+template<typename... Types>
+inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
+{
+	std::vector<char> data{};
+	data.resize(sizeof(type));
+	std::memcpy(data.data(), &type, sizeof(type));
+	copy_to_message_struct::copy_to_message(data, args...);
+	return data;
+}
+
+struct copy_to_message_struct
+{
+	template<class... Types>
+	static void copy_to_message(std::vector<char>& dst, Types... args)
+	{
+		copy_to_message_template<Types...>::copy(dst, args...);
+	}
+
+	static void copy_to_message(std::vector<char>& dst)
+	{
+
+	}
+};
+
+template<class T, typename = std::enable_if_t<std::is_pod<T>::value>, class... Types>
+struct copy_to_message_template
+{
+	static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
+	{
+		T* back = (T*)&dst.back();
+		dst.resize(dst.size() + sizeof(T));
+		*back = arg;
+		copy_to_message_struct::copy_to_message(dst, other_args...);
+	}
+};
+
+template<class... Types>
+struct copy_to_message_template<std::vector<char>, Types...>
+{
+	static void copy(std::vector<char>& dst, const std::vector<char>& src, Types... other_args)
+	{
+		dst.insert(dst.end(), src.begin(), src.end());
+		copy_to_message_struct::copy_to_message(dst, other_args...);
+	}
+};
+
+//template<>
+//struct copy_to_message_template<std::vector<char>>
+//{
+//	static void copy(std::vector<char>& dst, const std::vector<char>& src)
+//	{
+//		dst.insert(dst.end(), src.begin(), src.end());
+//	}
+//};
+
+//template<class T, typename = std::enable_if_t<std::is_pod<T>::value>, class... Types>
+//inline void copy_to_message(std::vector<char>& dst, T arg, Types... other_args)
+//{
+//	T* back = (T*)&dst.back();
+//	dst.resize(dst.size() + sizeof(T));
+//	*back = arg;
+//	copy_to_message(other_args...);
+//}
+//
+//template<class... Types>
+//inline void copy_to_message<std::vector<char>, Types...>(std::vector<char>& dst, const std::vector<char>& arg, Types... other_args)
+//{
+//	dst.insert(dst.end(), arg.begin(), arg.end());
+//	copy_to_message(other_args...);
+//}
 
 inline std::vector<char> create_message(MESSAGE_TYPE type, std::string data)
 {

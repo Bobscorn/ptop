@@ -557,7 +557,7 @@ void windows_reusable_nonblocking_connection_socket::connect(std::string ip_addr
         if (last_err != WSAEWOULDBLOCK)
             throw std::exception((std::string("Failed when attempting to connect to '") + ip_address + ":" + port + "' with error code: " + std::to_string(last_err)).c_str());
     }
-    std::cout << "[DataReuseNoB] Successfully Connected to: " << ip_address << ":" << port << std::endl;
+    std::cout << "[DataReuseNoB] Initiated Connection to: " << ip_address << ":" << port << std::endl;
 }
 
 ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()

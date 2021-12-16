@@ -10,7 +10,7 @@ struct readable_ip_info
 	std::string ip_address;
 	std::string port;
 
-	std::vector<char> to_bytes();
+	std::vector<char> to_bytes() const;
 };
 
 readable_ip_info read_peer_data(char* data, int& index, int data_len);

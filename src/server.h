@@ -18,6 +18,9 @@ class server_init_kit {
         std::unique_ptr<IDataSocket> clientA;
         std::unique_ptr<IDataSocket> clientB;
 
+        std::unique_ptr<readable_ip_info> privA;
+        std::unique_ptr<readable_ip_info> privB;
+
         IDataSocket* cA;
         IDataSocket* cB;
 
