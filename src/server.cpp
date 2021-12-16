@@ -154,7 +154,7 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
             {
                 std::cout << "Received ClientB hello" << std::endl;
                 clientB = source.get();
-                return EXECUTION_STATUS::COMPLETE;
+                return EXECUTION_STATUS::CONTINUE;
             }
         }
         else if (clientB)
@@ -163,7 +163,7 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
             {
                 std::cout << "Received new ClientA hello" << std::endl;
                 clientA = source.get();
-                return EXECUTION_STATUS::COMPLETE;
+                return EXECUTION_STATUS::CONTINUE;
             }
         }
         else

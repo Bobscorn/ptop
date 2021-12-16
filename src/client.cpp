@@ -210,6 +210,7 @@ void client_loop(std::string server_address_pair)
 
     // Indicate to server we're ready for p2p
     auto last_send = std::chrono::system_clock::now();
+    conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
 
     int auth_key = 0;
