@@ -49,39 +49,33 @@ inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> dat
 	return data;
 }
 
-template<typename... Types>
-inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
-{
-	std::vector<char> data{};
-	data.resize(sizeof(type));
-	std::memcpy(data.data(), &type, sizeof(type));
-	copy_to_message_struct::copy_to_message(data, args...);
-	return data;
-}
-
 struct copy_to_message_struct
 {
 	template<class... Types>
-	static void copy_to_message(std::vector<char>& dst, Types... args)
-	{
-		copy_to_message_template<Types...>::copy(dst, args...);
-	}
+	static void copy_to_message(std::vector<char>& dst, Types... args);
 
-	static void copy_to_message(std::vector<char>& dst)
-	{
-
-	}
+	static void copy_to_message(std::vector<char>& dst);
 };
 
-template<class T, typename = std::enable_if_t<std::is_pod<T>::value>, class... Types>
+template<class T, class... Types>
 struct copy_to_message_template
 {
-	static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
+	constexpr static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
 	{
+		static_assert(std::is_pod<T>::value || std::is_same<std::vector<char>, T>::value, "Can only use POD or std::vector<char> in create_message");
 		T* back = (T*)&dst.back();
 		dst.resize(dst.size() + sizeof(T));
 		*back = arg;
 		copy_to_message_struct::copy_to_message(dst, other_args...);
+	}
+};
+
+template<>
+struct copy_to_message_template<std::vector<char>>
+{
+	static void copy(std::vector<char>& dst, const std::vector<char>& src)
+	{
+		dst.insert(dst.end(), src.begin(), src.end());
 	}
 };
 
@@ -94,6 +88,24 @@ struct copy_to_message_template<std::vector<char>, Types...>
 		copy_to_message_struct::copy_to_message(dst, other_args...);
 	}
 };
+
+template<class ...Types>
+inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst, Types ...args)
+{
+	copy_to_message_template<Types...>::copy(dst, args...);
+}
+
+inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst) {}
+
+template<typename... Types>
+inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
+{
+	std::vector<char> data{};
+	data.resize(sizeof(type));
+	std::memcpy(data.data(), &type, sizeof(type));
+	copy_to_message_struct::copy_to_message(data, args...);
+	return data;
+}
 
 //template<>
 //struct copy_to_message_template<std::vector<char>>
