@@ -31,7 +31,37 @@ server_init_kit::server_init_kit(std::function<void(thread_queue&)> thread_func)
     status = EXECUTION_STATUS::CONTINUE;
 }
 
+server_init_kit::server_init_kit(server_init_kit&& other)
+{
+    *this = std::move(other);
+}
+
 server_init_kit::~server_init_kit() {}
+
+server_init_kit& server_init_kit::operator=(server_init_kit&& other)
+{
+    clientA = std::move(other.clientA);
+    clientB = std::move(other.clientB);
+    cA = other.cA;
+    cB = other.cB;
+    server_socket = std::move(other.server_socket);
+    recv_data = std::move(other.recv_data);
+
+    input_thread = std::move(other.input_thread);
+    take_message_lock = std::move(other.take_message_lock);
+    status = other.status;
+
+    other.clientA = nullptr;
+    other.clientB = nullptr;
+    other.cA = nullptr;
+    other.cB = nullptr;
+    other.server_socket = nullptr;
+    other.recv_data = std::vector<char>();
+    other.input_thread = std::thread{};
+    other.status = EXECUTION_STATUS::FAILED;
+
+    return *this;
+}
 
 void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB) //pointer reference allows changing the underlying data
 {
@@ -128,7 +158,7 @@ void server_loop()
 {
     std::cout << "Starting Rendezvous server!" << std::endl;
 
-    auto init = server_init_kit(input_thread_func);
+    auto init = server_init_kit{ input_thread_func };
 
     while (init.status == EXECUTION_STATUS::CONTINUE)
     {

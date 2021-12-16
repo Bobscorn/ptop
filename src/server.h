@@ -1,6 +1,15 @@
 #pragma once 
 
+#include <memory>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
+#include <functional>
+
 #include "loop.h"
+#include "socket.h"
+
 
 void server_loop();
 
@@ -25,6 +34,9 @@ class server_init_kit {
         EXECUTION_STATUS status;
 
         server_init_kit(std::function<void(thread_queue&)> thread_func);
+        server_init_kit(server_init_kit&& other);
 
         ~server_init_kit();
+
+        server_init_kit& operator=(server_init_kit&& other);
 };
