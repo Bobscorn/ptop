@@ -34,7 +34,8 @@ std::string linux_error(int err_code)
 readable_ip_info convert_to_readable(raw_name_data data)
 {
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
-	const char* str = inet_ntop(AF_INET, &data.addr, buf.data(), buf.size());
+	in_addr addr = data.addr.sin_addr;
+	const char* str = inet_ntop(AF_INET, &addr, buf.data(), buf.size());
 	if (!str)
 		throw std::runtime_error(std::string("Failed to convert sockaddr to string: ") + linux_error());
 
