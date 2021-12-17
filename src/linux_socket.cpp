@@ -395,7 +395,11 @@ void linux_reuse_nonblock_listen_socket::listen()
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	auto n = ::listen(_socket, 4);
 	if (n < 1 && n != EINPROGRESS && n != EAGAIN)
-		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to listen with: ") + linux_error());
+	{
+		auto err = errno;
+		if (err && err != EINPROGRESS && err != EAGAIN)
+			throw std::runtime_error(std::string("[ListenReuseNoB] Failed to listen with: ") + linux_error());
+	}
 }
 
 bool linux_reuse_nonblock_listen_socket::has_connection()
