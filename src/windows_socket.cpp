@@ -163,13 +163,13 @@ windows_listen_socket::windows_listen_socket(std::string port)
 {
     std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
     int iResult;
-    struct addrinfo* result = NULL, *ptr = NULL, hints;
+    struct addrinfo* result = NULL, * ptr = NULL, hints;
 
     ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
 
     iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
     if (iResult != 0)
@@ -255,7 +255,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
         if (ConnectSocket == INVALID_SOCKET)
         {
             auto last_error = get_last_error();
-            std::cerr << "[Data] Error creating client socket (socket()):" << last_error <<std::endl;
+            std::cerr << "[Data] Error creating client socket (socket()):" << last_error << std::endl;
             freeaddrinfo(result);
             throw std::exception((std::string("[Data] Failed to create data socket with: ") + last_error).c_str());
         }
@@ -282,7 +282,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
     _socket = ConnectSocket;
 }
 
-bool windows_data_socket::send_data(const std::vector<char>& data) 
+bool windows_data_socket::send_data(const std::vector<char>& data)
 {
     std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
     int iSendResult = send(_socket, data.data(), data.size(), 0);
@@ -295,7 +295,7 @@ bool windows_data_socket::send_data(const std::vector<char>& data)
     return true;
 }
 
-windows_data_socket::windows_data_socket(SOCKET source_socket, raw_name_data name) : IWindowsSocket(source_socket, name) 
+windows_data_socket::windows_data_socket(SOCKET source_socket, raw_name_data name) : IWindowsSocket(source_socket, name)
 {
     auto readable = convert_to_readable(name);
     std::cout << "[Data] Copy Constructor Data socket with endpoint: " << readable.ip_address << ":" << readable.port << std::endl;
@@ -562,6 +562,8 @@ void windows_reusable_nonblocking_connection_socket::connect(std::string ip_addr
 
 ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()
 {
+    if (_socket == INVALID_SOCKET)
+        return ConnectionStatus::FAILED;
     fd_set write_fd;
     fd_set except_fd;
     write_fd.fd_count = 1;

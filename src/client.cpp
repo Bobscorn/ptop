@@ -21,16 +21,26 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
     switch (type)
     {
     case MESSAGE_TYPE::AUTH_PLS:
+        std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") requesting Auth, responding with key" << std::endl;
         socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
         return EXECUTION_STATUS::CONTINUE;
     case MESSAGE_TYPE::HERES_YOUR_AUTH:
+        std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") has replied with key" << std::endl;
         if (!try_read_data<int>(data, i, data_len, auth_key))
+        {
+            std::cout << "Failed to read key from peer" << std::endl;
             return EXECUTION_STATUS::FAILED;
+        }
 
         if (auth_key == my_auth)
+        {
+            std::cout << "Key matches, we should be connected!" << std::endl;
             return EXECUTION_STATUS::CONNECTED;
+        }
+        std::cout << "Key did not match" << std::endl;
         return EXECUTION_STATUS::FAILED;
     default:
+        std::cout << "Ignoring Message with Type: " << (int)type << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 }
@@ -128,11 +138,12 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
                 std::this_thread::sleep_for(100ms);
                 continue;
             }
-            if (peer_connect->has_connected() == ConnectionStatus::FAILED)
-            {
-                std::cout << "Public Connection has failed, retrying" << std::endl;
-                peer_connect->connect(peer_public.ip_address, peer_public.port);
-            }
+            else if (peer_connect->)
+                if (peer_connect->has_connected() == ConnectionStatus::FAILED)
+                {
+                    std::cout << "Public Connection has failed, retrying" << std::endl;
+                    peer_connect->connect(peer_public.ip_address, peer_public.port);
+                }
             std::this_thread::sleep_for(100ms);
 
             auto cur_time = std::chrono::system_clock::now();
@@ -147,6 +158,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
     }
     case MESSAGE_TYPE::NONE:
     default:
+        std::cout << "Ignoring Message with Type: " << (int)msg_type << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 
@@ -194,6 +206,7 @@ EXECUTION_STATUS process_data_peer(char* data, int data_len, const std::unique_p
     }
     case MESSAGE_TYPE::NONE:
     default:
+        std::cout << "Ignoring Message with Type: " << (int)msg_type << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 
@@ -218,16 +231,16 @@ void client_loop(std::string server_address_pair)
     EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
     while (status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
     {
-        if (conn_socket->has_data())
-        {
-            auto data = conn_socket->receive_data();
-            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket, auth_key);
-        }
         auto now = std::chrono::system_clock::now();
         if (now - last_send > 3s)
         {
             conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
             last_send = now;
+        }
+        if (conn_socket->has_data())
+        {
+            auto data = conn_socket->receive_data();
+            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket, auth_key);
         }
 
         std::this_thread::sleep_for(100ms);
@@ -253,6 +266,7 @@ void client_loop(std::string server_address_pair)
                     std::this_thread::sleep_for(100ms);
                 } while (true);
             });
+        input_thread.detach();
 
         std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 
