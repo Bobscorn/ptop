@@ -13,8 +13,8 @@ class ILinuxSocket : virtual public ISocket
 {
 protected:
 	ILinuxSocket() : _socket(-1), _address("Unassigned"), _port("Unassigned") {}
-	ILinuxSocket(ILinuxSocket&& socket) : _socket(std::move(socket._socket)) { socket._socket = -1; }
-	ILinuxSocket(int socket, raw_name_data name) : _socket(socket) { auto readable = convert_to_readable(name); _endpoint_address = readable.ip_address; _endpoint_port = readable.port; }
+	ILinuxSocket(ILinuxSocket&& socket);
+	ILinuxSocket(int socket, raw_name_data name);
 	int _socket;
 	std::string _address;
 	std::string _port;

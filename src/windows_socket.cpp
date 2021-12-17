@@ -133,28 +133,28 @@ readable_ip_info IWindowsSocket::get_myname_readable()
 
 std::string IWindowsSocket::get_my_ip()
 {
-    if (_address == "Unassigned")
+    if (_address == "Unassigned" || _address.empty())
         update_name_info();
     return _address;
 }
 
 std::string IWindowsSocket::get_my_port()
 {
-    if (_port == "Unassigned")
+    if (_port == "Unassigned" || _port.empty())
         update_name_info();
     return _port;
 }
 
 std::string IWindowsSocket::get_endpoint_ip()
 {
-    if (_endpoint_address == "Unassigned")
+    if (_endpoint_address == "Unassigned" || _endpoint_address.empty())
         update_endpoint_info();
     return _endpoint_address;
 }
 
 std::string IWindowsSocket::get_endpoint_port()
 {
-    if (_endpoint_port == "Unassigned")
+    if (_endpoint_port == "Unassigned" || _endpoint_port.empty())
         update_endpoint_info();
     return _endpoint_port;
 }

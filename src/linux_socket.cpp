@@ -40,6 +40,26 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	return out;
 }
 
+ILinuxSocket::ILinuxSocket(ILinuxSocket&& socket) : 
+	_socket(std::move(socket._socket)), 
+	_address(socket._address), 
+	_port(socket._port), 
+	_endpoint_address(socket._endpoint_address), 
+	_endpoint_port(socket._endpoint_port) 
+{ 
+	socket._socket = -1; 
+}
+
+ILinuxSocket::ILinuxSocket(int socket, raw_name_data name) : 
+	_socket(socket),
+	_address("Unassigned"),
+	_port("Unassigned")
+{ 
+	auto readable = convert_to_readable(name); 
+	_endpoint_address = readable.ip_address; 
+	_endpoint_port = readable.port; 
+}
+
 void ILinuxSocket::update_name_info()
 {
 	auto name = get_myname_readable();
@@ -127,28 +147,28 @@ readable_ip_info ILinuxSocket::get_myname_readable()
 
 std::string ILinuxSocket::get_my_ip()
 {
-	if (_address == "Unassigned")
+	if (_address == "Unassigned" || _address.empty())
 		update_name_info();
 	return _address;
 }
 
 std::string ILinuxSocket::get_my_port()
 {
-	if (_port == "Unassigned")
+	if (_port == "Unassigned" || _port.empty())
 		update_name_info();
 	return _port;
 }
 
 std::string ILinuxSocket::get_endpoint_ip()
 {
-	if (_endpoint_address == "Unassigned")
+	if (_endpoint_address == "Unassigned" || _endpoint_address.empty())
 		update_endpoint_info();
 	return _endpoint_address;
 }
 
 std::string ILinuxSocket::get_endpoint_port()
 {
-	if (_endpoint_port == "Unassigned")
+	if (_endpoint_port == "Unassigned" || _endpoint_port.empty())
 		update_endpoint_info();
 	return _endpoint_port;
 }
@@ -374,7 +394,7 @@ void linux_reuse_nonblock_listen_socket::listen()
 {
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	auto n = ::listen(_socket, 4);
-	if (n < 1 && n != EINPROGRESS)
+	if (n < 1 && n != EINPROGRESS && n != EAGAIN)
 		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to listen with: ") + linux_error());
 }
 
