@@ -1,7 +1,11 @@
 #pragma once
 
 #include <string>
+#include <chrono>
+#include <memory>
+
 #include "loop.h"
+#include "socket.h"
 
 void client_loop(std::string server_address_pair);
 
