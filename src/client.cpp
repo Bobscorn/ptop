@@ -8,6 +8,18 @@
 
 using namespace std::chrono;
 
+client_init_kit::client_init_kit(std::string server_address_pair) {
+    conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
+    // Indicate to server we're ready for p2p
+    last_send = std::chrono::system_clock::now();
+    conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
+    conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
+    status = EXECUTION_STATUS::CONTINUE;
+    //int value type will update itself
+}
+
+client_init_kit::~client_init_kit() {}
+
 EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr<IDataSocket>& socket, int my_auth)
 {
     const char* data = data_vec.data();
@@ -222,37 +234,28 @@ void client_loop(std::string server_address_pair)
 {
     std::cout << "Starting ptop!" << std::endl;
     std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
+    auto init = client_init_kit { server_address_pair };
 
-    std::unique_ptr<IDataSocket> conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
-
-    // Indicate to server we're ready for p2p
-    auto last_send = std::chrono::system_clock::now();
-    conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
-    conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
-
-    int auth_key = 0;
-
-    EXECUTION_STATUS status = EXECUTION_STATUS::CONTINUE;
-    while (status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
+    while (init.status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
     {
         auto now = std::chrono::system_clock::now();
-        if (now - last_send > 3s)
+        if (now - init.last_send > 3s)
         {
-            conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
-            last_send = now;
+            init.conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
+            init.last_send = now;
         }
-        if (conn_socket->has_data())
+        if (init.conn_socket->has_data())
         {
-            auto data = conn_socket->receive_data();
-            status = process_data(data.data(), data.size(), Sockets::ClientListenPort, conn_socket, auth_key);
+            auto data = init.conn_socket->receive_data();
+            init.status = process_data(data.data(), data.size(), Sockets::ClientListenPort, init.conn_socket, init.auth_key);
         }
 
         std::this_thread::sleep_for(100ms);
     }
 
-    if (status == EXECUTION_STATUS::CONNECTED)
+    if (init.status == EXECUTION_STATUS::CONNECTED)
     {
-        status = EXECUTION_STATUS::CONTINUE;
+        init.status = EXECUTION_STATUS::CONTINUE;
         std::cout << "connected to peer. enter your message!" << std::endl;
         thread_queue message_queue{};
 
@@ -275,10 +278,10 @@ void client_loop(std::string server_address_pair)
         std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 
         do {
-            if (conn_socket->has_data())
+            if (init.conn_socket->has_data())
             {
-                auto data = conn_socket->receive_data();
-                status = process_data_peer(data.data(), data.size(), conn_socket, auth_key);
+                auto data = init.conn_socket->receive_data();
+                init.status = process_data_peer(data.data(), data.size(), init.conn_socket, init.auth_key);
             }
 
             {
@@ -288,14 +291,14 @@ void client_loop(std::string server_address_pair)
                     {
                         std::string input_message = message_queue.messages.front();
                         message_queue.messages.pop();
-                        conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
+                        init.conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
                     }
                     take_message_lock.unlock();
                 }
             }
 
             std::this_thread::sleep_for(100ms);
-        } while (status == EXECUTION_STATUS::CONTINUE);
+        } while (init.status == EXECUTION_STATUS::CONTINUE);
 
         std::cout << "finished sending to peer" << std::endl;
     }
