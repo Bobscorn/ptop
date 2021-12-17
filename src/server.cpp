@@ -277,6 +277,11 @@ void server_loop()
                     else
                         std::cout << "ClientB: " << init.clientB->get_endpoint_ip() << ":" << init.clientB->get_endpoint_port() << std::endl << "ClientB has seen " << init.clientB->bytes_seen() << " bytes and sent " << init.clientB->bytes_sent() << " bytes" << std::endl;
                 }
+                else if (input_message == "close" || input_message == "quit" || input_message == "shutdown")
+                {
+                    std::cout << "Closing server..." << std::endl;
+                    return;
+                }
             }
             init.take_message_lock.unlock();
         }
