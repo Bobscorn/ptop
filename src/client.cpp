@@ -138,12 +138,11 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
                 std::this_thread::sleep_for(100ms);
                 continue;
             }
-            else if (peer_connect->)
-                if (peer_connect->has_connected() == ConnectionStatus::FAILED)
-                {
-                    std::cout << "Public Connection has failed, retrying" << std::endl;
-                    peer_connect->connect(peer_public.ip_address, peer_public.port);
-                }
+            if (peer_connect->has_connected() == ConnectionStatus::FAILED)
+            {
+                std::cout << "Public Connection has failed, retrying" << std::endl;
+                peer_connect->connect(peer_public.ip_address, peer_public.port);
+            }
             std::this_thread::sleep_for(100ms);
 
             auto cur_time = std::chrono::system_clock::now();
