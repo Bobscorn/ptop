@@ -12,7 +12,7 @@ readable_ip_info convert_to_readable(raw_name_data data);
 class ILinuxSocket : virtual public ISocket
 {
 protected:
-	ILinuxSocket() : _socket(-1), _address("Unassigned"), _port("Unassigned") {}
+	ILinuxSocket() : _socket(-1), _address("Unassigned"), _port("Unassigned"), _endpoint_address("Unassigned"), _endpoint_port("Unassigned") {}
 	ILinuxSocket(ILinuxSocket&& socket);
 	ILinuxSocket(int socket, raw_name_data name);
 	int _socket;
@@ -24,7 +24,7 @@ protected:
 	void update_name_info();
 	void update_endpoint_info();
 
-	virtual ~ILinuxSocket() {}
+	virtual ~ILinuxSocket();
 
 public:
 	void shutdown() override;

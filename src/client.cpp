@@ -77,11 +77,16 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
         // The connect socket must have same local address binding as the socket that connected to the server
         // And we must disconnect the connection to the server
 
+        std::cout << "Attemting to Hole Punch" << std::endl;
+
         auto peer_public = read_peer_data(data, i, data_len);
         auto peer_private = read_peer_data(data, i, data_len);
         auth_key_out = read_data<int>(data, i, data_len);
         raw_name_data old_name = conn_socket->get_sock_data();
         conn_socket = nullptr;
+
+        std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
+        std::this_thread::sleep_for(100ms);
 
         std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
