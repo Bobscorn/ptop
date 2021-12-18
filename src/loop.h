@@ -40,7 +40,7 @@ bool try_read_data(const char* data, int& index, int data_len, T& val)
     return true;
 }
 
-template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
+template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> //only compile if T is plain old data type
 std::vector<T> read_data(const char* data, int& index, int data_len, int num_items)
 {
     int size = sizeof(T);

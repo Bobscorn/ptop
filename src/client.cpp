@@ -57,7 +57,7 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
     }
 }
 
-EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
+EXECUTION_STATUS process_server_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
 {
     if (data_len < 1)
     {
@@ -89,7 +89,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
         // The connect socket must have same local address binding as the socket that connected to the server
         // And we must disconnect the connection to the server
 
-        std::cout << "Attemting to Hole Punch" << std::endl;
+        std::cout << "Attempting to Hole Punch" << std::endl;
 
         auto peer_public = read_peer_data(data, i, data_len);
         auto peer_private = read_peer_data(data, i, data_len);
@@ -181,7 +181,7 @@ EXECUTION_STATUS process_data(char* data, int data_len, std::string port, std::u
     return EXECUTION_STATUS::CONTINUE;
 }
 
-EXECUTION_STATUS process_data_peer(char* data, int data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
+EXECUTION_STATUS process_peer_data(char* data, int data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
 {
     if (data_len < 1)
     {
@@ -247,7 +247,7 @@ void client_loop(std::string server_address_pair)
         if (init.conn_socket->has_data())
         {
             auto data = init.conn_socket->receive_data();
-            init.status = process_data(data.data(), data.size(), Sockets::ClientListenPort, init.conn_socket, init.auth_key);
+            init.status = process_server_data(data.data(), data.size(), Sockets::ClientListenPort, init.conn_socket, init.auth_key);
         }
 
         std::this_thread::sleep_for(100ms);
@@ -281,7 +281,7 @@ void client_loop(std::string server_address_pair)
             if (init.conn_socket->has_data())
             {
                 auto data = init.conn_socket->receive_data();
-                init.status = process_data_peer(data.data(), data.size(), init.conn_socket, init.auth_key);
+                init.status = process_peer_data(data.data(), data.size(), init.conn_socket, init.auth_key);
             }
 
             {
