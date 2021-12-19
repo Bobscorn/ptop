@@ -127,7 +127,7 @@ raw_name_data ILinuxSocket::get_peername_raw()
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
-	if (n < 0)
+	if (n != 0)
 		throw std::runtime_error(std::string("[Socket] Failed to getpeername with: ") + linux_error());
 
 	raw_name_data raw_data;
@@ -140,7 +140,7 @@ raw_name_data ILinuxSocket::get_myname_raw()
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
-	if (n < 0)
+	if (n != 0)
 		throw std::runtime_error(std::string("[Socket] Failed to getpeername with: ") + linux_error());
 
 	raw_name_data raw_data;

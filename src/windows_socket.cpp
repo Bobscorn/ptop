@@ -133,7 +133,7 @@ raw_name_data IWindowsSocket::get_peername_raw()
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
     int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
-    if (n < 0)
+    if (n != 0)
         throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + get_last_error());
 
     raw_name_data raw_data;
@@ -149,7 +149,7 @@ raw_name_data IWindowsSocket::get_myname_raw()
         sockaddr_in peer_name;
         socklen_t peer_size = sizeof(peer_name);
         int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
-        if (n < 0)
+        if (n != 0)
             throw SHITTY_DEFINE(std::string("[Socket] Failed to getsockname with: ") + get_last_error());
 
         raw_name_data raw_data;
