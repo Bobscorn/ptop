@@ -201,26 +201,26 @@ std::string IWindowsSocket::get_my_port()
     return _port;
 }
 
-std::string IWindowsSocket::get_endpoint_ip()
+std::string IWindowsSocket::update_endpoint_ip()
 {
     if (_endpoint_address == "Unassigned" || _endpoint_address.empty())
         update_endpoint_info();
     return _endpoint_address;
 }
 
-std::string IWindowsSocket::get_endpoint_port()
+std::string IWindowsSocket::update_endpoint_port()
 {
     if (_endpoint_port == "Unassigned" || _endpoint_port.empty())
         update_endpoint_info();
     return _endpoint_port;
 }
 
-std::string IWindowsSocket::get_endpoint_ip_no_grab()
+std::string IWindowsSocket::get_endpoint_ip()
 {
     return _endpoint_address;
 }
 
-std::string IWindowsSocket::get_endpoint_port_no_grab()
+std::string IWindowsSocket::get_endpoint_port()
 {
     return _endpoint_port;
 }
@@ -427,7 +427,7 @@ IWindowsSocket::~IWindowsSocket()
 {
     if (_socket != INVALID_SOCKET && _socket != NULL)
     {
-        std::cout << "Closing socket" << std::endl;
+        std::cout << "Closing socket: " << _endpoint_address << ":" << _endpoint_port << std::endl;
         closesocket(_socket);
     }
 }
