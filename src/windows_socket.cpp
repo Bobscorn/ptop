@@ -29,6 +29,27 @@ std::string get_last_error()
     return message;
 }
 
+std::string get_win_error(DWORD word)
+{
+    LPVOID lpMsgBuf;
+
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        word,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR)&lpMsgBuf,
+        0,
+        NULL);
+
+    std::string message((char*)lpMsgBuf, (char*)lpMsgBuf + lstrlen((LPCTSTR)lpMsgBuf));
+
+    LocalFree(lpMsgBuf);
+    return message;
+}
+
 
 readable_ip_info convert_to_readable(raw_name_data name)
 {
@@ -580,7 +601,7 @@ ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()
         if (getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)&sock_error, &sock_error_size) == SOCKET_ERROR)
             throw std::exception((std::string("Failed to get socket error code with: ") + get_last_error()).c_str());
 
-        std::cerr << "Socket has error code: " << sock_error << std::endl;
+        std::cerr << "Socket has error code: " << sock_error << " (" << get_win_error(sock_error) << ")" << std::endl;
 
         return ConnectionStatus::FAILED;
     }
