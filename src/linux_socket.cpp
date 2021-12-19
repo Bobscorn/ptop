@@ -108,7 +108,7 @@ ILinuxSocket::~ILinuxSocket()
 {
 	if (_socket >= 0)
 	{
-		std::cout << "Closing socket: " << _endpoint_address << ":" << _endpoint_port << " (address:port may be invalid)" << std::endl;
+		std::cout << "Closing socket: " << _endpoint_address << ":" << _endpoint_port << std::endl;
 		close(_socket);
 	}
 }
