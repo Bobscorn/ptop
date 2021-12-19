@@ -52,7 +52,7 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
         std::cout << "Key did not match" << std::endl;
         return EXECUTION_STATUS::FAILED;
     default:
-        std::cout << "Ignoring Message with Type: " << (int)type << std::endl;
+        std::cout << "Ignoring Message with Type: " << mt_to_string(type) << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 }
@@ -174,7 +174,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
     }
     case MESSAGE_TYPE::NONE:
     default:
-        std::cout << "Ignoring Message with Type: " << (int)msg_type << std::endl;
+        std::cout << "Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 
@@ -222,7 +222,7 @@ EXECUTION_STATUS process_peer_data(char* data, size_t data_len, const std::uniqu
     }
     case MESSAGE_TYPE::NONE:
     default:
-        std::cout << "Ignoring Message with Type: " << (int)msg_type << std::endl;
+        std::cout << "Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 

@@ -175,6 +175,7 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
 
     case MESSAGE_TYPE::NONE:
     default:
+        std::cout << "Ignoring Message (" << mt_to_string(msg_type) << ") from " << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << std::endl;
         return EXECUTION_STATUS::CONTINUE;
     }
 }

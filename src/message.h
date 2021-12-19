@@ -18,6 +18,32 @@ enum class MESSAGE_TYPE
 	HERES_YOUR_AUTH,
 };
 
+inline std::string mt_to_string(const MESSAGE_TYPE& t)
+{
+	switch (t)
+	{
+	case MESSAGE_TYPE::MSG:
+		return "MSG: Plain Text Msg";
+	case MESSAGE_TYPE::FILE:
+		return "FILE: Incoming File";
+	case MESSAGE_TYPE::SET_NAME:
+		return "SET_NAME: Request to change name alias";
+	case MESSAGE_TYPE::CONNECT_PEER:
+		return "CONNECT_PEER: Data required to connect to a peer";
+	case MESSAGE_TYPE::READY_FOR_P2P:
+		return "READY_FOR_P2P: Connection is ready for P2P";
+	case MESSAGE_TYPE::MY_DATA:
+		return "MY_DATA: Connection's Private :3 Data";
+	case MESSAGE_TYPE::AUTH_PLS:
+		return "AUTH_PLS: Request for Auth";
+	case MESSAGE_TYPE::HERES_YOUR_AUTH:
+		return "HERES_YOUR_AUTH: Auth Request Response";
+	case MESSAGE_TYPE::NONE:
+	default:
+		return "NONE: None";
+	}
+}
+
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
 std::vector<char> create_message(MESSAGE_TYPE type, T other_data)
 {

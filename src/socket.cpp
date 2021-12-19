@@ -48,3 +48,21 @@ std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnec
 	return std::make_unique<linux_reuse_nonblock_connection_socket>(data);
 #endif
 }
+
+#define DO_MSG_TYPE_LOGGING
+#ifdef DO_MSG_TYPE_LOGGING
+#include <iostream>
+
+#include "message.h"
+void log_msg(const std::vector<char>& data, bool sending, ISocket& sock)
+{
+	if (data.size() < sizeof(MESSAGE_TYPE))
+		std::cout << (sending ? "Outbound " : "Inbound ") << "Message not large to contain a MESSAGE_TYPE" << std::endl;
+	std::cout << (sending ? "Sending " : "Received ") << "a Message of type: " << mt_to_string(*(MESSAGE_TYPE*)data.data()) << std::endl;
+}
+#else
+void log_msg(const std::vector<char>& data, bool sending, ISocket& sock)
+{
+
+}
+#endif

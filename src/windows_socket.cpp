@@ -296,6 +296,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
 
 bool windows_data_socket::send_data(const std::vector<char>& data)
 {
+    log_msg(data, true, *this);
     std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ") (priv, pub)" << std::endl;
     int iSendResult = send(_socket, data.data(), (int)data.size(), 0);
     if (iSendResult == SOCKET_ERROR)
@@ -324,6 +325,8 @@ std::vector<char> windows_data_socket::receive_data() {
     if (iResult > 0)
     {
         std::cout << "Received " << iResult << " bytes" << std::endl;
+        recv_data.resize(iResult);
+        log_msg(recv_data, false, *this);
         _seen_data += iResult;
     }
     else if (iResult == SOCKET_ERROR)
@@ -333,7 +336,6 @@ std::vector<char> windows_data_socket::receive_data() {
     }
     else
         std::cout << "Received empty data from: " << get_endpoint_ip() << ":" << get_endpoint_port() << std::endl;
-    recv_data.resize(iResult);
     return recv_data;
 }
 

@@ -136,3 +136,5 @@ class Sockets
 	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port);
 	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name);
 };
+
+void log_msg(const std::vector<char>& data, bool sending, ISocket& sock);

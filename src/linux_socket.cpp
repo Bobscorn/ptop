@@ -357,6 +357,7 @@ std::vector<char> linux_data_socket::receive_data()
 		return std::vector<char>();
 	}
 	recv_data.resize(n);
+	log_msg(data, false, *this);
 	_seen_data += n;
 	return recv_data;
 }
@@ -380,6 +381,7 @@ bool linux_data_socket::has_data()
 
 bool linux_data_socket::send_data(const std::vector<char>& data)
 {
+	log_msg(data, true, *this);
 	std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
 	int n = write(_socket, data.data(), data.size());
 	if (n < 0)
