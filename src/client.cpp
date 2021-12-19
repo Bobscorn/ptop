@@ -102,8 +102,8 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
 
         std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
         listen_sock->listen();
-        auto peer_connect = Sockets::CreateReusableConnectSocket(old_name);
-        peer_connect->connect(peer_public.ip_address, peer_public.port);
+        auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_name);
+        peer_pub_connect->connect(peer_public.ip_address, peer_public.port);
         auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_name);
         peer_priv_connect->connect(peer_private.ip_address, peer_private.port);
 
@@ -147,18 +147,18 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                 std::this_thread::sleep_for(100ms);
                 continue;
             }
-            if (peer_connect->has_connected() == ConnectionStatus::SUCCESS)
+            if (peer_pub_connect->has_connected() == ConnectionStatus::SUCCESS)
             {
                 std::cout << "Public Connection has connected, now authenticating" << std::endl;
-                unauthed_sockets.emplace_back(peer_connect->convert_to_datasocket());
+                unauthed_sockets.emplace_back(peer_pub_connect->convert_to_datasocket());
                 unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
                 std::this_thread::sleep_for(100ms);
                 continue;
             }
-            if (peer_connect->has_connected() == ConnectionStatus::FAILED)
+            if (peer_pub_connect->has_connected() == ConnectionStatus::FAILED)
             {
                 std::cout << "Public Connection has failed, retrying" << std::endl;
-                peer_connect->connect(peer_public.ip_address, peer_public.port);
+                peer_pub_connect->connect(peer_public.ip_address, peer_public.port);
             }
             std::this_thread::sleep_for(100ms);
 
