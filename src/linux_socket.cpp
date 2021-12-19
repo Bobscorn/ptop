@@ -147,7 +147,7 @@ raw_name_data ILinuxSocket::get_sock_data()
 	}
 	catch (...)
 	{
-		SHITTY_DEFINE("chungus");
+		throw SHITTY_DEFINE("failed to get raw myname");
 	}
 }
 
@@ -187,7 +187,7 @@ readable_ip_info ILinuxSocket::get_peername_readable()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("mega bruh"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to get raw peername and convert it to readable"));
 	}
 }
 
@@ -199,7 +199,7 @@ readable_ip_info ILinuxSocket::get_myname_readable()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("bruh"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to get raw myname and convert it to readable"));
 	}
 }
 
@@ -445,7 +445,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("joe mama"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to construct linuxdatasocket"));
 	}
 }
 
@@ -468,7 +468,7 @@ std::vector<char> linux_data_socket::receive_data()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("mega fail"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to receive data with linux data socket"));
 	}
 }
 
@@ -506,7 +506,7 @@ bool linux_data_socket::send_data(const std::vector<char>& data)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("mega fail"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to send data with linux data socket"));
 	}
 }
 
@@ -529,7 +529,7 @@ bool linux_data_socket::has_died()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("epico fail"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to determine linux data socket died"));
 	}
 }
 
@@ -632,7 +632,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("sugma "));
+		std::throw_with_nested(SHITTY_DEFINE("failed to accept connection with linux listen socket"));
 	}
 }
 
@@ -679,7 +679,7 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("epico fail"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to construct linux connection socket"));
 	}
 }
 
@@ -714,7 +714,7 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("epic failed"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to connect with linux connection socket"));
 	}
 }
 
@@ -761,7 +761,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed and crap"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to determin linux connection socket had connected"));
 	}
 }
 
@@ -784,6 +784,6 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_connection_socket::convert_to_
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to convert linux connection socket to datasocket"));
 	}
 }
