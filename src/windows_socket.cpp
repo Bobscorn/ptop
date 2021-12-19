@@ -58,7 +58,7 @@ readable_ip_info convert_to_readable(raw_name_data name)
     if (!str)
         throw std::exception((std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error()).c_str());
 
-    std::string port_str = std::to_string(name.ipv4_addr().sin_port);
+    std::string port_str = std::to_string(htons(name.ipv4_addr().sin_port));
 
     readable_ip_info out_data;
     out_data.ip_address = std::string(str);
