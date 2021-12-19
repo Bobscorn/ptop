@@ -39,6 +39,19 @@
 
 using namespace std::chrono;
 
+void print_exception(const std::exception& e, int level = 0)
+{
+    std::cerr << std::string(level, ' ') << "exception: " << e.what() << std::endl;
+    try
+    {
+        std::rethrow_if_nested(e);
+    }
+    catch (const std::exception& e)
+    {
+        print_exception(e, level + 1);
+    }
+    catch (...) {}
+}
 
 int main(int argc, char** argv) {
 
@@ -51,13 +64,8 @@ int main(int argc, char** argv) {
     {
         std::cout << "Please enter the rendezvous server's IP:" << std::endl;
         std::string message{};
-<<<<<<< Updated upstream
-        do {
 
-            std::cin >> message;
-=======
         std::cin >> message;
->>>>>>> Stashed changes
 
         do {
             if (message == "") {
@@ -89,8 +97,7 @@ int main(int argc, char** argv) {
     
     catch (const std::exception& e)
     {
-        std::cout << "Caught exception: " << e.what() << std::endl;
-        return -1;
+        print_exception(e);
     }
 }
 

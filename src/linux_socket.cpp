@@ -16,6 +16,8 @@
 #include <netdb.h>
 #include <poll.h>
 
+#include "message.h"
+
 std::string linux_error()
 {
 	auto err_code = errno;
@@ -295,7 +297,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 	if (n < 0)
-		throw std::runtime_error(std::string("Failed to get address info for: ") + peer_address + ":" + peer_port + " with: " + linux_error());
+		throw SHITTY_DEFINE("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
 
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 	{
@@ -304,7 +306,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 		{
 			auto last_err = linux_error();
 			freeaddrinfo(result);
-			throw std::runtime_error(std::string("[Data] Failed to create data socket with: ") + last_err);
+			throw SHITTY_DEFINE("[Data] Failed to create data socket with: " + last_err);
 		}
 
 		// BEGIN POTENTIAL BUG FIX TEST
@@ -314,7 +316,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 		{
 			auto err = linux_error();
 			close(_socket);
-			throw std::runtime_error(std::string("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: ") + err);
+			throw SHITTY_DEFINE("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: " + err);
 		}
 #ifdef SO_REUSEPORT
 		n = setsockopt(_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
@@ -322,7 +324,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 		{
 			auto err = linux_error();
 			close(_socket);
-			throw std::runtime_error(std::string("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: ") + err);
+			throw SHITTY_DEFINE("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: " + err);
 		}
 #endif
 		// END BUG FIX TEST
@@ -342,7 +344,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 	freeaddrinfo(result);
 
 	if (_socket < 0)
-		throw std::runtime_error("[Data] No sockets successfully connected to peer");
+		throw SHITTY_DEFINE("[Data] No sockets successfully connected to peer");
 
 }
 
@@ -374,7 +376,7 @@ bool linux_data_socket::has_data()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw std::runtime_error(std::string("[Data] Failed to poll linux socket readability: ") + linux_error());
+		throw SHITTY_DEFINE("[Data] Failed to poll linux socket readability: " + linux_error());
 
 	return n > 0;
 }
@@ -411,44 +413,51 @@ bool linux_data_socket::has_died()
 
 linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port)
 {
-	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
-
-	int portno = atoi(port.c_str());
-
-	struct sockaddr_in serv_addr;
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(portno);
-
-	_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
-	if (_socket < 0)
-		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
-
-	int reuseVal = 1;
-	int n = setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
-	if (n < 0)
+	try
 	{
-		auto err = linux_error();
-		close(_socket);
-		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to set socket SO_REUSEADDR: " + err);
-	}
+		std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
+
+		int portno = atoi(port.c_str());
+
+		struct sockaddr_in serv_addr;
+		memset(&serv_addr, 0, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+		serv_addr.sin_addr.s_addr = INADDR_ANY;
+		serv_addr.sin_port = htons(portno);
+
+		_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+		if (_socket < 0)
+			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
+
+		int reuseVal = 1;
+		int n = setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
+		if (n < 0)
+		{
+			auto err = linux_error();
+			close(_socket);
+			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to set socket SO_REUSEADDR: " + err);
+		}
 #ifdef SO_REUSEPORT
-	n = setsockopt(_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
-	if (n < 0)
-	{
-		auto err = linux_error();
-		close(_socket);
-		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to set socket SO_REUSEPORT: " + err);
-	}
+		n = setsockopt(_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
+		if (n < 0)
+		{
+			auto err = linux_error();
+			close(_socket);
+			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to set socket SO_REUSEPORT: " + err);
+		}
 #endif
 
-	n = ::bind(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-	if (n < 0)
+		n = ::bind(_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+		if (n < 0)
+		{
+			auto err = linux_error();
+			close(_socket);
+			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to bind reuseable nonblocking socket : " + err);
+		}
+	}
+	catch (...)
 	{
-		auto err = linux_error();
-		close(_socket);
-		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to bind reuseable nonblocking socket : " + err);
+		std::throw_with_nested(SHITTY_DEFINE("NonBlock Listen Socket (on port: " + port + " Failed with : "));
 	}
 }
 
@@ -460,7 +469,7 @@ void linux_reuse_nonblock_listen_socket::listen()
 	{
 		auto err = errno;
 		if (err && err != EINPROGRESS && err != EAGAIN)
-			throw std::runtime_error(std::string("[ListenReuseNoB] Failed to listen with: ") + linux_error());
+			throw SHITTY_DEFINE("[ListenReuseNoB] Failed to listen with: " + linux_error());
 	}
 }
 
@@ -476,7 +485,7 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw std::runtime_error(std::string("[ListenReuseNoB] Failed to poll linux socket readability (has connection): ") + linux_error());
+		throw SHITTY_DEFINE("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error());
 
 	return n > 0;
 }

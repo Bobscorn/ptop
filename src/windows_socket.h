@@ -61,6 +61,9 @@ public:
 	std::string get_my_port() override;
 	std::string get_endpoint_ip() override;
 	std::string get_endpoint_port() override;
+
+	std::string get_endpoint_ip_no_grab();
+	std::string get_endpoint_port_no_grab();
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
