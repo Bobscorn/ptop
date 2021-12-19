@@ -72,7 +72,7 @@ ILinuxSocket::ILinuxSocket(int socket, raw_name_data name) :
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("chungite"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to convert to readable"));
 	}
 }
 
@@ -86,7 +86,7 @@ void ILinuxSocket::update_name_info()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("chungite"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to get readable myname"));
 	}
 }
 
@@ -100,7 +100,7 @@ void ILinuxSocket::update_endpoint_info()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("gotem"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to get readable peername"));
 	}
 }
 
