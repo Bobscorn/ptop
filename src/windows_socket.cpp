@@ -437,41 +437,6 @@ void IWindowsSocket::shutdown()
     ::shutdown(_socket, SD_SEND);
 }
 
-// Initial version that may work better (haven't tested)
-//readable_ip_info IWindowsSocket::get_peer_data()
-//{
-//    sockaddr name;
-//    int name_len = sizeof(sockaddr);
-//    int iResult = getpeername(_socket, &name, &name_len);
-//    if (iResult == SOCKET_ERROR)
-//        throw std::exception((std::string("Failed to get socket name: ") + get_last_error()).c_str());
-//
-//    std::vector<char> name_buf(100, '0');
-//    DWORD name_buf_len = name_buf.size();
-//    iResult = WSAAddressToString(&name, name_len, NULL, name_buf.data(), &name_buf_len);
-//    if (iResult == SOCKET_ERROR)
-//        throw std::exception((std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error()).c_str());
-//
-//    uint16_t port = htons(((sockaddr_in*)&name)->sin_port);
-//    std::string port_str = std::to_string(port);
-//
-//    readable_ip_info out_data;
-//    out_data.ip_address = std::string(name_buf.data(), name_buf.data() + name_buf_len - 7);
-//    out_data.port = std::move(port_str);
-//    return out_data;
-//}
-
-// Initial version of this method, may work better, (haven't tested yet)
-//raw_name_data IWindowsSocket::get_sock_data()
-//{
-//    raw_name_data name;
-//    name.name_len = sizeof(sockaddr);
-//    int iResult = getsockname(_socket, &name.name, &name.name_len);
-//    if (iResult == SOCKET_ERROR)
-//        throw std::exception((std::string("Failed to get socket name: ") + get_last_error()).c_str());
-//    return name;
-//}
-
 windows_internet::windows_internet(WORD versionRequested)
 {
     int iResult = WSAStartup(versionRequested, &_data);
