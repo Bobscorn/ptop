@@ -23,7 +23,7 @@ client_init_kit::~client_init_kit() {}
 EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr<IDataSocket>& socket, int my_auth)
 {
     const char* data = data_vec.data();
-    int data_len = data_vec.size();
+    size_t data_len = data_vec.size();
     int i = 0;
     int auth_key = 0;
     MESSAGE_TYPE type;
@@ -57,7 +57,7 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
     }
 }
 
-EXECUTION_STATUS process_server_data(char* data, int data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
+EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
 {
     if (data_len < 1)
     {
@@ -112,7 +112,7 @@ EXECUTION_STATUS process_server_data(char* data, int data_len, std::string port,
         auto start_time = std::chrono::system_clock::now();
         do
         {
-            for (int i = unauthed_sockets.size(); i-- > 0; )
+            for (size_t i = unauthed_sockets.size(); i-- > 0; )
             {
                 auto& sock = unauthed_sockets[i];
                 if (sock->has_data())
@@ -181,7 +181,7 @@ EXECUTION_STATUS process_server_data(char* data, int data_len, std::string port,
     return EXECUTION_STATUS::CONTINUE;
 }
 
-EXECUTION_STATUS process_peer_data(char* data, int data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
+EXECUTION_STATUS process_peer_data(char* data, size_t data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
 {
     if (data_len < 1)
     {
@@ -234,7 +234,7 @@ void client_loop(std::string server_address_pair)
 {
     std::cout << "Starting ptop!" << std::endl;
     std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
-    auto init = client_init_kit { server_address_pair };
+    client_init_kit init{ server_address_pair };
 
     while (init.status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
     {

@@ -31,14 +31,14 @@ server_init_kit::server_init_kit(std::function<void(thread_queue&)> thread_func)
     status = EXECUTION_STATUS::CONTINUE;
 }
 
-server_init_kit::server_init_kit(server_init_kit&& other)
+server_init_kit::server_init_kit(server_init_kit&& other) noexcept
 {
     *this = std::move(other);
 }
 
 server_init_kit::~server_init_kit() {}
 
-server_init_kit& server_init_kit::operator=(server_init_kit&& other)
+server_init_kit& server_init_kit::operator=(server_init_kit&& other) noexcept
 {
     clientA = std::move(other.clientA);
     clientB = std::move(other.clientB);
@@ -89,7 +89,7 @@ bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std
     return false;
 }
 
-EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, int data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
+EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, size_t data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
 {
     if (data_len < 1)
     {
@@ -280,6 +280,7 @@ void server_loop()
                 else if (input_message == "close" || input_message == "quit" || input_message == "shutdown")
                 {
                     std::cout << "Closing server..." << std::endl;
+                    init.take_message_lock.unlock();
                     return;
                 }
             }

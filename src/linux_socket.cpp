@@ -117,13 +117,7 @@ readable_ip_info ILinuxSocket::get_peer_data()
 
 raw_name_data ILinuxSocket::get_sock_data()
 {
-	sockaddr_in peer_name;
-	socklen_t peer_size = sizeof(peer_name);
-	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
-
-	raw_name_data out;
-	out.addr = peer_name;
-	return out;
+	return get_myname_raw();
 }
 
 raw_name_data ILinuxSocket::get_peername_raw()

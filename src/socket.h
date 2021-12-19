@@ -19,6 +19,8 @@ struct windows_name_data
 
 	sockaddr name;
 	int name_len;
+
+	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
 };
 
 typedef windows_name_data raw_name_data;

@@ -15,6 +15,9 @@
 #include <memory>
 #include <string>
 
+#pragma warning( push )
+#pragma warning(disable : 4250)
+
 /// <summary>
 /// An RAII Wrapper over WSAStartup and WSACleanup, called in constructors and destructors
 /// </summary>
@@ -103,4 +106,7 @@ public:
 
 	std::unique_ptr<IDataSocket> convert_to_datasocket() override;
 };
+
+#pragma warning(pop)
+
 #endif

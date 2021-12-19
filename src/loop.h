@@ -16,7 +16,7 @@ enum class EXECUTION_STATUS
 };
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> // Only allow Plain-old-data to use this method
-T read_data(const char* data, int& index, int data_len)
+T read_data(const char* data, int& index, size_t data_len)
 {
     int size = sizeof(T);
     if (index + size > data_len)
@@ -28,7 +28,7 @@ T read_data(const char* data, int& index, int data_len)
 }
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> 
-bool try_read_data(const char* data, int& index, int data_len, T& val)
+bool try_read_data(const char* data, int& index, size_t data_len, T& val)
 {
     int size = sizeof(T);
     if (index + size > data_len)
@@ -41,7 +41,7 @@ bool try_read_data(const char* data, int& index, int data_len, T& val)
 }
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> //only compile if T is plain old data type
-std::vector<T> read_data(const char* data, int& index, int data_len, int num_items)
+std::vector<T> read_data(const char* data, int& index, size_t data_len, int num_items)
 {
     int size = sizeof(T);
     if (index + size * num_items > data_len)
@@ -52,7 +52,7 @@ std::vector<T> read_data(const char* data, int& index, int data_len, int num_ite
 }
 
 template<class size_T = int>
-std::string read_string(const char* data, int& index, int data_len)
+std::string read_string(const char* data, int& index, size_t data_len)
 {
     int size = sizeof(size_T);
     if (index + size > data_len)

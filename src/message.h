@@ -134,11 +134,11 @@ inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
 
 inline std::vector<char> create_message(MESSAGE_TYPE type, std::string data)
 {
-	std::vector<char> out_data(sizeof(type) + sizeof(int), '0');
-	int len = data.length();
+	size_t len = data.length();
+	std::vector<char> out_data(sizeof(type) + sizeof(len), '0');
 	std::memcpy(out_data.data(), &type, sizeof(type));
-	std::memcpy(out_data.data() + sizeof(type), &len, sizeof(int));
-	out_data.reserve(sizeof(type) + sizeof(size_t) + data.length());
+	std::memcpy(out_data.data() + sizeof(type), &len, sizeof(len));
+	out_data.reserve(sizeof(type) + sizeof(len) + data.length());
 	out_data.insert(out_data.end(), data.begin(), data.end());
 	return out_data;
 }

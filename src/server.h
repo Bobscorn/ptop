@@ -37,9 +37,9 @@ class server_init_kit {
         EXECUTION_STATUS status;
 
         server_init_kit(std::function<void(thread_queue&)> thread_func);
-        server_init_kit(server_init_kit&& other);
+        server_init_kit(server_init_kit&& other) noexcept;
 
         ~server_init_kit();
 
-        server_init_kit& operator=(server_init_kit&& other);
+        server_init_kit& operator=(server_init_kit&& other) noexcept;
 };

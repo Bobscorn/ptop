@@ -33,16 +33,14 @@ std::string get_last_error()
 readable_ip_info convert_to_readable(raw_name_data name)
 {
     std::vector<char> name_buf(100, '0');
-    DWORD name_buf_len = name_buf.size();
-    int iResult = WSAAddressToString(&name.name, name.name_len, NULL, name_buf.data(), &name_buf_len);
-    if (iResult == SOCKET_ERROR)
+    const char* str = inet_ntop(AF_INET, &name.ipv4_addr().sin_addr, name_buf.data(), name_buf.size());
+    if (!str)
         throw std::exception((std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error()).c_str());
 
-    uint16_t port = htons(((sockaddr_in*)&name.name)->sin_port);
-    std::string port_str = std::to_string(port);
+    std::string port_str = std::to_string(name.ipv4_addr().sin_port);
 
     readable_ip_info out_data;
-    out_data.ip_address = std::string(name_buf.data(), name_buf.data() + name_buf_len - 7);
+    out_data.ip_address = std::string(str);
     out_data.port = std::move(port_str);
     return out_data;
 }
@@ -83,14 +81,7 @@ readable_ip_info IWindowsSocket::get_peer_data()
 
 raw_name_data IWindowsSocket::get_sock_data()
 {
-    sockaddr_in peer_name;
-    socklen_t peer_size = sizeof(peer_name);
-    int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
-
-    raw_name_data out;
-    out.name = *(sockaddr*)&peer_name;
-    out.name_len = peer_size;
-    return out;
+    return get_myname_raw();
 }
 
 raw_name_data IWindowsSocket::get_peername_raw()
@@ -284,8 +275,8 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
 
 bool windows_data_socket::send_data(const std::vector<char>& data)
 {
-    std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
-    int iSendResult = send(_socket, data.data(), data.size(), 0);
+    std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ") (priv, pub)" << std::endl;
+    int iSendResult = send(_socket, data.data(), (int)data.size(), 0);
     if (iSendResult == SOCKET_ERROR)
     {
         std::cerr << "Failed to send data with: " << WSAGetLastError() << std::endl;
@@ -308,7 +299,7 @@ windows_data_socket::windows_data_socket(SOCKET source_socket, raw_name_data nam
 std::vector<char> windows_data_socket::receive_data() {
     std::cout << "[Data] Trying to received data from Socket: (" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ")" << std::endl;
     std::vector<char> recv_data = std::vector<char>(500, (char)0);
-    int iResult = recv(_socket, recv_data.data(), recv_data.size(), 0);
+    int iResult = recv(_socket, recv_data.data(), (int)recv_data.size(), 0);
     if (iResult > 0)
     {
         std::cout << "Received " << iResult << " bytes" << std::endl;
@@ -320,7 +311,7 @@ std::vector<char> windows_data_socket::receive_data() {
         return std::vector<char>();
     }
     else
-        std::cout << "Received empty data from: " << get_peer_data().ip_address << ":" << get_peer_data().port << std::endl;
+        std::cout << "Received empty data from: " << get_endpoint_ip() << ":" << get_endpoint_port() << std::endl;
     recv_data.resize(iResult);
     return recv_data;
 }
@@ -475,7 +466,7 @@ std::unique_ptr<IDataSocket> windows_reusable_nonblocking_listen_socket::accept_
 {
     std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
     sockaddr_in endpoint_addr;
-    socklen_t endpoint_len;
+    socklen_t endpoint_len = 0;
     SOCKET accepted_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
 
     if (accepted_socket == INVALID_SOCKET)
@@ -599,7 +590,7 @@ ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()
 
 std::unique_ptr<IDataSocket> windows_reusable_nonblocking_connection_socket::convert_to_datasocket()
 {
-    std::cout << "[DataReuseNoB] Converting to regular Data socket " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
+    std::cout << "[DataReuseNoB] Converting to regular Data socket " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ") (priv, pub)" << std::endl;
     u_long blockMode = 1;
     int iResult = ioctlsocket(_socket, FIONBIO, &blockMode);
     if (iResult == SOCKET_ERROR)
