@@ -687,7 +687,7 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 {
 	try
 	{
-		std::cout << "[DataReuseNoB] Tring to connect to: " << ip_address << ":" << port << std::endl;
+		std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
 		struct addrinfo* results, hints;
 		bzero(&hints, sizeof(hints));
 		hints.ai_family = AF_INET;
