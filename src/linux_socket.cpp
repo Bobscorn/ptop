@@ -60,9 +60,7 @@ ILinuxSocket::ILinuxSocket(ILinuxSocket&& socket) :
 }
 
 ILinuxSocket::ILinuxSocket(int socket, raw_name_data name) : 
-	_socket(socket),
-	_address("Unassigned"),
-	_port("Unassigned")
+	_socket(socket)
 { 
 	try
 	{
@@ -73,6 +71,12 @@ ILinuxSocket::ILinuxSocket(int socket, raw_name_data name) :
 	catch (...)
 	{
 		std::throw_with_nested(SHITTY_DEFINE("failed to convert to readable"));
+	}
+	update_name_info();
+
+	if (_endpoint_address == "Unassigned" || _endpoint_address.empty() ||
+		_endpoint_port == "Unassigned" || _endpoint_port.empty()) {
+		throw SHITTY_DEFINE("failed to update name info");
 	}
 }
 
@@ -205,58 +209,22 @@ readable_ip_info ILinuxSocket::get_myname_readable()
 
 std::string ILinuxSocket::get_my_ip()
 {
-	try
-	{
-		if (_address == "Unassigned" || _address.empty())
-			update_name_info();
-		return _address;
-	}
-	catch (...)
-	{
-		std::throw_with_nested(SHITTY_DEFINE("Gotem"));
-	}
+	return _address;
 }
 
 std::string ILinuxSocket::get_my_port()
 {
-	try
-	{
-		if (_port == "Unassigned" || _port.empty())
-			update_name_info();
-		return _port;
-	}
-	catch (...)
-	{
-		std::throw_with_nested(SHITTY_DEFINE("Gotem"));
-	}
+	return _port;
 }
 
 std::string ILinuxSocket::get_endpoint_ip()
 {
-	try
-	{
-		if (_endpoint_address == "Unassigned" || _endpoint_address.empty())
-			update_endpoint_info();
-		return _endpoint_address;
-	}
-	catch (...)
-	{
-		std::throw_with_nested(SHITTY_DEFINE("Gotem"));
-	}
+	return _endpoint_address;
 }
 
 std::string ILinuxSocket::get_endpoint_port()
 {
-	try
-	{
-		if (_endpoint_port == "Unassigned" || _endpoint_port.empty())
-			update_endpoint_info();
-		return _endpoint_port;
-	}
-	catch (...)
-	{
-		std::throw_with_nested(SHITTY_DEFINE("Gotem"));
-	}
+	return _endpoint_port;
 }
 
 linux_listen_socket::linux_listen_socket(std::string port)
