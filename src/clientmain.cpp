@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
 
     try
     {
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         std::cout << "Please enter the rendezvous server's IP:" << std::endl;
         do {
 
