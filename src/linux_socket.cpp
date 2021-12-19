@@ -36,14 +36,13 @@ std::string linux_error(int err_code)
 readable_ip_info convert_to_readable(raw_name_data data)
 {
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
-	in_addr addr = data.addr.sin_addr;
-	const char* str = inet_ntop(AF_INET, &addr, buf.data(), buf.size());
+	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
 	if (!str)
 		throw SHITTY_DEFINE(std::string("Failed to convert sockaddr to string: ") + linux_error());
 
 	std::string address = str;
 
-	std::string port = std::to_string(ntohs(data.addr.sin_port));
+	std::string port = std::to_string(ntohs(data.ipv4_addr().sin_port));
 	readable_ip_info out;
 	out.ip_address = address;
 	out.port = port;
@@ -161,7 +160,8 @@ raw_name_data ILinuxSocket::get_peername_raw()
 		throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + linux_error());
 
 	raw_name_data raw_data;
-	raw_data.addr = peer_name;
+	raw_data.name = *(sockaddr*)&peer_name;
+	raw_data.name_len = peer_size;
 	return raw_data;
 }
 
@@ -174,7 +174,8 @@ raw_name_data ILinuxSocket::get_myname_raw()
 		throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + linux_error());
 
 	raw_name_data raw_data;
-	raw_data.addr = peer_name;
+	raw_data.name = *(sockaddr*)&peer_name;
+	raw_data.name_len = peer_size;
 	return raw_data;
 }
 
@@ -350,7 +351,8 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 			return nullptr;
 
 		raw_name_data name;
-		name.addr = client_addr;
+		name.name = *(sockaddr*)&client_addr;
+		name.name_len = client_len;
 		auto readable = convert_to_readable(name);
 		std::cout << "[Listen] Accepted a connection: " << readable.ip_address << ":" << readable.port << std::endl;
 		return std::make_unique<linux_data_socket>(new_socket, name);
@@ -431,7 +433,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 				_socket = -1;
 				continue;
 			}
-			auto readable = convert_to_readable(*(sockaddr_in*)ptr->ai_addr);
+			auto readable = convert_to_readable(raw_name_data{ *ptr->ai_addr, ptr->ai_addrlen });
 			std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
 			break;
 		}
@@ -622,7 +624,8 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 		if (accepted_socket < 0)
 			return nullptr;
 		raw_name_data name;
-		name.addr = client_addr;
+		name.name = *(sockaddr*)&client_addr;
+		name.name_len = client_len;
 		auto readable = convert_to_readable(name);
 		std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
 		return std::make_unique<linux_data_socket>(accepted_socket, name);
@@ -665,7 +668,7 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 		}
 #endif
 
-		n = ::bind(_socket, (struct sockaddr*)&data.addr, sizeof(data.addr));
+		n = ::bind(_socket, &data.name, data.name_len);
 		if (n < 0)
 		{
 			auto err = linux_error();
@@ -695,10 +698,10 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 
 		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
 		if (iResult != 0)
-			throw std::runtime_error((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
+			throw std::runtime_error((std::string("Failed to getaddrinfo, error: ") + std::to_string(iResult)).c_str());
 
 		if (results == nullptr)
-			throw std::runtime_error((std::string("Could not resolve '") + ip_address + ":" + port + "'").c_str());
+			throw std::runtime_error((std::string("No possible sockets found for '") + ip_address + ":" + port + "'").c_str());
 
 		iResult = ::connect(_socket, results->ai_addr, (int)results->ai_addrlen);
 		if (iResult < 0)
@@ -722,24 +725,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 		if (_socket < 0)
 			return ConnectionStatus::FAILED;
 
-		pollfd my_poll;
-		my_poll.fd = _socket;
-		my_poll.events = POLLOUT;
-		my_poll.revents = 0;
-
-		int n = poll(&my_poll, 1, 2);
-
-		if (n < 0)
-			throw std::runtime_error("Failed to poll socket writeability (whether is has connected) with: " + linux_error());
-
-		if (n == 0)
-			return ConnectionStatus::PENDING;
-
-		if (my_poll.revents | POLLOUT)
-			return ConnectionStatus::SUCCESS;
-		return ConnectionStatus::FAILED;
-
-		/*fd_set write_set;
+		fd_set write_set;
 		FD_ZERO(&write_set);
 		FD_SET(_socket, &write_set);
 
@@ -771,7 +757,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 
 		std::cerr << "Socket has error code: " << sock_error << std::endl;
 
-		return ConnectionStatus::FAILED;*/
+		return ConnectionStatus::FAILED;
 	}
 	catch (...)
 	{

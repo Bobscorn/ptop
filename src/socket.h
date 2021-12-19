@@ -31,9 +31,12 @@ typedef windows_name_data raw_name_data;
 struct linux_name_data
 {
 	linux_name_data() = default;
-	linux_name_data(sockaddr_in addr) : addr(addr) {}
+	linux_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
 
-	sockaddr_in addr;
+	sockaddr name;
+	socklen_t name_len;
+
+	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
 };
 
 typedef linux_name_data raw_name_data;
