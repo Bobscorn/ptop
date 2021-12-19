@@ -357,7 +357,7 @@ std::vector<char> linux_data_socket::receive_data()
 		return std::vector<char>();
 	}
 	recv_data.resize(n);
-	log_msg(data, false, *this);
+	log_msg(recv_data, false, *this);
 	_seen_data += n;
 	return recv_data;
 }

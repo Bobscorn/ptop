@@ -37,6 +37,8 @@
 #include "ip.h"
 #include "message.h"
 
+using namespace std::chrono;
+
 
 int main(int argc, char** argv) {
 
@@ -47,14 +49,19 @@ int main(int argc, char** argv) {
 
     try
     {
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         std::cout << "Please enter the rendezvous server's IP:" << std::endl;
         std::string message{};
+<<<<<<< Updated upstream
         do {
 
             std::cin >> message;
+=======
+        std::cin >> message;
+>>>>>>> Stashed changes
 
+        do {
             if (message == "") {
+                std::this_thread::sleep_for(100ms); //epic optimization
                 continue;
             }
         }
