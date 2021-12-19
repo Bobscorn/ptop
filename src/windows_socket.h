@@ -60,11 +60,7 @@ public:
 	std::string get_my_ip() override;
 	std::string get_my_port() override;
 	std::string get_endpoint_ip();
-	std::string get_endpoint_port();	
-
-
-	std::string update_endpoint_ip() override;
-	std::string update_endpoint_port() override;
+	std::string get_endpoint_port();
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket
