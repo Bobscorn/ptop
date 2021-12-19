@@ -2,6 +2,9 @@
 
 #ifdef WIN32
 #ifndef WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
@@ -46,18 +49,19 @@ int main(int argc, char** argv) {
     {
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         std::cout << "Please enter the rendezvous server's IP:" << std::endl;
+        std::string message{};
         do {
 
-            std::string message{};
             std::cin >> message;
 
             if (message == "") {
                 continue;
             }
-            client_loop(message);
         }
+        while(false);
+            
+        client_loop(message);
         
-        while(true);
 
 
         // std::string message{};
