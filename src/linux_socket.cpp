@@ -171,7 +171,7 @@ raw_name_data ILinuxSocket::get_myname_raw()
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + linux_error());
+		throw SHITTY_DEFINE(std::string("[Socket] Failed to getsockname with: ") + linux_error());
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
