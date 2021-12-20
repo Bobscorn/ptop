@@ -49,7 +49,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	return out;
 }
 
-ILinuxSocket::ILinuxSocket(ILinuxSocket&& socket) : 
+LinuxSocket::LinuxSocket(LinuxSocket&& socket) : 
 	_socket(std::move(socket._socket)), 
 	_address(socket._address), 
 	_port(socket._port), 
@@ -59,7 +59,7 @@ ILinuxSocket::ILinuxSocket(ILinuxSocket&& socket) :
 	socket._socket = -1; 
 }
 
-ILinuxSocket::ILinuxSocket(int socket, raw_name_data public_name) 
+LinuxSocket::LinuxSocket(int socket, raw_name_data public_name) 
 : _socket(socket)
 { 
 	try
@@ -80,7 +80,7 @@ ILinuxSocket::ILinuxSocket(int socket, raw_name_data public_name)
 	}
 }
 
-void ILinuxSocket::update_name_info()
+void LinuxSocket::update_name_info()
 {
 	try
 	{
@@ -94,7 +94,7 @@ void ILinuxSocket::update_name_info()
 	}
 }
 
-void ILinuxSocket::update_endpoint_info()
+void LinuxSocket::update_endpoint_info()
 {
 	try
 	{
@@ -108,7 +108,7 @@ void ILinuxSocket::update_endpoint_info()
 	}
 }
 
-ILinuxSocket::~ILinuxSocket()
+LinuxSocket::~LinuxSocket()
 {
 	if (_socket >= 0)
 	{
@@ -117,11 +117,11 @@ ILinuxSocket::~ILinuxSocket()
 	}
 }
 
-void ILinuxSocket::shutdown()
+void LinuxSocket::shutdown()
 {
 }
 
-readable_ip_info ILinuxSocket::get_peer_data()
+readable_ip_info LinuxSocket::get_peer_data()
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -143,7 +143,7 @@ readable_ip_info ILinuxSocket::get_peer_data()
 	return out;
 }
 
-raw_name_data ILinuxSocket::get_sock_data()
+raw_name_data LinuxSocket::get_sock_data()
 {
 	try
 	{
@@ -155,7 +155,7 @@ raw_name_data ILinuxSocket::get_sock_data()
 	}
 }
 
-raw_name_data ILinuxSocket::get_peername_raw()
+raw_name_data LinuxSocket::get_peername_raw()
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -169,7 +169,7 @@ raw_name_data ILinuxSocket::get_peername_raw()
 	return raw_data;
 }
 
-raw_name_data ILinuxSocket::get_myname_raw()
+raw_name_data LinuxSocket::get_myname_raw()
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -183,7 +183,7 @@ raw_name_data ILinuxSocket::get_myname_raw()
 	return raw_data;
 }
 
-readable_ip_info ILinuxSocket::get_peername_readable()
+readable_ip_info LinuxSocket::get_peername_readable()
 {
 	try
 	{
@@ -195,7 +195,7 @@ readable_ip_info ILinuxSocket::get_peername_readable()
 	}
 }
 
-readable_ip_info ILinuxSocket::get_myname_readable()
+readable_ip_info LinuxSocket::get_myname_readable()
 {
 	try
 	{
@@ -207,22 +207,22 @@ readable_ip_info ILinuxSocket::get_myname_readable()
 	}
 }
 
-std::string ILinuxSocket::get_my_ip()
+std::string LinuxSocket::get_my_ip()
 {
 	return _address;
 }
 
-std::string ILinuxSocket::get_my_port()
+std::string LinuxSocket::get_my_port()
 {
 	return _port;
 }
 
-std::string ILinuxSocket::get_endpoint_ip()
+std::string LinuxSocket::get_endpoint_ip()
 {
 	return _endpoint_address;
 }
 
-std::string ILinuxSocket::get_endpoint_port()
+std::string LinuxSocket::get_endpoint_port()
 {
 	return _endpoint_port;
 }
@@ -331,7 +331,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 	}
 }
 
-linux_data_socket::linux_data_socket(int socket, raw_name_data name) : ILinuxSocket(socket, name)
+linux_data_socket::linux_data_socket(int socket, raw_name_data name) : LinuxSocket(socket, name)
 {
 	try
 	{

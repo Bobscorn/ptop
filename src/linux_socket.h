@@ -9,12 +9,12 @@
 
 readable_ip_info convert_to_readable(raw_name_data data);
 
-class ILinuxSocket : virtual public ISocket
+class LinuxSocket : virtual public ISocket
 {
 protected:
-	ILinuxSocket() : _socket(-1) {}
-	ILinuxSocket(ILinuxSocket&& socket);
-	ILinuxSocket(int socket, raw_name_data public_name);
+	LinuxSocket() : _socket(-1) {}
+	LinuxSocket(LinuxSocket&& socket);
+	LinuxSocket(int socket, raw_name_data public_name);
 	int _socket;
 	std::string _address;
 	std::string _port;
@@ -24,7 +24,7 @@ protected:
 	void update_name_info();
 	void update_endpoint_info();
 
-	virtual ~ILinuxSocket();
+	virtual ~LinuxSocket();
 
 public:
 	void shutdown() override;
@@ -40,7 +40,7 @@ public:
 	std::string get_endpoint_port() override;
 };
 
-class linux_listen_socket : public ILinuxSocket, public IListenSocket
+class linux_listen_socket : public LinuxSocket, public IListenSocket
 {
 public:
 	linux_listen_socket(std::string port);
@@ -50,7 +50,7 @@ public:
 	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class linux_data_socket : public ILinuxSocket, public IDataSocket
+class linux_data_socket : public LinuxSocket, public IDataSocket
 {
 public:
 	linux_data_socket(int socket, raw_name_data name);
@@ -64,7 +64,7 @@ public:
 	bool has_died();
 };
 
-class linux_reuse_nonblock_listen_socket : public ILinuxSocket, public IReusableNonBlockingListenSocket
+class linux_reuse_nonblock_listen_socket : public LinuxSocket, public IReusableNonBlockingListenSocket
 {
 public:
 	linux_reuse_nonblock_listen_socket(std::string port);
@@ -74,7 +74,7 @@ public:
 	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class linux_reuse_nonblock_connection_socket : public ILinuxSocket, public IReusableNonBlockingConnectSocket
+class linux_reuse_nonblock_connection_socket : public LinuxSocket, public IReusableNonBlockingConnectSocket
 {
 public:
 	linux_reuse_nonblock_connection_socket(raw_name_data data);

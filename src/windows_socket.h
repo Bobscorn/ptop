@@ -33,11 +33,11 @@ class windows_internet
 
 readable_ip_info convert_to_readable(raw_name_data);
 
-class IWindowsSocket : virtual public ISocket
+class WindowsSocket : virtual public ISocket
 {
 protected:
-	IWindowsSocket() : _socket(-1) {}
-	IWindowsSocket(SOCKET socket, raw_name_data public_name);
+	WindowsSocket() : _socket(-1), _address() {}
+	WindowsSocket(SOCKET socket, raw_name_data public_name);
 	SOCKET _socket;
 	std::string _address;
 	std::string _port;
@@ -47,7 +47,7 @@ protected:
 	void update_name_info();
 	void update_endpoint_info();
 
-	virtual ~IWindowsSocket();
+	virtual ~WindowsSocket();
 
 public:
 	void shutdown() override;
@@ -63,7 +63,7 @@ public:
 	std::string get_endpoint_port() override;
 };
 
-class windows_listen_socket : public IWindowsSocket, public IListenSocket
+class windows_listen_socket : public WindowsSocket, public IListenSocket
 {
 	public:
 	windows_listen_socket(std::string port);
@@ -73,7 +73,7 @@ class windows_listen_socket : public IWindowsSocket, public IListenSocket
 	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class windows_data_socket : public IWindowsSocket, public virtual IDataSocket
+class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 {
 public:
 	windows_data_socket(SOCKET source_socket, raw_name_data name);
@@ -85,7 +85,7 @@ public:
 	bool send_data(const std::vector<char>& data) override;
 };
 
-class windows_reusable_nonblocking_listen_socket : public IWindowsSocket, public IReusableNonBlockingListenSocket
+class windows_reusable_nonblocking_listen_socket : public WindowsSocket, public IReusableNonBlockingListenSocket
 {
 public:
 	windows_reusable_nonblocking_listen_socket(std::string port);
@@ -95,7 +95,7 @@ public:
 	std::unique_ptr<IDataSocket> accept_connection() override;
 };
 
-class windows_reusable_nonblocking_connection_socket : public IWindowsSocket, public IReusableNonBlockingConnectSocket
+class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
 	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed

@@ -9,7 +9,7 @@
 
 #define AF_FAM AF_INET
 
-IWindowsSocket::IWindowsSocket(SOCKET socket, raw_name_data public_name) 
+WindowsSocket::WindowsSocket(SOCKET socket, raw_name_data public_name) 
 : _socket(socket)
 { 
 	try
@@ -89,7 +89,7 @@ readable_ip_info convert_to_readable(raw_name_data name)
     return out_data;
 }
 
-void IWindowsSocket::update_name_info()
+void WindowsSocket::update_name_info()
 {
     try
     {
@@ -103,7 +103,7 @@ void IWindowsSocket::update_name_info()
     }
 }
 
-void IWindowsSocket::update_endpoint_info()
+void WindowsSocket::update_endpoint_info()
 {
     try
     {
@@ -117,7 +117,7 @@ void IWindowsSocket::update_endpoint_info()
     }
 }
 
-readable_ip_info IWindowsSocket::get_peer_data()
+readable_ip_info WindowsSocket::get_peer_data()
 {
     try
     {
@@ -144,12 +144,12 @@ readable_ip_info IWindowsSocket::get_peer_data()
     }
 }
 
-raw_name_data IWindowsSocket::get_sock_data()
+raw_name_data WindowsSocket::get_sock_data()
 {
     return get_myname_raw();
 }
 
-raw_name_data IWindowsSocket::get_peername_raw()
+raw_name_data WindowsSocket::get_peername_raw()
 {
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
@@ -163,7 +163,7 @@ raw_name_data IWindowsSocket::get_peername_raw()
     return raw_data;
 }
 
-raw_name_data IWindowsSocket::get_myname_raw()
+raw_name_data WindowsSocket::get_myname_raw()
 {
     try
     {
@@ -184,7 +184,7 @@ raw_name_data IWindowsSocket::get_myname_raw()
     }
 }
 
-readable_ip_info IWindowsSocket::get_peername_readable()
+readable_ip_info WindowsSocket::get_peername_readable()
 {
     try
     {
@@ -196,7 +196,7 @@ readable_ip_info IWindowsSocket::get_peername_readable()
     }
 }
 
-readable_ip_info IWindowsSocket::get_myname_readable()
+readable_ip_info WindowsSocket::get_myname_readable()
 {
     try
     {
@@ -208,22 +208,22 @@ readable_ip_info IWindowsSocket::get_myname_readable()
     }
 }
 
-std::string IWindowsSocket::get_my_ip()
+std::string WindowsSocket::get_my_ip()
 {
     return _address;
 }
 
-std::string IWindowsSocket::get_my_port()
+std::string WindowsSocket::get_my_port()
 {
     return _port;
 }
 
-std::string IWindowsSocket::get_endpoint_ip()
+std::string WindowsSocket::get_endpoint_ip()
 {
     return _endpoint_address;
 }
 
-std::string IWindowsSocket::get_endpoint_port()
+std::string WindowsSocket::get_endpoint_port()
 {
     return _endpoint_port;
 }
@@ -379,7 +379,7 @@ bool windows_data_socket::send_data(const std::vector<char>& data)
     return true;
 }
 
-windows_data_socket::windows_data_socket(SOCKET source_socket, raw_name_data name) : IWindowsSocket(source_socket, name)
+windows_data_socket::windows_data_socket(SOCKET source_socket, raw_name_data name) : WindowsSocket(source_socket, name)
 {
     try
     {
@@ -426,7 +426,7 @@ bool windows_data_socket::has_data()
     return false;
 }
 
-IWindowsSocket::~IWindowsSocket()
+WindowsSocket::~WindowsSocket()
 {
     if (_socket != INVALID_SOCKET && _socket != NULL)
     {
@@ -435,7 +435,7 @@ IWindowsSocket::~IWindowsSocket()
     }
 }
 
-void IWindowsSocket::shutdown()
+void WindowsSocket::shutdown()
 {
     ::shutdown(_socket, SD_SEND);
 }
