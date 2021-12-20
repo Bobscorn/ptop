@@ -273,7 +273,7 @@ linux_listen_socket::linux_listen_socket(std::string port)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("mega chungus"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to construct linux listen socket"));
 	}
 }
 
@@ -327,7 +327,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("big chungus"));
+		std::throw_with_nested(SHITTY_DEFINE("failed to accept connection"));
 	}
 }
 
