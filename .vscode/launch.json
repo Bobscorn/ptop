@@ -8,7 +8,7 @@
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\build\\debug\\mmr.exe",
+            "program": "${workspaceFolder}\\build\\Debug\\ptop.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
