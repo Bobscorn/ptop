@@ -36,8 +36,8 @@ readable_ip_info convert_to_readable(raw_name_data);
 class IWindowsSocket : virtual public ISocket
 {
 protected:
-	IWindowsSocket() : _socket(-1), _address("Unassigned"), _port("Unassigned"), _endpoint_address("Unassigned"), _endpoint_port("Unassigned") {}
-	IWindowsSocket(SOCKET socket, raw_name_data name) : _socket(socket), _address("Unassigned"), _port("Unassigned"), _endpoint_address("Unassigned"), _endpoint_port("Unassigned") { auto readable = convert_to_readable(name); _endpoint_address = readable.ip_address; _endpoint_port = readable.port; }
+	IWindowsSocket() : _socket(-1) {}
+	IWindowsSocket(SOCKET socket, raw_name_data public_name);
 	SOCKET _socket;
 	std::string _address;
 	std::string _port;
@@ -59,8 +59,8 @@ public:
 	readable_ip_info get_myname_readable() override;
 	std::string get_my_ip() override;
 	std::string get_my_port() override;
-	std::string get_endpoint_ip();
-	std::string get_endpoint_port();
+	std::string get_endpoint_ip() override;
+	std::string get_endpoint_port() override;
 };
 
 class windows_listen_socket : public IWindowsSocket, public IListenSocket

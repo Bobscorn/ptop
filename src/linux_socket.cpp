@@ -59,8 +59,8 @@ ILinuxSocket::ILinuxSocket(ILinuxSocket&& socket) :
 	socket._socket = -1; 
 }
 
-ILinuxSocket::ILinuxSocket(int socket, raw_name_data name) : 
-	_socket(socket)
+ILinuxSocket::ILinuxSocket(int socket, raw_name_data public_name) 
+: _socket(socket)
 { 
 	try
 	{

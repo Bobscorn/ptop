@@ -14,7 +14,7 @@ class ILinuxSocket : virtual public ISocket
 protected:
 	ILinuxSocket() : _socket(-1) {}
 	ILinuxSocket(ILinuxSocket&& socket);
-	ILinuxSocket(int socket, raw_name_data name);
+	ILinuxSocket(int socket, raw_name_data public_name);
 	int _socket;
 	std::string _address;
 	std::string _port;

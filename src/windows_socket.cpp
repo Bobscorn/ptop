@@ -9,6 +9,27 @@
 
 #define AF_FAM AF_INET
 
+IWindowsSocket::IWindowsSocket(SOCKET socket, raw_name_data public_name) 
+: _socket(socket)
+{ 
+	try
+	{
+		auto readable = convert_to_readable(public_name);
+		_endpoint_address = readable.ip_address;
+		_endpoint_port = readable.port;
+	}
+	catch (...)
+	{
+		std::throw_with_nested(SHITTY_DEFINE("failed to convert to readable"));
+	}
+	update_name_info();
+
+	if (_endpoint_address == "Unassigned" || _endpoint_address.empty() ||
+		_endpoint_port == "Unassigned" || _endpoint_port.empty()) {
+		throw SHITTY_DEFINE("failed to update name info");
+	}
+}
+
 std::string get_last_error()
 {
     LPVOID lpMsgBuf;
@@ -199,20 +220,6 @@ std::string IWindowsSocket::get_my_port()
     if (_port == "Unassigned" || _port.empty())
         update_name_info();
     return _port;
-}
-
-std::string IWindowsSocket::update_endpoint_ip()
-{
-    if (_endpoint_address == "Unassigned" || _endpoint_address.empty())
-        update_endpoint_info();
-    return _endpoint_address;
-}
-
-std::string IWindowsSocket::update_endpoint_port()
-{
-    if (_endpoint_port == "Unassigned" || _endpoint_port.empty())
-        update_endpoint_info();
-    return _endpoint_port;
 }
 
 std::string IWindowsSocket::get_endpoint_ip()
