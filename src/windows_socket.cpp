@@ -24,8 +24,8 @@ IWindowsSocket::IWindowsSocket(SOCKET socket, raw_name_data public_name)
 	}
 	update_name_info();
 
-	if (_endpoint_address == "Unassigned" || _endpoint_address.empty() ||
-		_endpoint_port == "Unassigned" || _endpoint_port.empty()) {
+	if (_address == "Unassigned" || _address.empty() ||
+		_port == "Unassigned" || _port.empty()) {
 		throw SHITTY_DEFINE("failed to update name info");
 	}
 }
@@ -113,7 +113,7 @@ void IWindowsSocket::update_endpoint_info()
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(SHITTY_DEFINE("failed to update_endpoint_info"));
     }
 }
 
@@ -210,15 +210,11 @@ readable_ip_info IWindowsSocket::get_myname_readable()
 
 std::string IWindowsSocket::get_my_ip()
 {
-    if (_address == "Unassigned" || _address.empty())
-        update_name_info();
     return _address;
 }
 
 std::string IWindowsSocket::get_my_port()
 {
-    if (_port == "Unassigned" || _port.empty())
-        update_name_info();
     return _port;
 }
 

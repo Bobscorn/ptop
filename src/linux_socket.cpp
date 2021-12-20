@@ -74,8 +74,8 @@ ILinuxSocket::ILinuxSocket(int socket, raw_name_data public_name)
 	}
 	update_name_info();
 
-	if (_endpoint_address == "Unassigned" || _endpoint_address.empty() ||
-		_endpoint_port == "Unassigned" || _endpoint_port.empty()) {
+	if (_address == "Unassigned" || _address.empty() ||
+		_port == "Unassigned" || _port.empty()) {
 		throw SHITTY_DEFINE("failed to update name info");
 	}
 }
