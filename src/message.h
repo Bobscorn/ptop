@@ -5,9 +5,9 @@
 #include <string>
 #include <cstring>
 
-#ifndef SHITTY_DEFINE
-#define SHITTY_DEFINE std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ")")
-#define SHITTY_DEFINE(x) std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ")" + x)
+#ifndef PRINT_LINE
+#define PRINT_LINE std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ")")
+#define PRINT_MSG_LINE(x) std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ")" + x)
 #endif
 
 enum class MESSAGE_TYPE

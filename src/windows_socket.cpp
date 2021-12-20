@@ -20,13 +20,13 @@ WindowsSocket::WindowsSocket(SOCKET socket)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to convert to readable"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to convert to readable"));
 	}
 	update_name_info();
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
-		throw SHITTY_DEFINE("failed to update name info");
+		throw PRINT_MSG_LINE("failed to update name info");
 	}
 }
 
@@ -79,7 +79,7 @@ readable_ip_info convert_to_readable(raw_name_data name)
     std::vector<char> name_buf(100, '0');
     const char* str = inet_ntop(AF_INET, &name.ipv4_addr().sin_addr, name_buf.data(), name_buf.size());
     if (!str)
-        throw SHITTY_DEFINE(std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error());
+        throw PRINT_MSG_LINE(std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error());
 
     std::string port_str = std::to_string(htons(name.ipv4_addr().sin_port));
 
@@ -99,7 +99,7 @@ void WindowsSocket::update_name_info()
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -113,7 +113,7 @@ void WindowsSocket::update_endpoint_info()
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed to update_endpoint_info"));
+        std::throw_with_nested(PRINT_MSG_LINE("failed to update_endpoint_info"));
     }
 }
 
@@ -140,7 +140,7 @@ readable_ip_info WindowsSocket::get_peer_data() const
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -150,7 +150,7 @@ raw_name_data WindowsSocket::get_peername_raw() const
     socklen_t peer_size = sizeof(peer_name);
     int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
     if (n != 0)
-        throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + get_last_error());
+        throw PRINT_MSG_LINE(std::string("[Socket] Failed to getpeername with: ") + get_last_error());
 
     raw_name_data raw_data;
     raw_data.name = *(sockaddr*)&peer_name;
@@ -166,7 +166,7 @@ raw_name_data WindowsSocket::get_myname_raw() const
         socklen_t peer_size = sizeof(peer_name);
         int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
         if (n != 0)
-            throw SHITTY_DEFINE(std::string("[Socket] Failed to getsockname with: ") + get_last_error());
+            throw PRINT_MSG_LINE(std::string("[Socket] Failed to getsockname with: ") + get_last_error());
 
         raw_name_data raw_data;
         raw_data.name = *(sockaddr*)&peer_name;
@@ -175,7 +175,7 @@ raw_name_data WindowsSocket::get_myname_raw() const
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -187,7 +187,7 @@ readable_ip_info WindowsSocket::get_peername_readable() const
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -199,7 +199,7 @@ readable_ip_info WindowsSocket::get_myname_readable() const
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -239,7 +239,7 @@ SOCKET construct_windowslistensocket(std::string port) {
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("Listen Socket on port " + port + " failed with: "));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -251,7 +251,7 @@ void windows_listen_socket::listen()
 {
     std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
     if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR)
-        throw SHITTY_DEFINE(std::string("Socket (" + _endpoint_address + ":" + _endpoint_port + ") Failed to listen with : ") + get_last_error());
+        throw PRINT_MSG_LINE(std::string("Socket (" + _endpoint_address + ":" + _endpoint_port + ") Failed to listen with : ") + get_last_error());
 }
 
 bool windows_listen_socket::has_connection()
@@ -338,7 +338,7 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("Socket Failed to connect to " + peer_address + ":" + peer_port + " with: "));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -373,7 +373,7 @@ SOCKET windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingC
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed to move data from reusable non blocking connect socket"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -393,7 +393,7 @@ windows_data_socket::windows_data_socket(SOCKET source_socket) : WindowsSocket(s
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("Emtpy Socket failed with: "));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -445,7 +445,7 @@ windows_internet::windows_internet(WORD versionRequested)
 {
     int iResult = WSAStartup(versionRequested, &_data);
     if (iResult != 0)
-        throw SHITTY_DEFINE("Winsock API initialization failed: " + std::to_string(iResult));
+        throw PRINT_MSG_LINE("Winsock API initialization failed: " + std::to_string(iResult));
     std::cout << "Winsock has been started" << std::endl;
 }
 
@@ -509,7 +509,7 @@ SOCKET windows_reuse_nb_listen_construct(std::string port)
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed to construct windows_reusable_nonblocking_listen_socket"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 windows_reusable_nonblocking_listen_socket::windows_reusable_nonblocking_listen_socket(std::string port) : WindowsSocket(windows_reuse_nb_listen_construct(port))
@@ -519,7 +519,7 @@ void windows_reusable_nonblocking_listen_socket::listen()
 {
     std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
     if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR)
-        throw SHITTY_DEFINE("Socket: " + _endpoint_address + ":" + _endpoint_port + " Failed to listen with : " + get_last_error());
+        throw PRINT_MSG_LINE("Socket: " + _endpoint_address + ":" + _endpoint_port + " Failed to listen with : " + get_last_error());
 }
 
 bool windows_reusable_nonblocking_listen_socket::has_connection()

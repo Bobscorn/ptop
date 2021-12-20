@@ -38,7 +38,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
 	if (!str)
-		throw SHITTY_DEFINE(std::string("Failed to convert sockaddr to string: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("Failed to convert sockaddr to string: ") + linux_error());
 
 	std::string address = str;
 
@@ -70,13 +70,13 @@ LinuxSocket::LinuxSocket(int socket)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to convert to readable"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 	update_name_info();
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
-		throw SHITTY_DEFINE("failed to update name info");
+		throw PRINT_MSG_LINE("failed to update name info");
 	}
 }
 
@@ -90,7 +90,7 @@ void LinuxSocket::update_name_info()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to get readable myname"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 }
 
@@ -104,7 +104,7 @@ void LinuxSocket::update_endpoint_info()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to get readable peername"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 }
 
@@ -127,12 +127,12 @@ readable_ip_info LinuxSocket::get_peer_data() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw SHITTY_DEFINE("Failed to getpeername: " + linux_error());
+		throw PRINT_MSG_LINE("Failed to getpeername: " + linux_error());
 
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
 	if (!str)
-		throw SHITTY_DEFINE(std::string("Failed to convert sockaddr to string: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("Failed to convert sockaddr to string: ") + linux_error());
 
 	std::string address = str;
 
@@ -149,7 +149,7 @@ raw_name_data LinuxSocket::get_peername_raw() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw SHITTY_DEFINE(std::string("[Socket] Failed to getpeername with: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("[Socket] Failed to getpeername with: ") + linux_error());
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
@@ -163,7 +163,7 @@ raw_name_data LinuxSocket::get_myname_raw() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw SHITTY_DEFINE(std::string("[Socket] Failed to getsockname with: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("[Socket] Failed to getsockname with: ") + linux_error());
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
@@ -179,7 +179,7 @@ readable_ip_info LinuxSocket::get_peername_readable() const
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to get raw peername and convert it to readable"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 }
 
@@ -191,7 +191,7 @@ readable_ip_info LinuxSocket::get_myname_readable() const
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to get raw myname and convert it to readable"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 }
 
@@ -241,7 +241,7 @@ linux_listen_socket::linux_listen_socket(std::string port)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to construct linux listen socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to construct linux listen socket"));
 	}
 }
 
@@ -249,7 +249,7 @@ void linux_listen_socket::listen()
 {
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	if (::listen(_socket, 5) < 0)
-		throw SHITTY_DEFINE(std::string("[Listen] Error when listening: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("[Listen] Error when listening: ") + linux_error());
 }
 
 bool linux_listen_socket::has_connection()
@@ -271,7 +271,7 @@ bool linux_listen_socket::has_connection()
 	if (n > 0)
 		return poll_thing.revents | POLLRDNORM;
 	if (n < 0)
-		throw SHITTY_DEFINE(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
+		throw PRINT_MSG_LINE(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
 	return false;
 }
 
@@ -295,7 +295,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to accept connection"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to accept connection"));
 	}
 }
 
@@ -315,7 +315,7 @@ linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnect
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed to move data from reusable non blocking connect socket"));
+        std::throw_with_nested(PRINT_MSG_LINE("failed to move data from reusable non blocking connect socket"));
     }
 }
 
@@ -328,7 +328,7 @@ linux_data_socket::linux_data_socket(int socket) : LinuxSocket(socket)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("fkin gotem"));
+		std::throw_with_nested(PRINT_LINE);
 	}
 }
 
@@ -350,7 +350,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 		int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 		if (n < 0)
-			throw SHITTY_DEFINE("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
+			throw PRINT_MSG_LINE("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
 
 		for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 		{
@@ -359,7 +359,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 			{
 				auto last_err = linux_error();
 				freeaddrinfo(result);
-				throw SHITTY_DEFINE("[Data] Failed to create data socket with: " + last_err);
+				throw PRINT_MSG_LINE("[Data] Failed to create data socket with: " + last_err);
 			}
 
 			// BEGIN POTENTIAL BUG FIX TEST
@@ -369,7 +369,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 			{
 				auto err = linux_error();
 				close(_socket);
-				throw SHITTY_DEFINE("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: " + err);
+				throw PRINT_MSG_LINE("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: " + err);
 			}
 #ifdef SO_REUSEPORT
 			n = setsockopt(_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
@@ -377,7 +377,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 			{
 				auto err = linux_error();
 				close(_socket);
-				throw SHITTY_DEFINE("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: " + err);
+				throw PRINT_MSG_LINE("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: " + err);
 			}
 #endif
 			// END BUG FIX TEST
@@ -397,11 +397,11 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 		freeaddrinfo(result);
 
 		if (_socket < 0)
-			throw SHITTY_DEFINE("[Data] No sockets successfully connected to peer");
+			throw PRINT_MSG_LINE("[Data] No sockets successfully connected to peer");
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to construct linuxdatasocket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to construct linuxdatasocket"));
 	}
 }
 
@@ -424,7 +424,7 @@ std::vector<char> linux_data_socket::receive_data()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to receive data with linux data socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to receive data with linux data socket"));
 	}
 }
 
@@ -440,7 +440,7 @@ bool linux_data_socket::has_data()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw SHITTY_DEFINE("[Data] Failed to poll linux socket readability: " + linux_error());
+		throw PRINT_MSG_LINE("[Data] Failed to poll linux socket readability: " + linux_error());
 
 	return n > 0;
 }
@@ -462,7 +462,7 @@ bool linux_data_socket::send_data(const std::vector<char>& data)
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to send data with linux data socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to send data with linux data socket"));
 	}
 }
 
@@ -485,7 +485,7 @@ bool linux_data_socket::has_died()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to determine linux data socket died"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to determine linux data socket died"));
 	}
 }
 
@@ -535,7 +535,7 @@ linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::stri
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("NonBlock Listen Socket (on port: " + port + " Failed with : "));
+		std::throw_with_nested(PRINT_MSG_LINE("NonBlock Listen Socket (on port: " + port + " Failed with : "));
 	}
 }
 
@@ -547,7 +547,7 @@ void linux_reuse_nonblock_listen_socket::listen()
 	{
 		auto err = errno;
 		if (err && err != EINPROGRESS && err != EAGAIN)
-			throw SHITTY_DEFINE("[ListenReuseNoB] Failed to listen with: " + linux_error());
+			throw PRINT_MSG_LINE("[ListenReuseNoB] Failed to listen with: " + linux_error());
 	}
 }
 
@@ -563,7 +563,7 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n < 0)
-		throw SHITTY_DEFINE("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error());
+		throw PRINT_MSG_LINE("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error());
 
 	return n > 0;
 }
@@ -588,7 +588,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to accept connection with linux listen socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to accept connection with linux listen socket"));
 	}
 }
 
@@ -635,7 +635,7 @@ linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(r
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to construct linux connection socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to construct linux connection socket"));
 	}
 }
 
@@ -670,7 +670,7 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to connect with linux connection socket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to connect with linux connection socket"));
 	}
 }
 
@@ -717,7 +717,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to determin linux connection socket had connected"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to determine linux connection socket had connected"));
 	}
 }
 
@@ -740,6 +740,6 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_connection_socket::convert_to_
 	}
 	catch (...)
 	{
-		std::throw_with_nested(SHITTY_DEFINE("failed to convert linux connection socket to datasocket"));
+		std::throw_with_nested(PRINT_MSG_LINE("failed to convert linux connection socket to datasocket"));
 	}
 }

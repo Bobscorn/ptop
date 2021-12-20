@@ -191,7 +191,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -246,7 +246,7 @@ EXECUTION_STATUS process_peer_data(char* data, size_t data_len, const std::uniqu
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
 
@@ -328,6 +328,6 @@ void client_loop(std::string server_address_pair)
     }
     catch (...)
     {
-        std::throw_with_nested(SHITTY_DEFINE("failed"));
+        std::throw_with_nested(PRINT_LINE);
     }
 }
