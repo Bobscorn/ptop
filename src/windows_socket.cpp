@@ -117,7 +117,7 @@ void WindowsSocket::update_endpoint_info()
     }
 }
 
-readable_ip_info WindowsSocket::get_peer_data()
+readable_ip_info WindowsSocket::get_peer_data() const
 {
     try
     {
@@ -144,12 +144,7 @@ readable_ip_info WindowsSocket::get_peer_data()
     }
 }
 
-raw_name_data WindowsSocket::get_sock_data()
-{
-    return get_myname_raw();
-}
-
-raw_name_data WindowsSocket::get_peername_raw()
+raw_name_data WindowsSocket::get_peername_raw() const
 {
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
@@ -163,7 +158,7 @@ raw_name_data WindowsSocket::get_peername_raw()
     return raw_data;
 }
 
-raw_name_data WindowsSocket::get_myname_raw()
+raw_name_data WindowsSocket::get_myname_raw() const
 {
     try
     {
@@ -184,7 +179,7 @@ raw_name_data WindowsSocket::get_myname_raw()
     }
 }
 
-readable_ip_info WindowsSocket::get_peername_readable()
+readable_ip_info WindowsSocket::get_peername_readable() const
 {
     try
     {
@@ -196,7 +191,7 @@ readable_ip_info WindowsSocket::get_peername_readable()
     }
 }
 
-readable_ip_info WindowsSocket::get_myname_readable()
+readable_ip_info WindowsSocket::get_myname_readable() const
 {
     try
     {
@@ -206,26 +201,6 @@ readable_ip_info WindowsSocket::get_myname_readable()
     {
         std::throw_with_nested(SHITTY_DEFINE("failed"));
     }
-}
-
-std::string WindowsSocket::get_my_ip()
-{
-    return _address;
-}
-
-std::string WindowsSocket::get_my_port()
-{
-    return _port;
-}
-
-std::string WindowsSocket::get_endpoint_ip()
-{
-    return _endpoint_address;
-}
-
-std::string WindowsSocket::get_endpoint_port()
-{
-    return _endpoint_port;
 }
 
 SOCKET construct_windowslistensocket(std::string port) {

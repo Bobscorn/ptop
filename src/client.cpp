@@ -103,7 +103,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
             auto peer_public = read_peer_data(data, i, data_len);
             auto peer_private = read_peer_data(data, i, data_len);
             auth_key_out = read_data<int>(data, i, data_len);
-            raw_name_data old_name = conn_socket->get_sock_data();
+            raw_name_data old_privatename = conn_socket->get_myname_raw();
             conn_socket = nullptr;
 
             std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
@@ -111,9 +111,9 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
 
             std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
             listen_sock->listen();
-            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_name);
+            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename);
             peer_pub_connect->connect(peer_public.ip_address, peer_public.port);
-            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_name);
+            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename);
             peer_priv_connect->connect(peer_private.ip_address, peer_private.port);
 
             std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};

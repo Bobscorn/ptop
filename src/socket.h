@@ -56,18 +56,17 @@ class ISocket
 
 	virtual void shutdown() = 0;
 
-	virtual readable_ip_info get_peer_data() = 0;
-	virtual raw_name_data get_sock_data() = 0;
+	virtual readable_ip_info get_peer_data() const = 0;
 
-	virtual raw_name_data get_peername_raw() = 0;
-	virtual raw_name_data get_myname_raw() = 0;
-	virtual readable_ip_info get_peername_readable() = 0;
-	virtual readable_ip_info get_myname_readable() = 0;
+	virtual raw_name_data get_peername_raw() const = 0;
+	virtual raw_name_data get_myname_raw() const = 0;
+	virtual readable_ip_info get_peername_readable() const = 0;
+	virtual readable_ip_info get_myname_readable() const = 0;
 
-	virtual std::string get_my_ip() = 0;
-	virtual std::string get_my_port() = 0;
-	virtual std::string get_endpoint_ip() = 0;
-	virtual std::string get_endpoint_port() = 0;
+	virtual std::string get_my_ip() const = 0;
+	virtual std::string get_my_port() const = 0;
+	virtual std::string get_endpoint_ip() const = 0;
+	virtual std::string get_endpoint_port() const = 0;
 };
 
 class IDataSocket : virtual public ISocket

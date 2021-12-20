@@ -50,16 +50,16 @@ protected:
 
 public:
 	void shutdown() override;
-	readable_ip_info get_peer_data() override;
-	raw_name_data get_sock_data() override;
-	raw_name_data get_peername_raw() override;
-	raw_name_data get_myname_raw() override;
-	readable_ip_info get_peername_readable() override;
-	readable_ip_info get_myname_readable() override;
-	std::string get_my_ip() override;
-	std::string get_my_port() override;
-	std::string get_endpoint_ip() override;
-	std::string get_endpoint_port() override;
+	readable_ip_info get_peer_data() const override;
+	raw_name_data get_peername_raw() const override;
+	raw_name_data get_myname_raw() const override;
+	readable_ip_info get_peername_readable() const override;
+	readable_ip_info get_myname_readable() const override;
+	
+	inline std::string get_my_ip() const override { return _address; }
+	inline std::string get_my_port() const override { return _port; }
+	inline std::string get_endpoint_ip() const override { return _endpoint_address; }
+	inline std::string get_endpoint_port() const override { return _endpoint_port; }
 
 	inline SOCKET get_socket() const { return _socket; }
 };

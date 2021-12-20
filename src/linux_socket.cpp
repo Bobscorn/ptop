@@ -121,7 +121,7 @@ void LinuxSocket::shutdown()
 {
 }
 
-readable_ip_info LinuxSocket::get_peer_data()
+readable_ip_info LinuxSocket::get_peer_data() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -143,19 +143,7 @@ readable_ip_info LinuxSocket::get_peer_data()
 	return out;
 }
 
-raw_name_data LinuxSocket::get_sock_data()
-{
-	try
-	{
-		return get_myname_raw();
-	}
-	catch (...)
-	{
-		throw SHITTY_DEFINE("failed to get raw myname");
-	}
-}
-
-raw_name_data LinuxSocket::get_peername_raw()
+raw_name_data LinuxSocket::get_peername_raw() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -169,7 +157,7 @@ raw_name_data LinuxSocket::get_peername_raw()
 	return raw_data;
 }
 
-raw_name_data LinuxSocket::get_myname_raw()
+raw_name_data LinuxSocket::get_myname_raw() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -183,7 +171,7 @@ raw_name_data LinuxSocket::get_myname_raw()
 	return raw_data;
 }
 
-readable_ip_info LinuxSocket::get_peername_readable()
+readable_ip_info LinuxSocket::get_peername_readable() const 
 {
 	try
 	{
@@ -195,7 +183,7 @@ readable_ip_info LinuxSocket::get_peername_readable()
 	}
 }
 
-readable_ip_info LinuxSocket::get_myname_readable()
+readable_ip_info LinuxSocket::get_myname_readable() const
 {
 	try
 	{
@@ -205,26 +193,6 @@ readable_ip_info LinuxSocket::get_myname_readable()
 	{
 		std::throw_with_nested(SHITTY_DEFINE("failed to get raw myname and convert it to readable"));
 	}
-}
-
-std::string LinuxSocket::get_my_ip()
-{
-	return _address;
-}
-
-std::string LinuxSocket::get_my_port()
-{
-	return _port;
-}
-
-std::string LinuxSocket::get_endpoint_ip()
-{
-	return _endpoint_address;
-}
-
-std::string LinuxSocket::get_endpoint_port()
-{
-	return _endpoint_port;
 }
 
 linux_listen_socket::linux_listen_socket(std::string port)
