@@ -151,7 +151,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                 if (peer_priv_connect->has_connected() == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
-                    unauthed_sockets.emplace_back(peer_priv_connect->convert_to_datasocket());
+                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
                     unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
                     std::this_thread::sleep_for(100ms);
                     continue;
@@ -159,7 +159,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                 if (peer_pub_connect->has_connected() == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Public Connection has connected, now authenticating" << std::endl;
-                    unauthed_sockets.emplace_back(peer_pub_connect->convert_to_datasocket());
+                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_pub_connect)));
                     unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
                     std::this_thread::sleep_for(100ms);
                     continue;

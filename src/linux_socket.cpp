@@ -59,12 +59,12 @@ LinuxSocket::LinuxSocket(LinuxSocket&& socket) :
 	socket._socket = -1; 
 }
 
-LinuxSocket::LinuxSocket(int socket, raw_name_data public_name) 
+LinuxSocket::LinuxSocket(int socket) 
 : _socket(socket)
 { 
 	try
 	{
-		auto readable = convert_to_readable(name);
+		auto readable = get_peername_readable();
 		_endpoint_address = readable.ip_address;
 		_endpoint_port = readable.port;
 	}
@@ -323,7 +323,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 		name.name_len = client_len;
 		auto readable = convert_to_readable(name);
 		std::cout << "[Listen] Accepted a connection: " << readable.ip_address << ":" << readable.port << std::endl;
-		return std::make_unique<linux_data_socket>(new_socket, name);
+		return std::make_unique<linux_data_socket>(new_socket);
 	}
 	catch (...)
 	{
@@ -331,7 +331,27 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 	}
 }
 
-linux_data_socket::linux_data_socket(int socket, raw_name_data name) : LinuxSocket(socket, name)
+linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
+{
+    try
+    {
+        std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket (" old->get_my_ip() << ":" << old->get_my_port() << "/" << old->get_endpoint_ip() << ":" << old->get_endpoint_port() << ") to a data_socket" << std::endl;
+        linux_reusable_nonblocking_connection_socket& real_old = *dynamic_cast<linux_reusable_nonblocking_connection_socket*>(old.get());
+        int flags = fcntl(real_old.get_socket(), F_GETFL);
+		if (flags == -1)
+			throw std::runtime_error(std::string("Failed to query socket's flags: ") + linux_error());
+		int n = fcntl(real_old.get_socket(), F_SETFL, flags & (~O_NONBLOCK));
+		if (n == -1)
+			throw std::runtime_error(std::string("Failed to set socket as blocking again: ") + linux_error());
+        _socket = real_old.get_socket();
+    }
+    catch (...)
+    {
+        std::throw_with_nested(SHITTY_DEFINE("failed to move data from reusable non blocking connect socket"));
+    }
+}
+
+linux_data_socket::linux_data_socket(int socket) : LinuxSocket(socket)
 {
 	try
 	{

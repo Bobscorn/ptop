@@ -114,8 +114,6 @@ class IReusableNonBlockingConnectSocket : public IReusableSocket
 
 	virtual void connect(std::string ip_address, std::string port) = 0;
 	virtual ConnectionStatus has_connected() = 0;
-
-	virtual std::unique_ptr<IDataSocket> convert_to_datasocket() = 0;
 };
 
 class IReusableNonBlockingListenSocket : public IReusableSocket
@@ -138,6 +136,7 @@ class Sockets
 	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port);
 	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port);
 	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name);
+	static std::unique_ptr<IDataSocket> ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 };
 
 void log_msg(const std::vector<char>& data, bool sending, ISocket& sock);

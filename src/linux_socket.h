@@ -12,9 +12,7 @@ readable_ip_info convert_to_readable(raw_name_data data);
 class LinuxSocket : virtual public ISocket
 {
 protected:
-	LinuxSocket() : _socket(-1) {}
-	LinuxSocket(LinuxSocket&& socket);
-	LinuxSocket(int socket, raw_name_data public_name);
+	LinuxSocket(int socket);
 	int _socket;
 	std::string _address;
 	std::string _port;
@@ -38,6 +36,8 @@ public:
 	std::string get_my_port() override;
 	std::string get_endpoint_ip() override;
 	std::string get_endpoint_port() override;
+
+	inline int get_socket() const { return _socket; }
 };
 
 class linux_listen_socket : public LinuxSocket, public IListenSocket
@@ -53,7 +53,8 @@ public:
 class linux_data_socket : public LinuxSocket, public IDataSocket
 {
 public:
-	linux_data_socket(int socket, raw_name_data name);
+	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	linux_data_socket(int socket);
 	linux_data_socket(std::string peer_address, std::string peer_port);
 
 	std::vector<char> receive_data() override;

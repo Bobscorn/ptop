@@ -49,6 +49,15 @@ std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnec
 #endif
 }
 
+std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
+{
+#ifdef WIN32
+	return std::make_unique<windows_data_socket>(std::move(old));
+#elif __linux__
+	return std::make_unique<linux_data_socket>(std::move(old));
+#endif
+}
+
 #define DO_MSG_TYPE_LOGGING
 #ifdef DO_MSG_TYPE_LOGGING
 #include <iostream>

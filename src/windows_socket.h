@@ -36,8 +36,7 @@ readable_ip_info convert_to_readable(raw_name_data);
 class WindowsSocket : virtual public ISocket
 {
 protected:
-	WindowsSocket() : _socket(-1), _address() {}
-	WindowsSocket(SOCKET socket, raw_name_data public_name);
+	WindowsSocket(SOCKET socket);
 	SOCKET _socket;
 	std::string _address;
 	std::string _port;
@@ -61,6 +60,8 @@ public:
 	std::string get_my_port() override;
 	std::string get_endpoint_ip() override;
 	std::string get_endpoint_port() override;
+
+	inline SOCKET get_socket() const { return _socket; }
 };
 
 class windows_listen_socket : public WindowsSocket, public IListenSocket
@@ -76,7 +77,8 @@ class windows_listen_socket : public WindowsSocket, public IListenSocket
 class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 {
 public:
-	windows_data_socket(SOCKET source_socket, raw_name_data name);
+	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	windows_data_socket(SOCKET source_socket);
 	windows_data_socket(std::string peer_address, std::string peer_port);
 
 	std::vector<char> receive_data() override;
@@ -98,13 +100,10 @@ public:
 class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	windows_reusable_nonblocking_connection_socket(SOCKET socket); // Not sure if needed
 	windows_reusable_nonblocking_connection_socket(raw_name_data data);
 
 	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;
-
-	std::unique_ptr<IDataSocket> convert_to_datasocket() override;
 };
 
 #pragma warning(pop)
