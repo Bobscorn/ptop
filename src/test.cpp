@@ -53,8 +53,10 @@ int main(int argc, char** argv)
 #endif
 
 		std::string test_port = "7987";
+		std::string test_port_2 = "7141";
 
 		auto test_listen = Sockets::CreateReusableNonBlockingListenSocket(test_port);
+		test_listen->listen();
 
 		auto test_connect = Sockets::CreateConnectionSocket("localhost", test_port);
 
@@ -68,6 +70,7 @@ int main(int argc, char** argv)
 			auto test_accept = test_listen->accept_connection();
 
 			std::cout << "Successfully accepted connection" << std::endl;
+			test_accept = nullptr;
 		}
 		else
 		{
@@ -85,9 +88,9 @@ int main(int argc, char** argv)
 		auto name = test_connect->get_myname_raw();
 		test_connect = nullptr;
 
-		auto test_connect_2 = Sockets::CreateReusableConnectSocket(name);
+		std::this_thread::sleep_for(2s);
 
-		test_connect_2->connect("localhost", test_port);
+		auto test_connect_2 = Sockets::CreateReusableConnectSocket(name, "localhost", test_port);
 
 		auto start_time = std::chrono::system_clock::now();
 		auto duration = 10s;

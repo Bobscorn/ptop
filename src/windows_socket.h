@@ -42,9 +42,11 @@ protected:
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
+	bool _endpoint_assigned = false;
 
 	void update_name_info();
 	void update_endpoint_info();
+	void update_endpoint_if_needed();
 
 	virtual ~WindowsSocket();
 
@@ -60,6 +62,8 @@ public:
 	inline std::string get_my_port() const override { return _port; }
 	inline std::string get_endpoint_ip() const override { return _endpoint_address; }
 	inline std::string get_endpoint_port() const override { return _endpoint_port; }
+
+	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
 	inline SOCKET get_socket() const { return _socket; }
 };
@@ -100,9 +104,9 @@ public:
 class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	windows_reusable_nonblocking_connection_socket(raw_name_data data);
+	windows_reusable_nonblocking_connection_socket(raw_name_data data, std::string ip_address, std::string port);
 
-	void connect(std::string ip_address, std::string port) override;
+	void connect(std::string ip_address, std::string port);
 	ConnectionStatus has_connected() override;
 };
 

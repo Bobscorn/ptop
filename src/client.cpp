@@ -111,10 +111,8 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
 
             std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
             listen_sock->listen();
-            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename);
-            peer_pub_connect->connect(peer_public.ip_address, peer_public.port);
-            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename);
-            peer_priv_connect->connect(peer_private.ip_address, peer_private.port);
+            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port);
+            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port);
 
             std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
 
@@ -166,8 +164,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                 }
                 if (peer_pub_connect->has_connected() == ConnectionStatus::FAILED)
                 {
-                    std::cout << "Public Connection has failed, retrying" << std::endl;
-                    peer_pub_connect->connect(peer_public.ip_address, peer_public.port);
+                    std::cout << "Public Connection has failed, damn that sucks" << std::endl;
                 }
                 std::this_thread::sleep_for(100ms);
 

@@ -40,10 +40,10 @@ std::unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBloc
 #endif
 }
 
-std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(raw_name_data data)
+std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(raw_name_data data, std::string ip_address, std::string port)
 {
 #ifdef WIN32
-	return std::make_unique<windows_reusable_nonblocking_connection_socket>(data);
+	return std::make_unique<windows_reusable_nonblocking_connection_socket>(data, ip_address, port);
 #elif __linux__
 	return std::make_unique<linux_reuse_nonblock_connection_socket>(data);
 #endif
