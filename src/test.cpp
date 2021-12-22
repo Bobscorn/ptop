@@ -83,14 +83,18 @@ int main(int argc, char** argv)
 			std::cout << "Test Listen (ReNonB) failed and sucks" << std::endl;
 		}
 
+		std::cout << "---------------------------------------------" << std::endl;
 		std::cout << "Now gonna try create reusable connect socket" << std::endl;
 
 		auto name = test_connect->get_myname_raw();
 		test_connect = nullptr;
+		test_listen = nullptr;
 
 		std::this_thread::sleep_for(2s);
 
 		auto test_connect_2 = Sockets::CreateReusableConnectSocket(name, "localhost", test_port);
+		test_listen = Sockets::CreateReusableNonBlockingListenSocket(test_port);
+		test_listen->listen();
 
 		auto start_time = std::chrono::system_clock::now();
 		auto duration = 10s;
@@ -110,6 +114,7 @@ int main(int argc, char** argv)
 			}
 		}
 
+		std::cout << "---------------------------------------------" << std::endl;
 		std::cout << "Test completed with no exceptions" << std::endl;
 	}
 	catch (const std::exception& e)
