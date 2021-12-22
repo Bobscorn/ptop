@@ -146,7 +146,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                     std::this_thread::sleep_for(100ms);
                     continue;
                 }
-                if (peer_priv_connect->has_connected() == ConnectionStatus::SUCCESS)
+                if (peer_priv_connect && peer_priv_connect->has_connected() == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
                     unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
@@ -154,7 +154,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                     std::this_thread::sleep_for(100ms);
                     continue;
                 }
-                if (peer_pub_connect->has_connected() == ConnectionStatus::SUCCESS)
+                if (peer_pub_connect && peer_pub_connect->has_connected() == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Public Connection has connected, now authenticating" << std::endl;
                     unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_pub_connect)));
@@ -162,7 +162,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                     std::this_thread::sleep_for(100ms);
                     continue;
                 }
-                if (peer_pub_connect->has_connected() == ConnectionStatus::FAILED)
+                if (peer_pub_connect && peer_pub_connect->has_connected() == ConnectionStatus::FAILED)
                 {
                     std::cout << "Public Connection has failed, damn that sucks" << std::endl;
                 }

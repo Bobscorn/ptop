@@ -66,6 +66,7 @@ public:
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
 	inline SOCKET get_socket() const { return _socket; }
+	inline void clear_socket() { _socket = INVALID_SOCKET; }
 };
 
 class windows_listen_socket : public WindowsSocket, public IListenSocket

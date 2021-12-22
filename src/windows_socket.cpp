@@ -379,6 +379,8 @@ SOCKET windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingC
         if (iResult == SOCKET_ERROR)
             throw std::exception((std::string("Failed to convert reusable non blocking connection socket to regular socket with:") + get_last_error()).c_str());
         SOCKET ConnectSocket = real_old.get_socket();
+        real_old.clear_socket();
+        old = nullptr;
         return ConnectSocket;
     }
     catch (...)
