@@ -45,7 +45,7 @@ std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnec
 #ifdef WIN32
 	return std::make_unique<windows_reusable_nonblocking_connection_socket>(data, ip_address, port);
 #elif __linux__
-	return std::make_unique<linux_reuse_nonblock_connection_socket>(data);
+	return std::make_unique<linux_reuse_nonblock_connection_socket>(data, ip_address, port);
 #endif
 }
 

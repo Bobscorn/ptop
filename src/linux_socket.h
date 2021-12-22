@@ -18,9 +18,11 @@ protected:
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
+	bool _endpoint_assigned = false;
 
 	void update_name_info();
 	void update_endpoint_info();
+	void update_endpoint_if_needed();
 
 	virtual ~LinuxSocket();
 
@@ -37,7 +39,10 @@ public:
 	inline std::string get_endpoint_ip() const override { return _endpoint_address; }
 	inline std::string get_endpoint_port() const override { return _endpoint_port; }
 
+	inline std::string get_identifier_str() const override { if (!_endpoint_assigned) return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(pub: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
+
 	inline int get_socket() const { return _socket; }
+	inline void clear_socket() { _socket = -1; }
 };
 
 class linux_listen_socket : public LinuxSocket, public IListenSocket
@@ -78,10 +83,8 @@ public:
 class linux_reuse_nonblock_connection_socket : public LinuxSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	linux_reuse_nonblock_connection_socket(raw_name_data data);
+	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port);
 
-	void connect(std::string ip_address, std::string port) override;
+	void connect(std::string ip_address, std::string port);
 	ConnectionStatus has_connected() override;
-
-	std::unique_ptr<IDataSocket> convert_to_datasocket() override;
 };
