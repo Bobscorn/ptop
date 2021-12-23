@@ -180,7 +180,7 @@ void server_loop()
 
     auto init = server_init_kit{ input_thread_func };
 
-    while (init.status == EXECUTION_STATUS::CONTINUE)
+    while (true)
     {
         // Look for clients
         if (init.server_socket->has_connection())
