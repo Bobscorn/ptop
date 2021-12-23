@@ -67,13 +67,10 @@ int main(int argc, char** argv) {
 
         std::cin >> message;
 
-        do {
-            if (message == "") {
-                std::this_thread::sleep_for(100ms); //epic optimization
-                continue;
-            }
+        if (message == "") {
+            std::this_thread::sleep_for(100ms); //epic optimization
+            return 0;
         }
-        while(false);
             
         client_loop(message);
         

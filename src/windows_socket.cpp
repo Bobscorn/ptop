@@ -292,7 +292,7 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
     {
         std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
         struct addrinfo* result = NULL,
-            * ptr = NULL,
+            *ptr = NULL,
             hints;
 
         ZeroMemory(&hints, sizeof(hints));
