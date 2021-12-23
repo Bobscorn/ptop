@@ -51,7 +51,7 @@ std::vector<T> read_data(const char* data, int& index, size_t data_len, int num_
     return std::vector<T>(ptr, ptr + num_items);
 }
 
-template<class size_T = int>
+template<class size_T = size_t>
 std::string read_string(const char* data, int& index, size_t data_len)
 {
     int size = sizeof(size_T);
