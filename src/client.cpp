@@ -36,6 +36,7 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
         {
         case MESSAGE_TYPE::AUTH_PLS:
             std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") requesting Auth, responding with key" << std::endl;
+            std::this_thread::sleep_for(100ms);
             socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
             return EXECUTION_STATUS::CONTINUE;
         case MESSAGE_TYPE::HERES_YOUR_AUTH:
