@@ -410,7 +410,7 @@ void windows_data_socket::process_socket_data()
 
     int data_read = 0;
 
-    while (recv_data.size() > 0)
+    while ((recv_data.size() - data_read) > 0)
     {
         MESSAGE_TYPE type;
         MESSAGE_LENGTH_T length;
