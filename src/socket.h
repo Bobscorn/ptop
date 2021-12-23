@@ -41,7 +41,11 @@ struct linux_name_data
 };
 
 typedef linux_name_data raw_name_data;
-#endif
+
+#ifndef SOCKET_ERROR
+#define SOCKET_ERROR -1
+#endif // SOCKET_ERROR
+#endif // WIN32/__linux__
 
 enum class ConnectionStatus
 {

@@ -17,6 +17,8 @@
 #include <poll.h>
 
 #include "message.h"
+#include "loop.h"
+
 
 std::string linux_error()
 {
@@ -323,6 +325,50 @@ int steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 	}
 }
 
+void linux_data_socket::process_socket_data()
+{
+	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
+	std::vector<char> recv_data = std::vector<char>(500, (char)0);
+	int iResult = recv(_socket, recv_data.data(), (int)recv_data.size(), 0);
+	if (iResult > 0)
+	{
+		std::cout << "Received " << iResult << " bytes" << std::endl;
+		recv_data.resize(iResult);
+		_seen_data += iResult;
+	}
+	else if (iResult == -1)
+	{
+		std::cerr << "Receiving data failed: " << linux_error() << std::endl;
+	}
+	else
+		std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
+
+	int data_read = 0;
+
+	while (recv_data.size() > 0)
+	{
+		MESSAGE_TYPE type;
+		MESSAGE_LENGTH_T length;
+		std::vector<char> data;
+
+		if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
+		{
+			std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+			return;
+		}
+		if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
+		{
+			std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+			return;
+		}
+		data = std::vector<char>(recv_data.data() + data_read, recv_data.data() + data_read + length);
+		data_read += length;
+		auto new_message = Message{ type, length, std::move(data) };
+		_stored_messages.push(new_message);
+		log_msg(new_message, false, *this);
+	}
+}
+
 linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : LinuxSocket(steal_construct(std::move(old)))
 {
 	update_endpoint_info();
@@ -422,27 +468,18 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 	update_endpoint_info();
 }
 
-std::vector<char> linux_data_socket::receive_message()
+Message linux_data_socket::receive_message()
 {
-	try
+	process_socket_data();
+
+	if (_stored_messages.size() > 0)
 	{
-		std::cout << "[Data] Receiving data from Socket: (" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << ":" << get_endpoint_port() << ") (priv, pub)" << std::endl;
-		std::vector<char> recv_data{ 500, '0', std::allocator<char>() };
-		int n = read(_socket, recv_data.data(), 500);
-		if (n < -1)
-		{
-			std::cerr << "[Data] Failed to read data from linux socket: " << linux_error() << std::endl;
-			return std::vector<char>();
-		}
-		recv_data.resize(n);
-		log_msg(recv_data, false, *this);
-		_seen_data += n;
-		return recv_data;
+		auto tmp = _stored_messages.front();
+		_stored_messages.pop();
+		return tmp;
 	}
-	catch (...)
-	{
-		std::throw_with_nested(PRINT_MSG_LINE("failed to receive data with linux data socket"));
-	}
+
+	throw PRINT_MSG_LINE("Failed to parse incoming data");
 }
 
 bool linux_data_socket::has_message()
@@ -462,25 +499,18 @@ bool linux_data_socket::has_message()
 	return n > 0;
 }
 
-bool linux_data_socket::send_data(const std::vector<char>& data)
+bool linux_data_socket::send_data(const Message& message)
 {
-	try
+	log_msg(message, true, *this);
+	auto bytes = message.to_bytes();
+	int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
+	if (iSendResult == -1)
 	{
-		log_msg(data, true, *this);
-		std::cout << "Sending " << data.size() << " bytes to: " << "(" << get_my_ip() << ":" << get_my_port() << ", " << get_endpoint_ip() << " : " << get_endpoint_port() << ") (priv, pub)" << std::endl;
-		int n = write(_socket, data.data(), data.size());
-		if (n < 0)
-		{
-			std::cerr << "Error sending data: " << linux_error() << std::endl;
-			return false;
-		}
-		_sent_bytes += data.size();
-		return true;
+		std::cerr << "Failed to send data with: " << linux_error() << std::endl;
+		return false;
 	}
-	catch (...)
-	{
-		std::throw_with_nested(PRINT_MSG_LINE("failed to send data with linux data socket"));
-	}
+	_sent_bytes += bytes.size();
+	return true;
 }
 
 bool linux_data_socket::has_died()

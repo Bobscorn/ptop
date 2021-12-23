@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 
 #include <string>
+#include <queue>
 
 #include "socket.h"
 
@@ -57,15 +58,18 @@ public:
 
 class linux_data_socket : public LinuxSocket, public IDataSocket
 {
-public:
+	std::queue<Message> _stored_messages;
+
+	void process_socket_data();
+	public:
 	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 	linux_data_socket(int socket);
 	linux_data_socket(std::string peer_address, std::string peer_port);
 
-	std::vector<char> receive_message() override;
+	Message receive_message() override;
 	bool has_message() override;
 
-	bool send_data(const std::vector<char>& data) override;
+	bool send_data(const Message& message) override;
 
 	bool has_died();
 };
