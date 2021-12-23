@@ -34,7 +34,7 @@ std::string get_external_ip() {
 }
 #endif
 
-readable_ip_info read_peer_data(char* data, int& index, size_t data_len)
+readable_ip_info read_peer_data(const char* data, int& index, size_t data_len)
 {
     if ((size_t)index + 1 >= data_len)
         throw std::runtime_error("Not enough data to read a string for readable_ip_info");

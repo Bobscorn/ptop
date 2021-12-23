@@ -63,11 +63,9 @@ std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusa
 #include <iostream>
 
 #include "message.h"
-void log_msg(const std::vector<char>& data, bool sending, ISocket& sock)
+void log_msg(const Message& mess, bool sending, ISocket& sock)
 {
-	if (data.size() < sizeof(MESSAGE_TYPE))
-		std::cout << (sending ? "Outbound " : "Inbound ") << "Message not large to contain a MESSAGE_TYPE" << std::endl;
-	std::cout << (sending ? "Sending " : "Received ") << "a Message of type: " << mt_to_string(*(MESSAGE_TYPE*)data.data()) << std::endl;
+	std::cout << "Socket " << sock.get_identifier_str() << (sending ? "Sending " : "Received ") << "a Message of type: " << mt_to_string(mess.Type) << " with length: " << mess.Length << " bytes" << std::endl;
 }
 #else
 void log_msg(const std::vector<char>& data, bool sending, ISocket& sock)

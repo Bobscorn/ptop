@@ -13,4 +13,4 @@ struct readable_ip_info
 	std::vector<char> to_bytes() const;
 };
 
-readable_ip_info read_peer_data(char* data, int& index, size_t data_len);
+readable_ip_info read_peer_data(const char* data, int& index, size_t data_len);

@@ -422,7 +422,7 @@ linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_
 	update_endpoint_info();
 }
 
-std::vector<char> linux_data_socket::receive_data()
+std::vector<char> linux_data_socket::receive_message()
 {
 	try
 	{
@@ -445,7 +445,7 @@ std::vector<char> linux_data_socket::receive_data()
 	}
 }
 
-bool linux_data_socket::has_data()
+bool linux_data_socket::has_message()
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -487,7 +487,7 @@ bool linux_data_socket::has_died()
 {
 	try
 	{
-		if (has_data())
+		if (has_message())
 		{
 			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
 			int n = recv(_socket, recv_data.data(), recv_data.size(), MSG_PEEK);

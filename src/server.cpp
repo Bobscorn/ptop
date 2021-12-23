@@ -89,8 +89,10 @@ bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std
     return false;
 }
 
-EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& source, size_t data_len, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
+EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSocket>& source, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
 {
+    const char* data = msg.Data.data();
+    auto data_len = msg.Length;
     if (data_len < 1)
     {
         std::cout << "Received empty data from a client (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << "), disconnecting client" << std::endl;
@@ -100,7 +102,7 @@ EXECUTION_STATUS process_data_server(char* data, std::unique_ptr<IDataSocket>& s
 
     int i = 0;
 
-    auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
+    auto msg_type = msg.Type;
     switch (msg_type)
     {
     case MESSAGE_TYPE::MY_DATA:
@@ -231,10 +233,10 @@ void server_loop()
         }
 
         // Look for incoming data
-        if (init.clientA && init.clientA->has_data())
+        if (init.clientA && init.clientA->has_message())
         {
-            init.recv_data = init.clientA->receive_data();
-            init.status = process_data_server(init.recv_data.data(), init.clientA, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
+            auto msg = init.clientA->receive_message();
+            init.status = process_data_server(msg, init.clientA, Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
             if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;
@@ -244,10 +246,10 @@ void server_loop()
             }
         }
 
-        if (init.clientB && init.clientB->has_data())
+        if (init.clientB && init.clientB->has_message())
         {
-            init.recv_data = init.clientB->receive_data();
-            init.status = process_data_server(init.recv_data.data(), init.clientB, init.recv_data.size(), Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
+            auto msg = init.clientB->receive_message();
+            init.status = process_data_server(msg, init.clientB, Sockets::ServerListenPort, init.cA, init.cB, init.privA, init.privB);
             if (init.status == EXECUTION_STATUS::COMPLETE)
             {
                 std::cout << "Resetting server" << std::endl;

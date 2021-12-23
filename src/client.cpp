@@ -20,23 +20,20 @@ client_init_kit::client_init_kit(std::string server_address_pair) {
 
 client_init_kit::~client_init_kit() {}
 
-EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr<IDataSocket>& socket, int my_auth)
+EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>& socket, int my_auth)
 {
     try
     {
-        const char* data = data_vec.data();
-        size_t data_len = data_vec.size();
+        const char* data = mess.Data.data();
+        size_t data_len = mess.Length;
         int i = 0;
         int auth_key = 0;
-        MESSAGE_TYPE type;
-        if (!try_read_data<MESSAGE_TYPE>(data, i, data_len, type))
-            return EXECUTION_STATUS::FAILED;
+        MESSAGE_TYPE type = mess.Type;
 
         switch (type)
         {
         case MESSAGE_TYPE::AUTH_PLS:
             std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") requesting Auth, responding with key" << std::endl;
-            std::this_thread::sleep_for(100ms);
             socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
             return EXECUTION_STATUS::CONTINUE;
         case MESSAGE_TYPE::HERES_YOUR_AUTH:
@@ -65,10 +62,13 @@ EXECUTION_STATUS process_auth(const std::vector<char>& data_vec, std::unique_ptr
     }
 }
 
-EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
+EXECUTION_STATUS process_server_data(const Message& mess, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
 {
     try
     {
+        const char* data = mess.Data.data();
+        auto data_len = mess.Length;
+
         if (data_len < 1)
         {
             std::cout << "Received empty data, disconnecting" << std::endl;
@@ -77,7 +77,7 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
 
         int i = 0;
 
-        auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
+        auto msg_type = mess.Type;
         switch (msg_type)
         {
         case MESSAGE_TYPE::MSG:
@@ -123,9 +123,9 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
                 for (size_t i = unauthed_sockets.size(); i-- > 0; )
                 {
                     auto& sock = unauthed_sockets[i];
-                    if (sock->has_data())
+                    if (sock->has_message())
                     {
-                        auto status = process_auth(sock->receive_data(), sock, auth_key_out);
+                        auto status = process_auth(sock->receive_message(), sock, auth_key_out);
                         if (status == EXECUTION_STATUS::FAILED)
                         {
                             std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has failed to authenticate" << std::endl;
@@ -193,10 +193,12 @@ EXECUTION_STATUS process_server_data(char* data, size_t data_len, std::string po
     }
 }
 
-EXECUTION_STATUS process_peer_data(char* data, size_t data_len, const std::unique_ptr<IDataSocket>& peer, int auth_key)
+EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocket>& peer, int auth_key)
 {
     try
     {
+        const char* data = mess.Data.data();
+        auto data_len = mess.Length;
         if (data_len < 1)
         {
             std::cout << "Received empty data, disconnecting" << std::endl;
@@ -205,7 +207,7 @@ EXECUTION_STATUS process_peer_data(char* data, size_t data_len, const std::uniqu
 
         int i = 0;
 
-        auto msg_type = read_data<MESSAGE_TYPE>(data, i, data_len);
+        auto msg_type = mess.Type;
         switch (msg_type)
         {
         case MESSAGE_TYPE::MSG:
@@ -265,10 +267,10 @@ void client_loop(std::string server_address_pair)
                 init.conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
                 init.last_send = now;
             }
-            if (init.conn_socket->has_data())
+            if (init.conn_socket->has_message())
             {
-                auto data = init.conn_socket->receive_data();
-                init.status = process_server_data(data.data(), data.size(), Sockets::ClientListenPort, init.conn_socket, init.auth_key);
+                auto data = init.conn_socket->receive_message();
+                init.status = process_server_data(data, Sockets::ClientListenPort, init.conn_socket, init.auth_key);
             }
 
             std::this_thread::sleep_for(100ms);
@@ -299,10 +301,10 @@ void client_loop(std::string server_address_pair)
             std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
 
             do {
-                if (init.conn_socket->has_data())
+                if (init.conn_socket->has_message())
                 {
-                    auto data = init.conn_socket->receive_data();
-                    init.status = process_peer_data(data.data(), data.size(), init.conn_socket, init.auth_key);
+                    auto message = init.conn_socket->receive_message();
+                    init.status = process_peer_data(message, init.conn_socket, init.auth_key);
                 }
 
                 {

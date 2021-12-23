@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "message.h"
+#include "loop.h"
 
 #define AF_FAM AF_INET
 
@@ -13,7 +14,7 @@ WindowsSocket::WindowsSocket(SOCKET socket)
 : _socket(socket)
 { 
 	try
-	{        
+	{
         update_name_info();
 
 	    if (_address == "Unassigned" || _address.empty() ||
@@ -354,17 +355,17 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
     update_endpoint_info();
 }
 
-bool windows_data_socket::send_data(const std::vector<char>& data)
+bool windows_data_socket::send_data(const Message& message)
 {
-    log_msg(data, true, *this);
-    std::cout << "Sending " << data.size() << " bytes to: " << get_identifier_str() << std::endl;
-    int iSendResult = send(_socket, data.data(), (int)data.size(), 0);
+    log_msg(message, true, *this);
+    auto bytes = message.to_bytes();
+    int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
     if (iSendResult == SOCKET_ERROR)
     {
         std::cerr << "Failed to send data with: " << WSAGetLastError() << std::endl;
         return false;
     }
-    _sent_bytes += data.size();
+    _sent_bytes += bytes.size();
     return true;
 }
 
@@ -386,6 +387,50 @@ SOCKET windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingC
     catch (...)
     {
         std::throw_with_nested(PRINT_LINE);
+    }
+}
+
+void windows_data_socket::process_socket_data()
+{
+    std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
+    std::vector<char> recv_data = std::vector<char>(500, (char)0);
+    int iResult = recv(_socket, recv_data.data(), (int)recv_data.size(), 0);
+    if (iResult > 0)
+    {
+        std::cout << "Received " << iResult << " bytes" << std::endl;
+        recv_data.resize(iResult);
+        _seen_data += iResult;
+    }
+    else if (iResult == SOCKET_ERROR)
+    {
+        std::cerr << "Receiving data failed: " << get_last_error() << std::endl;
+    }
+    else
+        std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
+
+    int data_read = 0;
+
+    while (recv_data.size() > 0)
+    {
+        MESSAGE_TYPE type;
+        MESSAGE_LENGTH_T length;
+        std::vector<char> data;
+
+        if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
+        {
+            std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+            return;
+        }
+        if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
+        {
+            std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+            return;
+        }
+        data = std::vector<char>(recv_data.data() + data_read, recv_data.data() + data_read + length);
+        data_read += length;
+        auto new_message = Message{ type, length, std::move(data) };
+        _stored_messages.push(new_message);
+        log_msg(new_message, false, *this);
     }
 }
 
@@ -412,28 +457,20 @@ windows_data_socket::windows_data_socket(SOCKET source_socket) : WindowsSocket(s
     }
 }
 
-std::vector<char> windows_data_socket::receive_data() {
-    std::cout << "[Data] Trying to receive data from Socket: " << get_identifier_str() << std::endl;
-    std::vector<char> recv_data = std::vector<char>(500, (char)0);
-    int iResult = recv(_socket, recv_data.data(), (int)recv_data.size(), 0);
-    if (iResult > 0)
+Message windows_data_socket::receive_message() {
+    process_socket_data();
+
+    if (_stored_messages.size() > 0)
     {
-        std::cout << "Received " << iResult << " bytes" << std::endl;
-        recv_data.resize(iResult);
-        log_msg(recv_data, false, *this);
-        _seen_data += iResult;
+        auto tmp = _stored_messages.front();
+        _stored_messages.pop();
+        return tmp;
     }
-    else if (iResult == SOCKET_ERROR)
-    {
-        std::cerr << "Receiving data failed: " << get_last_error() << std::endl;
-        return std::vector<char>();
-    }
-    else
-        std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
-    return recv_data;
+
+    throw PRINT_MSG_LINE("Failed to parse incoming data");
 }
 
-bool windows_data_socket::has_data()
+bool windows_data_socket::has_message()
 {
     std::array<WSAPOLLFD, 1> poll_states = { WSAPOLLFD{ _socket, POLLRDNORM, 0 } };
     int num_polled = WSAPoll(poll_states.data(), 1, 0);

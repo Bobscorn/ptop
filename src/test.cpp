@@ -90,8 +90,6 @@ int main(int argc, char** argv)
 		test_connect = nullptr;
 		test_listen = nullptr;
 
-		std::this_thread::sleep_for(2s);
-
 		auto test_connect_2 = Sockets::CreateReusableConnectSocket(name, "localhost", test_port);
 		test_listen = Sockets::CreateReusableNonBlockingListenSocket(test_port);
 		test_listen->listen();

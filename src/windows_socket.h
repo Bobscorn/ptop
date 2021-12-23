@@ -14,6 +14,9 @@
 
 #include <memory>
 #include <string>
+#include <queue>
+
+#include "message.h"
 
 #pragma warning( push )
 #pragma warning(disable : 4250)
@@ -81,15 +84,19 @@ class windows_listen_socket : public WindowsSocket, public IListenSocket
 
 class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 {
-public:
+	std::queue<Message> _stored_messages;
+
+	void process_socket_data();
+
+	public:
 	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 	windows_data_socket(SOCKET source_socket);
 	windows_data_socket(std::string peer_address, std::string peer_port);
 
-	std::vector<char> receive_data() override;
-	bool has_data() override;
+	Message receive_message() override;
+	bool has_message() override;
 
-	bool send_data(const std::vector<char>& data) override;
+	bool send_data(const Message& message) override;
 };
 
 class windows_reusable_nonblocking_listen_socket : public WindowsSocket, public IReusableNonBlockingListenSocket

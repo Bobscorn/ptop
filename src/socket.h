@@ -5,6 +5,7 @@
 #include <string>
 
 #include "ip.h"
+#include "message.h"
 
 #ifdef WIN32
 
@@ -80,10 +81,10 @@ public:
 	virtual ~IDataSocket() {}
 
 
-	virtual std::vector<char> receive_data() = 0;
-	virtual bool has_data() = 0;
+	virtual Message receive_message() = 0;
+	virtual bool has_message() = 0;
 
-	virtual bool send_data(const std::vector<char>& data) = 0;
+	virtual bool send_data(const Message& message) = 0;
 
 	inline size_t bytes_seen() { return _seen_data; }
 	inline size_t bytes_sent() { return _sent_bytes; }
@@ -139,4 +140,4 @@ class Sockets
 	static std::unique_ptr<IDataSocket> ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 };
 
-void log_msg(const std::vector<char>& data, bool sending, ISocket& sock);
+void log_msg(const Message& data, bool sending, ISocket& sock);

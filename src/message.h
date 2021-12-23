@@ -10,6 +10,11 @@
 #define PRINT_MSG_LINE(x) std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + x)
 #endif
 
+
+// Example Message Data: 
+// MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
+// A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long
+
 enum class MESSAGE_TYPE
 {
 	NONE = 0,
@@ -21,6 +26,17 @@ enum class MESSAGE_TYPE
 	MY_DATA,
 	AUTH_PLS,
 	HERES_YOUR_AUTH,
+};
+
+typedef unsigned long MESSAGE_LENGTH_T;
+
+struct Message
+{
+	MESSAGE_TYPE Type;
+	MESSAGE_LENGTH_T Length;
+	std::vector<char> Data;
+
+	std::vector<char> to_bytes() const;
 };
 
 inline std::string mt_to_string(const MESSAGE_TYPE& t)
@@ -50,34 +66,32 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 }
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
-std::vector<char> create_message(MESSAGE_TYPE type, T other_data)
+Message create_message(MESSAGE_TYPE type, T other_data)
 {
-	std::vector<char> out(sizeof(type) + sizeof(other_data), '0');
-	std::memcpy(out.data(), &type, sizeof(type));
-	std::memcpy(out.data() + sizeof(type), &other_data, sizeof(other_data));
-	return out;
+	MESSAGE_LENGTH_T length = sizeof(other_data);
+	Message mess;
+	mess.Type = type;
+	mess.Length = sizeof(other_data);
+	mess.Data = std::vector<char>(&other_data, &other_data + sizeof(other_data));
+	return mess;
 }
 
-inline std::vector<char> create_message(MESSAGE_TYPE type)
+inline Message create_message(MESSAGE_TYPE type)
 {
-	std::vector<char> out(sizeof(type), '0');
-	std::memcpy(out.data(), &type, sizeof(type));
-	return out;
-}
-
-inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> data)
-{
-	data.insert(data.begin(), sizeof(type), '0');
-	std::memcpy(data.data(), &type, sizeof(type));
+	Message data;
+	data.Type = type;
+	data.Length = 0;
+	data.Data = std::vector<char>();
 	return data;
 }
 
-inline std::vector<char> create_message(MESSAGE_TYPE type, std::vector<char> data, std::vector<char> dataB)
+inline Message create_message(MESSAGE_TYPE type, std::vector<char> data)
 {
-	data.insert(data.begin(), sizeof(type), '0');
-	std::memcpy(data.data(), &type, sizeof(type));
-	data.insert(data.end(), dataB.begin(), dataB.end());
-	return data;
+	Message mess;
+	mess.Type = type;
+	mess.Length = data.size();
+	mess.Data = std::move(data);
+	return mess;
 }
 
 struct copy_to_message_struct
@@ -129,13 +143,15 @@ inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst, Type
 inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst) {}
 
 template<typename... Types>
-inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
+inline Message create_message(MESSAGE_TYPE type, Types... args)
 {
-	std::vector<char> data{};
-	data.resize(sizeof(type));
-	std::memcpy(data.data(), &type, sizeof(type));
-	copy_to_message_struct::copy_to_message(data, args...);
-	return data;
+	Message mess;
+	mess.Data = std::vector<char>{};
+	mess.Data.resize(sizeof(type));
+	std::memcpy(mess.Data.data(), &type, sizeof(type));
+	copy_to_message_struct::copy_to_message(mess.Data, args...);
+	mess.Length = mess.Data.size();
+	return mess;
 }
 
 //template<>
@@ -163,13 +179,15 @@ inline std::vector<char> create_message(MESSAGE_TYPE type, Types... args)
 //	copy_to_message(other_args...);
 //}
 
-inline std::vector<char> create_message(MESSAGE_TYPE type, std::string data)
+inline Message create_message(MESSAGE_TYPE type, std::string data)
 {
+	Message mess;
+	mess.Type = type;
+	mess.Length = data.length();
 	size_t len = data.length();
-	std::vector<char> out_data(sizeof(type) + sizeof(len), '0');
-	std::memcpy(out_data.data(), &type, sizeof(type));
-	std::memcpy(out_data.data() + sizeof(type), &len, sizeof(len));
-	out_data.reserve(sizeof(type) + sizeof(len) + data.length());
-	out_data.insert(out_data.end(), data.begin(), data.end());
-	return out_data;
+	mess.Data = std::vector<char>(sizeof(len), '0');
+	std::memcpy(mess.Data.data(), &len, sizeof(len));
+	mess.Data.reserve(sizeof(type) + sizeof(len) + data.length());
+	mess.Data.insert(mess.Data.end(), data.begin(), data.end());
+	return mess;
 }
