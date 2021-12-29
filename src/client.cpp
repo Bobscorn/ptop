@@ -69,7 +69,7 @@ EXECUTION_STATUS process_server_data(const Message& mess, std::string port, std:
         const char* data = mess.Data.data();
         auto data_len = mess.Length;
 
-        if (data_len < 1)
+        if (mess == Message::null_message)
         {
             std::cout << "Received empty data, disconnecting" << std::endl;
             return EXECUTION_STATUS::COMPLETE;
@@ -199,7 +199,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
     {
         const char* data = mess.Data.data();
         auto data_len = mess.Length;
-        if (data_len < 1)
+        if (mess == Message::null_message)
         {
             std::cout << "Received empty data, disconnecting" << std::endl;
             return EXECUTION_STATUS::COMPLETE;

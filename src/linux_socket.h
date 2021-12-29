@@ -89,6 +89,6 @@ class linux_reuse_nonblock_connection_socket : public LinuxSocket, public IReusa
 public:
 	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port);
 
-	void connect(std::string ip_address, std::string port);
+	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;
 };

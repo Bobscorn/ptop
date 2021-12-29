@@ -112,9 +112,9 @@ public:
 class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	windows_reusable_nonblocking_connection_socket(raw_name_data data, std::string ip_address, std::string port);
+	windows_reusable_nonblocking_connection_socket(raw_name_data private_binding, std::string ip_address, std::string port);
 
-	void connect(std::string ip_address, std::string port);
+	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;
 };
 

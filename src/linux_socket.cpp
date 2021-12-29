@@ -335,37 +335,40 @@ void linux_data_socket::process_socket_data()
 		std::cout << "Received " << iResult << " bytes" << std::endl;
 		recv_data.resize(iResult);
 		_seen_data += iResult;
+
+		int data_read = 0;
+
+		while ((recv_data.size() - data_read) > 0)
+		{
+			MESSAGE_TYPE type;
+			MESSAGE_LENGTH_T length;
+			std::vector<char> data;
+
+			if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
+			{
+				std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+				return;
+			}
+			if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
+			{
+				std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+				return;
+			}
+			data = std::vector<char>(recv_data.data() + data_read, recv_data.data() + data_read + length);
+			data_read += length;
+			auto new_message = Message{ type, length, std::move(data) };
+			_stored_messages.push(new_message);
+			log_msg(new_message, false, *this);
+		}
 	}
 	else if (iResult == -1)
 	{
 		std::cerr << "Receiving data failed: " << linux_error() << std::endl;
 	}
 	else
-		std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
-
-	int data_read = 0;
-
-	while ((recv_data.size() - data_read) > 0)
 	{
-		MESSAGE_TYPE type;
-		MESSAGE_LENGTH_T length;
-		std::vector<char> data;
-
-		if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
-		{
-			std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
-			return;
-		}
-		if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
-		{
-			std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
-			return;
-		}
-		data = std::vector<char>(recv_data.data() + data_read, recv_data.data() + data_read + length);
-		data_read += length;
-		auto new_message = Message{ type, length, std::move(data) };
-		_stored_messages.push(new_message);
-		log_msg(new_message, false, *this);
+		std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
+		recv_data.clear();
 	}
 }
 

@@ -37,6 +37,10 @@ struct Message
 	std::vector<char> Data;
 
 	std::vector<char> to_bytes() const;
+
+	inline constexpr bool operator==(const Message& other) const { return Type == other.Type && Length == other.Length && Data == other.Data; }
+
+	static const Message null_message;
 };
 
 inline std::string mt_to_string(const MESSAGE_TYPE& t)

@@ -118,6 +118,7 @@ class IReusableNonBlockingConnectSocket : public IReusableSocket
 	public:
 	virtual ~IReusableNonBlockingConnectSocket() {}
 
+	virtual void connect(std::string ip_address, std::string port) = 0;
 	virtual ConnectionStatus has_connected() = 0;
 };
 

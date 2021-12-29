@@ -1,5 +1,7 @@
 #include "message.h"
 
+const Message Message::null_message = Message{ MESSAGE_TYPE::NONE, (MESSAGE_LENGTH_T)-1, std::vector<char>() };
+
 std::vector<char> Message::to_bytes() const
 {
 	std::vector<char> out_data{ sizeof(Type) + sizeof(Length) + Data.size(), '0', std::allocator<char>() };

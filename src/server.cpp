@@ -63,7 +63,7 @@ EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSo
 {
     const char* data = msg.Data.data();
     auto data_len = msg.Length;
-    if (data_len < 1)
+    if (msg == Message::null_message)
     {
         std::cout << "Received empty data from a client (" << source->get_endpoint_ip() << ":" << source->get_endpoint_port() << "), disconnecting client" << std::endl;
         source = nullptr;
