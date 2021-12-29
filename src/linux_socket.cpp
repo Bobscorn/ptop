@@ -201,13 +201,13 @@ int listen_construct(std::string port)
 		int listen_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 		socklen_t cli_len;
-		if (listen_socket < 0)
+		if (listen_socket == INVALID_SOCKET)
 			throw std::runtime_error(std::string("[Listen] Failed to create linux socket: ") + linux_error());
 
 		// BEGIN POTENTIAL BUG FIX TEST
 		int reuseVal = 1;
 		int n = setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(listen_socket);
@@ -215,7 +215,7 @@ int listen_construct(std::string port)
 		}
 #ifdef SO_REUSEPORT
 		n = setsockopt(listen_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(listen_socket);
@@ -233,7 +233,9 @@ int listen_construct(std::string port)
 		serv_addr.sin_port = htons(portno);
 
 		std::cout << "Binding..." << std::endl;
-		if (bind(listen_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+		auto newbind = bind(listen_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+
+		if (newbind == SOCKET_ERROR)
 			throw std::runtime_error(std::string("[Listen] Failed to bind linux socket: ") + linux_error());
 
 		return listen_socket;
@@ -251,7 +253,7 @@ linux_listen_socket::linux_listen_socket(std::string port) : LinuxSocket(listen_
 void linux_listen_socket::listen()
 {
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
-	if (::listen(_socket, 5) < 0)
+	if (::listen(_socket, 5) == SOCKET_ERROR)
 		throw PRINT_MSG_LINE(std::string("[Listen] Error when listening: ") + linux_error());
 }
 
@@ -270,10 +272,10 @@ bool linux_listen_socket::has_connection()
 	poll_thing.events = POLLRDNORM;
 	poll_thing.revents = 0;
 
-	int n = poll(&poll_thing, 1, 0);
-	if (n > 0)
+	int num_polled = poll(&poll_thing, 1, 0);
+	if (num_polled > 0)
 		return poll_thing.revents | POLLRDNORM;
-	if (n < 0)
+	if (num_polled == SOCKET_ERROR)
 		throw PRINT_MSG_LINE(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
 	return false;
 }
@@ -286,7 +288,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 		sockaddr_in client_addr;
 		socklen_t client_len;
 		int new_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
-		if (new_socket < 0)
+		if (new_socket == INVALID_SOCKET)
 			return nullptr;
 
 		raw_name_data name;
@@ -383,6 +385,9 @@ linux_data_socket::linux_data_socket(int socket) : LinuxSocket(socket)
 	{
 		std::cout << "[Data] Copy Constructor Data socket" << std::endl;
 		update_endpoint_info();
+
+		if (socket == INVALID_SOCKET)
+			throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
 	}
 	catch (...)
 	{
@@ -407,14 +412,14 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 
 		int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 			throw PRINT_MSG_LINE("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
 
-		int conn_socket = -1;
+		int conn_socket = INVALID_SOCKET;
 		for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 		{
 			conn_socket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-			if (conn_socket < 0)
+			if (conn_socket == INVALID_SOCKET)
 			{
 				auto last_err = linux_error();
 				freeaddrinfo(result);
@@ -424,7 +429,7 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 			// BEGIN POTENTIAL BUG FIX TEST
 			int reuseVal = 1;
 			int n = setsockopt(conn_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
-			if (n < 0)
+			if (n == SOCKET_ERROR)
 			{
 				auto err = linux_error();
 				close(conn_socket);
@@ -432,7 +437,7 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 			}
 #ifdef SO_REUSEPORT
 			n = setsockopt(conn_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
-			if (n < 0)
+			if (n == SOCKET_ERROR)
 			{
 				auto err = linux_error();
 				close(conn_socket);
@@ -442,10 +447,10 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 			// END BUG FIX TEST
 
 			n = connect(conn_socket, ptr->ai_addr, ptr->ai_addrlen);
-			if (n < 0)
+			if (n == SOCKET_ERROR)
 			{
 				close(conn_socket);
-				conn_socket = -1;
+				conn_socket = INVALID_SOCKET;
 				continue;
 			}
 			auto readable = convert_to_readable(raw_name_data{ *ptr->ai_addr, ptr->ai_addrlen });
@@ -455,7 +460,7 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 
 		freeaddrinfo(result);
 
-		if (conn_socket < 0)
+		if (conn_socket == INVALID_SOCKET)
 			throw PRINT_MSG_LINE("[Data] No sockets successfully connected to peer");
 
 		return conn_socket;
@@ -496,7 +501,7 @@ bool linux_data_socket::has_message()
 	FD_SET(_socket, &poll_read_set);
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
-	if (n < 0)
+	if (n == SOCKET_ERROR)
 		throw PRINT_MSG_LINE("[Data] Failed to poll linux socket readability: " + linux_error());
 
 	return n > 0;
@@ -507,7 +512,7 @@ bool linux_data_socket::send_data(const Message& message)
 	log_msg(message, true, *this);
 	auto bytes = message.to_bytes();
 	int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
-	if (iSendResult == -1)
+	if (iSendResult == SOCKET_ERROR)
 	{
 		std::cerr << "Failed to send data with: " << linux_error() << std::endl;
 		return false;
@@ -524,7 +529,7 @@ bool linux_data_socket::has_died()
 		{
 			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
 			int n = recv(_socket, recv_data.data(), recv_data.size(), MSG_PEEK);
-			if (n < -1)
+			if (n == SOCKET_ERROR)
 			{
 				std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << linux_error() << std::endl;
 				return true;
@@ -554,12 +559,12 @@ int reuse_listen_construct(std::string port)
 		serv_addr.sin_port = htons(portno);
 
 		int listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
-		if (listen_socket < 0)
+		if (listen_socket == INVALID_SOCKET)
 			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
 
 		int reuseVal = 1;
 		int n = setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(listen_socket);
@@ -567,7 +572,7 @@ int reuse_listen_construct(std::string port)
 		}
 #ifdef SO_REUSEPORT
 		n = setsockopt(listen_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(listen_socket);
@@ -575,8 +580,8 @@ int reuse_listen_construct(std::string port)
 		}
 #endif
 
-		n = ::bind(listen_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-		if (n < 0)
+		n = bind(listen_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(listen_socket);
@@ -600,7 +605,7 @@ void linux_reuse_nonblock_listen_socket::listen()
 {
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	auto n = ::listen(_socket, 4);
-	if (n < 1 && n != EINPROGRESS && n != EAGAIN)
+	if (n == SOCKET_ERROR && n != EINPROGRESS && n != EAGAIN)
 	{
 		auto err = errno;
 		if (err && err != EINPROGRESS && err != EAGAIN)
@@ -619,7 +624,7 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 	FD_SET(_socket, &poll_read_set);
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
-	if (n < 0)
+	if (n == SOCKET_ERROR)
 		throw PRINT_MSG_LINE("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error());
 
 	return n > 0;
@@ -634,7 +639,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 		socklen_t client_len;
 		int accepted_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
 
-		if (accepted_socket < 0)
+		if (accepted_socket == INVALID_SOCKET)
 			return nullptr;
 		raw_name_data name;
 		name.name = *(sockaddr*)&client_addr;
@@ -656,7 +661,7 @@ int reuse_connection_construct(raw_name_data data)
 		auto readable = convert_to_readable(data);
 		std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
 		int conn_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
-		if (conn_socket < 0)
+		if (conn_socket == INVALID_SOCKET)
 		{
 			auto err = linux_error();
 			throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + err);
@@ -664,7 +669,7 @@ int reuse_connection_construct(raw_name_data data)
 
 		int reuseVal = 1;
 		int n = setsockopt(conn_socket, SOL_SOCKET, SO_REUSEADDR, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(conn_socket);
@@ -673,7 +678,7 @@ int reuse_connection_construct(raw_name_data data)
 		reuseVal = 1;
 #ifdef SO_REUSEPORT
 		n = setsockopt(conn_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(conn_socket);
@@ -681,8 +686,8 @@ int reuse_connection_construct(raw_name_data data)
 		}
 #endif
 
-		n = ::bind(conn_socket, &data.name, data.name_len);
-		if (n < 0)
+		n = bind(conn_socket, &data.name, data.name_len);
+		if (n == SOCKET_ERROR)
 		{
 			auto err = linux_error();
 			close(conn_socket);
@@ -700,7 +705,7 @@ int reuse_connection_construct(raw_name_data data)
 
 linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port) : LinuxSocket(reuse_connection_construct(data))
 {
-	connect(ip_address, port);
+	this->connect(ip_address, port);
 }
 
 void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std::string port)
@@ -724,7 +729,7 @@ void linux_reuse_nonblock_connection_socket::connect(std::string ip_address, std
 			throw std::runtime_error((std::string("No possible sockets found for '") + ip_address + ":" + port + "'").c_str());
 
 		iResult = ::connect(_socket, results->ai_addr, (int)results->ai_addrlen);
-		if (iResult < 0)
+		if (iResult == SOCKET_ERROR)
 		{
 			auto last_err = errno;
 			if (last_err != EAGAIN && last_err != EINPROGRESS)
@@ -742,7 +747,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 {
 	try
 	{
-		if (_socket < 0)
+		if (_socket == INVALID_SOCKET)
 			return ConnectionStatus::FAILED;
 
 		fd_set write_set;
@@ -755,7 +760,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 
 		int n = select(_socket + 1, NULL, &write_set, NULL, &timeout);
 
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 			throw std::runtime_error(std::string("Failed to select nonblock connect socket write-ability (whether it has connected): ") + linux_error());
 
 		if (FD_ISSET(_socket, &write_set))
@@ -768,14 +773,14 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 		FD_ZERO(&except_set);
 		FD_SET(_socket, &except_set);
 		n = select(_socket + 1, NULL, NULL, &except_set, &timeout);
-		if (n < 0)
+		if (n == SOCKET_ERROR)
 			throw std::runtime_error(std::string("Failed to select socket error status with: ") + linux_error());
 		if (!FD_ISSET(_socket, &except_set))
 			return ConnectionStatus::PENDING;
 
 		int sock_error = 0;
 		socklen_t sock_error_size = sizeof(sock_error);
-		if (getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)&sock_error, &sock_error_size) < 0)
+		if (getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)&sock_error, &sock_error_size) == SOCKET_ERROR)
 			throw std::runtime_error(std::string("Failed to get socket error code with: ") + linux_error());
 
 		std::cerr << "Socket has error code: " << sock_error << std::endl;

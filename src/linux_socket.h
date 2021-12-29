@@ -43,7 +43,7 @@ public:
 	inline std::string get_identifier_str() const override { if (!_endpoint_assigned) return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(pub: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
 	inline int get_socket() const { return _socket; }
-	inline void clear_socket() { _socket = -1; }
+	inline void clear_socket() { _socket = INVALID_SOCKET; }
 };
 
 class linux_listen_socket : public LinuxSocket, public IListenSocket

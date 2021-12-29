@@ -45,7 +45,14 @@ typedef linux_name_data raw_name_data;
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
 #endif // SOCKET_ERROR
+
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET -1
+#endif
+
 #endif // WIN32/__linux__
+
+
 
 enum class ConnectionStatus
 {
