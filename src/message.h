@@ -76,7 +76,7 @@ Message create_message(MESSAGE_TYPE type, T other_data)
 	Message mess;
 	mess.Type = type;
 	mess.Length = sizeof(other_data);
-	mess.Data = std::vector<char>(&other_data, &other_data + sizeof(other_data));
+	mess.Data = std::vector<char>((char*)&other_data, ((char*)&other_data) + sizeof(other_data));
 	return mess;
 }
 
@@ -150,9 +150,8 @@ template<typename... Types>
 inline Message create_message(MESSAGE_TYPE type, Types... args)
 {
 	Message mess;
+	mess.Type = type;
 	mess.Data = std::vector<char>{};
-	mess.Data.resize(sizeof(type));
-	std::memcpy(mess.Data.data(), &type, sizeof(type));
 	copy_to_message_struct::copy_to_message(mess.Data, args...);
 	mess.Length = mess.Data.size();
 	return mess;
@@ -187,11 +186,11 @@ inline Message create_message(MESSAGE_TYPE type, std::string data)
 {
 	Message mess;
 	mess.Type = type;
-	mess.Length = data.length();
 	size_t len = data.length();
 	mess.Data = std::vector<char>(sizeof(len), '0');
 	std::memcpy(mess.Data.data(), &len, sizeof(len));
 	mess.Data.reserve(sizeof(type) + sizeof(len) + data.length());
 	mess.Data.insert(mess.Data.end(), data.begin(), data.end());
+	mess.Length = mess.Data.size();
 	return mess;
 }

@@ -392,12 +392,11 @@ SOCKET windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingC
 
 void windows_data_socket::process_socket_data()
 {
-    std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
+    std::cout << "[Data] Begin Receive " << get_identifier_str() << std::endl;
     std::vector<char> recv_data = std::vector<char>(500, (char)0);
     int iResult = recv(_socket, recv_data.data(), (int)recv_data.size(), 0);
     if (iResult > 0)
     {
-        std::cout << "Received " << iResult << " bytes" << std::endl;
         recv_data.resize(iResult);
         _seen_data += iResult;
 
