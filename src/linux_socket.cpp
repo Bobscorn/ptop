@@ -349,11 +349,19 @@ void linux_data_socket::process_socket_data()
 			if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
 			{
 				std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+				recv_data.clear();
 				return;
 			}
 			if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
 			{
 				std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+				recv_data.clear();
+				return;
+			}
+			if (data_read + length > recv_data.size())
+			{
+				std::cerr << "Socket " << get_identifier_str() << " Read an invalid Length for a message" << std::endl;
+				recv_data.clear();
 				return;
 			}
 			data = std::vector<char>(recv_data.data() + data_read, recv_data.data() + data_read + length);

@@ -28,7 +28,7 @@ enum class MESSAGE_TYPE
 	HERES_YOUR_AUTH,
 };
 
-typedef unsigned long MESSAGE_LENGTH_T;
+typedef uint32_t MESSAGE_LENGTH_T;
 
 struct Message
 {
@@ -38,7 +38,7 @@ struct Message
 
 	std::vector<char> to_bytes() const;
 
-	inline constexpr bool operator==(const Message& other) const { return Type == other.Type && Length == other.Length && Data == other.Data; }
+	inline bool operator==(const Message& other) const { return Type == other.Type && Length == other.Length && Data == other.Data; }
 
 	static const Message null_message;
 };

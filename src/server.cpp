@@ -31,7 +31,39 @@ server_init_kit::server_init_kit(std::function<void(thread_queue&)> thread_func)
     status = EXECUTION_STATUS::CONTINUE;
 }
 
+server_init_kit::server_init_kit(server_init_kit&& other)
+{
+    *this = std::move(other);
+}
+
 server_init_kit::~server_init_kit() {}
+
+server_init_kit& server_init_kit::operator=(server_init_kit&& other)
+{
+    clientA = std::move(other.clientA);
+    clientB = std::move(other.clientB);
+
+    privA = std::move(other.privA);
+    privB = std::move(other.privB);
+
+    cA = std::move(other.cA);
+    cB = std::move(other.cB);
+    other.cA = nullptr;
+    other.cB = nullptr;
+
+    server_socket = std::move(other.server_socket);
+
+    recv_data = std::move(other.recv_data);
+
+    input_thread = std::move(other.input_thread);
+
+    take_message_lock = std::move(other.take_message_lock);
+
+    status = std::move(other.status);
+    other.status = EXECUTION_STATUS::FAILED;
+
+    return *this;
+}
 
 void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
 {
