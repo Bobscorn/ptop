@@ -18,6 +18,7 @@
 
 #include "message.h"
 #include "loop.h"
+#include "logger.h"
 
 
 std::string linux_error()
@@ -369,7 +370,7 @@ void linux_data_socket::process_socket_data()
 			data_read += length;
 			auto new_message = Message{ type, length, std::move(data) };
 			_stored_messages.push(new_message);
-			log_msg(new_message, false, *this);
+			std::cout << "Socket " << (*this).get_identifier_str() << "Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes" << std::endl;
 		}
 	}
 	else if (iResult == -1)
@@ -522,6 +523,7 @@ bool linux_data_socket::has_message()
 bool linux_data_socket::send_data(const Message& message)
 {
 	log_msg(message, true, *this);
+	std::cout << "Socket " << (*this).get_identifier_str() << "sending " << "a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
 	auto bytes = message.to_bytes();
 	int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
 	if (iSendResult == SOCKET_ERROR)

@@ -63,19 +63,3 @@ std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusa
 #endif
 	throw std::runtime_error("Failed to convert to datasocket");
 }
-
-#define DO_MSG_TYPE_LOGGING
-#ifdef DO_MSG_TYPE_LOGGING
-#include <iostream>
-
-#include "message.h"
-void log_msg(const Message& mess, bool sending, ISocket& sock)
-{
-	std::cout << "Socket " << sock.get_identifier_str() << (sending ? "Sending " : "Received ") << "a Message of type: " << mt_to_string(mess.Type) << " with length: " << mess.Length << " bytes" << std::endl;
-}
-#else
-void log_msg(const std::vector<char>& data, bool sending, ISocket& sock)
-{
-
-}
-#endif

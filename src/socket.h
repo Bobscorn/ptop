@@ -152,5 +152,3 @@ class Sockets
 	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
 	static std::unique_ptr<IDataSocket> ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 };
-
-void log_msg(const Message& data, bool sending, ISocket& sock);

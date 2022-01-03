@@ -362,7 +362,7 @@ windows_data_socket::windows_data_socket(std::string peer_address, std::string p
 
 bool windows_data_socket::send_data(const Message& message)
 {
-    log_msg(message, true, *this);
+    std::cout << "Socket " << (*this).get_identifier_str() << "sending " << "a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
     auto bytes = message.to_bytes();
     int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
     if (iSendResult == SOCKET_ERROR)
@@ -427,7 +427,7 @@ void windows_data_socket::process_socket_data()
             data_read += length;
             auto new_message = Message{ type, length, std::move(data) };
             _stored_messages.push(new_message);
-            log_msg(new_message, false, *this);
+            std::cout << "Socket " << (*this).get_identifier_str() << "Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes" << std::endl;
         }
     }
     else if (iResult == SOCKET_ERROR)
