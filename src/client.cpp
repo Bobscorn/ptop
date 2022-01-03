@@ -9,8 +9,8 @@
 
 using namespace std::chrono;
 
-client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) {
-    conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
+client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) : protocol(chosen_protocol) {
+    conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort, protocol);
     // Indicate to server we're ready for p2p
     last_send = std::chrono::system_clock::now();
     conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
@@ -64,7 +64,7 @@ EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>&
     }
 }
 
-EXECUTION_STATUS process_server_data(const Message& mess, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out)
+EXECUTION_STATUS process_server_data(const Message& mess, std::string port, std::unique_ptr<IDataSocket>& conn_socket, int& auth_key_out, const protocol& proto)
 {
     try
     {
@@ -112,10 +112,10 @@ EXECUTION_STATUS process_server_data(const Message& mess, std::string port, std:
             std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
             std::this_thread::sleep_for(100ms);
 
-            std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port);
+            std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port, proto);
             listen_sock->listen();
-            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port);
-            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port);
+            auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, proto);
+            auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, proto);
 
             std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
 
@@ -272,7 +272,7 @@ void client_loop(std::string server_address_pair, protocol input_protocol)
             if (init.conn_socket->has_message())
             {
                 auto data = init.conn_socket->receive_message();
-                init.status = process_server_data(data, Sockets::ClientListenPort, init.conn_socket, init.auth_key);
+                init.status = process_server_data(data, Sockets::ClientListenPort, init.conn_socket, init.auth_key, input_protocol);
             }
 
             std::this_thread::sleep_for(100ms);

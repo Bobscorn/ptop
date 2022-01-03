@@ -3,6 +3,8 @@
 
 #include <string>
 #include <memory>
+#include <exception>
+#include <stdexcept>
 
 #ifdef WIN32
 #include "windows_socket.h"
@@ -56,10 +58,10 @@ std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusa
 	if (auto reuse_nb = dynamic_cast<windows_reusable_nonblocking_connection_socket*>(old.get()))
 		return std::make_unique<windows_data_socket>(std::move(old), reuse_nb->get_protocol());
 #elif __linux__
-	if (auto reuse_nb = dynamic_cast<linux_reusable_nonblocking_connection_socket*>(old.get()))
+	if (auto reuse_nb = dynamic_cast<linux_reuse_nonblock_connection_socket*>(old.get()))
 		return std::make_unique<linux_data_socket>(std::move(old), reuse_nb->get_protocol());
 #endif
-	throw std::runtime_error("Failed ")
+	throw std::runtime_error("Failed to convert to datasocket");
 }
 
 #define DO_MSG_TYPE_LOGGING

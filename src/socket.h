@@ -6,6 +6,7 @@
 
 #include "ip.h"
 #include "message.h"
+#include "protocol.h"
 
 #ifdef WIN32
 
@@ -145,10 +146,10 @@ class Sockets
 	static const std::string ServerListenPort;
 	static const std::string ClientListenPort;
 
-	static std::unique_ptr<IListenSocket> CreateListenSocket(std::string port);
-	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port);
-	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port);
-	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port);
+	static std::unique_ptr<IListenSocket> CreateListenSocket(std::string port, protocol proto);
+	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port, protocol proto);
+	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port, protocol proto);
+	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
 	static std::unique_ptr<IDataSocket> ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
 };
 

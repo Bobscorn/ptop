@@ -10,8 +10,10 @@
 #include "loop.h"
 #include "socket.h"
 
+class server_init_kit;
 
 void server_loop();
+void process_server_protocol(server_init_kit& input_proto);
 
 class server_init_kit {
     public:
@@ -28,15 +30,10 @@ class server_init_kit {
 
         std::vector<char> recv_data;
 
-        thread_queue message_queue;
-
-        std::thread input_thread;
-
-        std::unique_lock<std::shared_mutex> take_message_lock;
-
         EXECUTION_STATUS status;
+        protocol proto;
 
-        server_init_kit(std::function<void(thread_queue&)> thread_func);
+        server_init_kit(protocol proto);
         server_init_kit(server_init_kit&& other);
 
         server_init_kit& operator=(server_init_kit&& other);

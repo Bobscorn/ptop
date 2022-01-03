@@ -286,7 +286,7 @@ std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
         auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
         auto readable = convert_to_readable(raw);
         std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
-        return std::make_unique<windows_data_socket>(send_socket);
+        return std::make_unique<windows_data_socket>(send_socket, _protocol);
     }
     return nullptr;
 }
@@ -614,7 +614,7 @@ std::unique_ptr<IDataSocket> windows_reusable_nonblocking_listen_socket::accept_
     name.name_len = endpoint_len;
     auto readable = convert_to_readable(name);
     std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
-    return std::make_unique<windows_data_socket>(accepted_socket);
+    return std::make_unique<windows_data_socket>(accepted_socket, _protocol);
 }
 
 SOCKET windows_reuse_nb_construct(raw_name_data name)

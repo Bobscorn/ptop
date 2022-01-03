@@ -194,12 +194,12 @@ readable_ip_info LinuxSocket::get_myname_readable() const
 	}
 }
 
-int listen_construct(std::string port)
+int listen_construct(std::string port, protocol input_proto)
 {
 	try
 	{
 		std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
-		int listen_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		int listen_socket = socket(input_proto.get_ai_family(), input_proto.get_ai_socktype(), input_proto.get_ai_protocol());
 
 		socklen_t cli_len;
 		if (listen_socket == INVALID_SOCKET)
@@ -247,7 +247,7 @@ int listen_construct(std::string port)
 	}
 }
 
-linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto) : LinuxSocket(listen_construct(port, input_proto))
+linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto) : LinuxSocket(listen_construct(port, input_proto), input_proto)
 {
 }
 
@@ -297,7 +297,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 		name.name_len = client_len;
 		auto readable = convert_to_readable(name);
 		std::cout << "[Listen] Accepted a connection: " << readable.ip_address << ":" << readable.port << std::endl;
-		return std::make_unique<linux_data_socket>(new_socket);
+		return std::make_unique<linux_data_socket>(new_socket, _protocol);
 	}
 	catch (...)
 	{
@@ -383,7 +383,7 @@ void linux_data_socket::process_socket_data()
 	}
 }
 
-linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : LinuxSocket(steal_construct(std::move(old)))
+linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_proto) : LinuxSocket(steal_construct(std::move(old)), input_proto)
 {
 	update_endpoint_info();
 }
@@ -658,7 +658,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 		name.name_len = client_len;
 		auto readable = convert_to_readable(name);
 		std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
-		return std::make_unique<linux_data_socket>(accepted_socket);
+		return std::make_unique<linux_data_socket>(accepted_socket, _protocol);
 	}
 	catch (...)
 	{
@@ -715,7 +715,7 @@ int reuse_connection_construct(raw_name_data data, protocol proto)
 	}
 }
 
-linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto) : LinuxSocket(reuse_connection_construct(data. proto), proto)
+linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto) : LinuxSocket(reuse_connection_construct(data, proto), proto)
 {
 	// if tcp?
 	this->connect(ip_address, port);

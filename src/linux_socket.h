@@ -65,7 +65,7 @@ class linux_data_socket : public LinuxSocket, public IDataSocket
 
 	void process_socket_data();
 	public:
-	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_proto);
 	linux_data_socket(int socket, protocol ip_proto);
 	linux_data_socket(std::string peer_address, std::string peer_port, protocol ip_proto);
 

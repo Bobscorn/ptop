@@ -7,29 +7,30 @@
 #endif
 #include <iostream>
 #include <algorithm>
+#include <stdexcept>
 
 using namespace std;
 
 
 protocol::protocol(string possible_protocol) {
-    auto lowered = transform(possible_protocol.begin(), possible_protocol.end(), possible_protocol.begin(), ::tolower);
+    transform(possible_protocol.begin(), possible_protocol.end(), possible_protocol.begin(), ::tolower);
 
-    if(lowered == "tcp") {
+    if (possible_protocol == "tcp") {
         ai_family = AF_INET;
-        ai_sockettype = SOCK_STREAM;
+        ai_socktype = SOCK_STREAM;
         ai_protocol = IPPROTO_TCP;
         ai_flags = AI_PASSIVE;
     }
 
-    elif(lowered == "udp") {
+    else if (possible_protocol == "udp") {
         ai_family = AF_INET;
-        ai_sockettype = SOCK_DGRAM;
+        ai_socktype = SOCK_DGRAM;
         ai_protocol = IPPROTO_UDP;
         ai_flags = AI_PASSIVE;
     }
 
     else {
-        throw new std::Exception("Error: possible_protocol '" + lowered + "' is not valid.");
+        throw std::runtime_error(string("Error: possible_protocol '") + possible_protocol + "' is not valid. (not 'tcp' or 'udp')");
     }
 }
 

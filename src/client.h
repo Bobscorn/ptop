@@ -16,7 +16,7 @@ class client_init_kit {
     std::chrono::system_clock::time_point last_send;
     int auth_key;
     EXECUTION_STATUS status;
-    protocol protocol;
+    ::protocol protocol;
 
     client_init_kit(std::string server_address_pair, ::protocol input_protocol);
     ~client_init_kit();
