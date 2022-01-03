@@ -17,6 +17,7 @@
 #include <queue>
 
 #include "message.h"
+#include "protocol.h"
 
 #pragma warning( push )
 #pragma warning(disable : 4250)
@@ -39,12 +40,13 @@ readable_ip_info convert_to_readable(raw_name_data);
 class WindowsSocket : virtual public ISocket
 {
 protected:
-	WindowsSocket(SOCKET socket);
+	WindowsSocket(SOCKET socket, protocol input_protocol);
 	SOCKET _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
+	protocol _protocol;
 	bool _endpoint_assigned = false;
 
 	void update_name_info();
@@ -70,12 +72,14 @@ public:
 
 	inline SOCKET get_socket() const { return _socket; }
 	inline void clear_socket() { _socket = INVALID_SOCKET; }
+
+	inline protocol get_protocol() { return _protocol; };
 };
 
 class windows_listen_socket : public WindowsSocket, public IListenSocket
 {
 	public:
-	windows_listen_socket(std::string port);
+	windows_listen_socket(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
@@ -89,9 +93,9 @@ class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 	void process_socket_data();
 
 	public:
-	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
-	windows_data_socket(SOCKET source_socket);
-	windows_data_socket(std::string peer_address, std::string peer_port);
+	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_protocol);
+	windows_data_socket(SOCKET source_socket, protocol input_protocol);
+	windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol);
 
 	Message receive_message() override;
 	bool has_message() override;
@@ -102,7 +106,7 @@ class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 class windows_reusable_nonblocking_listen_socket : public WindowsSocket, public IReusableNonBlockingListenSocket
 {
 public:
-	windows_reusable_nonblocking_listen_socket(std::string port);
+	windows_reusable_nonblocking_listen_socket(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
@@ -112,7 +116,7 @@ public:
 class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	windows_reusable_nonblocking_connection_socket(raw_name_data private_binding, std::string ip_address, std::string port);
+	windows_reusable_nonblocking_connection_socket(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol);
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;

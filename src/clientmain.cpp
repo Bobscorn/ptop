@@ -36,6 +36,7 @@
 #include "socket.h"
 #include "ip.h"
 #include "message.h"
+#include "protocol.h"
 
 using namespace std::chrono;
 
@@ -63,23 +64,29 @@ int main(int argc, char** argv) {
     try
     {
         std::cout << "Please enter the rendezvous server's IP:" << std::endl;
-        std::string message{};
+        std::string raw_ip{};
 
-        std::cin >> message;
+        std::cin >> raw_ip;
 
-        if (message == "") {
+        if (raw_ip == "") {
             std::this_thread::sleep_for(100ms); //epic optimization
             return 0;
         }
+
+        std::cout << "Please enter your protocol of choice:" << std::endl;
+        std::string possible_protocol{};
+
+        std::cin >> possible_protocol;
+        protocol validated{ possible_protocol };
             
-        client_loop(message);
+        client_loop(raw_ip, validated);
         
 
 
-        // std::string message{};
-        // std::cin >> message;
+        // std::string raw_ip{};
+        // std::cin >> raw_ip;
 
-        // if (message == "") {
+        // if (raw_ip == "") {
         //     continue;
         // }
 

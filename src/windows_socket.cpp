@@ -7,11 +7,13 @@
 
 #include "message.h"
 #include "loop.h"
+#include "protocol.h"
 
 #define AF_FAM AF_INET
 
-WindowsSocket::WindowsSocket(SOCKET socket) 
-: _socket(socket)
+WindowsSocket::WindowsSocket(SOCKET socket, protocol input_protocol) 
+    : _socket(socket)
+    , _protocol(input_protocol)
 { 
 	try
 	{
@@ -211,7 +213,7 @@ readable_ip_info WindowsSocket::get_myname_readable() const
     }
 }
 
-SOCKET construct_windowslistensocket(std::string port) {
+SOCKET construct_windowslistensocket(std::string port, protocol input_protocol) {
     try
     {
         std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
@@ -219,10 +221,10 @@ SOCKET construct_windowslistensocket(std::string port) {
         struct addrinfo* result = NULL, * ptr = NULL, hints;
 
         ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-        hints.ai_flags = AI_PASSIVE;
+        hints.ai_family = input_protocol.get_ai_family();
+        hints.ai_socktype = input_protocol.get_ai_socktype();
+        hints.ai_protocol = input_protocol.get_ai_protocol();
+        hints.ai_flags = input_protocol.get_ai_flags();
 
         iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
         if (iResult != 0)
@@ -251,7 +253,9 @@ SOCKET construct_windowslistensocket(std::string port) {
     }
 }
 
-windows_listen_socket::windows_listen_socket(std::string port) : WindowsSocket(construct_windowslistensocket(port)) {
+windows_listen_socket::windows_listen_socket(std::string port, protocol input_protocol) : WindowsSocket(
+    construct_windowslistensocket(port, input_protocol), input_protocol) 
+{
     std::cout << "[Listen] Post Bind Check: Bound to: " << get_my_ip() << ":" << get_my_port() << std::endl;
 }
 
@@ -287,7 +291,7 @@ std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
     return nullptr;
 }
 
-SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_port) {
+SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
     try
     {
         std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
@@ -296,9 +300,9 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
             hints;
 
         ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
+        hints.ai_family = input_protocol.get_ai_family();
+        hints.ai_socktype = input_protocol.get_ai_socktype();
+        hints.ai_protocol = input_protocol.get_ai_protocol();
 
         // Resolve the server address and port
         int iResult = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
@@ -350,7 +354,8 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
     }
 }
 
-windows_data_socket::windows_data_socket(std::string peer_address, std::string peer_port) : WindowsSocket(construct_windows_data_socket(peer_address, peer_port)) 
+windows_data_socket::windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) : WindowsSocket(
+    construct_windows_data_socket(peer_address, peer_port, input_protocol), input_protocol) 
 {
     update_endpoint_info();
 }
@@ -436,12 +441,13 @@ void windows_data_socket::process_socket_data()
     }
 }
 
-windows_data_socket::windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : WindowsSocket(windows_data_socket_steal_construct(std::move(old)))
+windows_data_socket::windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_protocol) : WindowsSocket(
+    windows_data_socket_steal_construct(std::move(old)), input_protocol)
 {
     update_endpoint_info();
 }
 
-windows_data_socket::windows_data_socket(SOCKET source_socket) : WindowsSocket(source_socket)
+windows_data_socket::windows_data_socket(SOCKET source_socket, protocol input_protocol) : WindowsSocket(source_socket, input_protocol)
 {
     try
     {
@@ -566,7 +572,8 @@ SOCKET windows_reuse_nb_listen_construct(std::string port)
         std::throw_with_nested(PRINT_LINE);
     }
 }
-windows_reusable_nonblocking_listen_socket::windows_reusable_nonblocking_listen_socket(std::string port) : WindowsSocket(windows_reuse_nb_listen_construct(port))
+windows_reusable_nonblocking_listen_socket::windows_reusable_nonblocking_listen_socket(std::string port, protocol input_protocol) : WindowsSocket(
+    windows_reuse_nb_listen_construct(port), input_protocol)
 {}
 
 void windows_reusable_nonblocking_listen_socket::listen()
@@ -654,7 +661,9 @@ SOCKET windows_reuse_nb_construct(raw_name_data name)
     return ConnectSocket;
 }
 
-windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket(raw_name_data name, std::string ip_address, std::string port) : WindowsSocket(windows_reuse_nb_construct(name))
+windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_connection_socket(
+    raw_name_data name, std::string ip_address, std::string port, protocol input_protocol) : WindowsSocket(
+    windows_reuse_nb_construct(name), input_protocol)
 {
     connect(ip_address, port);
 }

@@ -7,18 +7,20 @@
 #include <queue>
 
 #include "socket.h"
+#include "protocol.h"
 
 readable_ip_info convert_to_readable(raw_name_data data);
 
 class LinuxSocket : virtual public ISocket
 {
 protected:
-	LinuxSocket(int socket);
+	LinuxSocket(int socket, protocol ip_proto);
 	int _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
+	protocol _protocol;
 	bool _endpoint_assigned = false;
 
 	void update_name_info();
@@ -44,12 +46,13 @@ public:
 
 	inline int get_socket() const { return _socket; }
 	inline void clear_socket() { _socket = INVALID_SOCKET; }
+	inline protocol get_protocol() const { return _protocol; }
 };
 
 class linux_listen_socket : public LinuxSocket, public IListenSocket
 {
 public:
-	linux_listen_socket(std::string port);
+	linux_listen_socket(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
@@ -63,8 +66,8 @@ class linux_data_socket : public LinuxSocket, public IDataSocket
 	void process_socket_data();
 	public:
 	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
-	linux_data_socket(int socket);
-	linux_data_socket(std::string peer_address, std::string peer_port);
+	linux_data_socket(int socket, protocol ip_proto);
+	linux_data_socket(std::string peer_address, std::string peer_port, protocol ip_proto);
 
 	Message receive_message() override;
 	bool has_message() override;
@@ -77,7 +80,7 @@ class linux_data_socket : public LinuxSocket, public IDataSocket
 class linux_reuse_nonblock_listen_socket : public LinuxSocket, public IReusableNonBlockingListenSocket
 {
 public:
-	linux_reuse_nonblock_listen_socket(std::string port);
+	linux_reuse_nonblock_listen_socket(std::string port, protocol proto);
 
 	void listen() override;
 	bool has_connection() override;
@@ -87,7 +90,7 @@ public:
 class linux_reuse_nonblock_connection_socket : public LinuxSocket, public IReusableNonBlockingConnectSocket
 {
 public:
-	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port);
+	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto);
 
 	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;

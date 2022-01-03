@@ -5,17 +5,19 @@
 #include "loop.h"
 #include "message.h"
 #include "socket.h"
+#include "protocol.h"
 
 using namespace std::chrono;
 
-client_init_kit::client_init_kit(std::string server_address_pair) {
+client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) {
     conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort);
     // Indicate to server we're ready for p2p
     last_send = std::chrono::system_clock::now();
     conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
     conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
     status = EXECUTION_STATUS::CONTINUE;
-    //int value type will update itself
+    //int value types will update themselves
+    protocol = chosen_protocol;
 }
 
 client_init_kit::~client_init_kit() {}
@@ -251,15 +253,15 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
 }
 
 
-void client_loop(std::string server_address_pair)
+void client_loop(std::string server_address_pair, protocol input_protocol)
 {
     try
     {
         std::cout << "Starting ptop!" << std::endl;
         std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
-        client_init_kit init{ server_address_pair };
+        client_init_kit init{ server_address_pair, input_protocol };
 
-        while (init.status == EXECUTION_STATUS::CONTINUE) //listen at the start of TCP protocol
+        while (init.status == EXECUTION_STATUS::CONTINUE) //listen at the start of protocol
         {
             auto now = std::chrono::system_clock::now();
             if (now - init.last_send > 3s)

@@ -51,8 +51,9 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	return out;
 }
 
-LinuxSocket::LinuxSocket(int socket) 
+LinuxSocket::LinuxSocket(int socket, protocol proto) 
 	: _socket(socket)
+	, _protocol(proto)
 { 
 	try
 	{
@@ -246,7 +247,7 @@ int listen_construct(std::string port)
 	}
 }
 
-linux_listen_socket::linux_listen_socket(std::string port) : LinuxSocket(listen_construct(port))
+linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto) : LinuxSocket(listen_construct(port, input_proto))
 {
 }
 
@@ -387,7 +388,7 @@ linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnect
 	update_endpoint_info();
 }
 
-linux_data_socket::linux_data_socket(int socket) : LinuxSocket(socket)
+linux_data_socket::linux_data_socket(int socket, protocol ip_proto) : LinuxSocket(socket, ip_proto)
 {
 	try
 	{
@@ -403,7 +404,7 @@ linux_data_socket::linux_data_socket(int socket) : LinuxSocket(socket)
 	}
 }
 
-int data_connect_cosntruct(std::string peer_address, std::string peer_port)
+int data_connect_construct(std::string peer_address, std::string peer_port, protocol ip_proto)
 {
 	try
 	{
@@ -414,9 +415,9 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 			hints;
 
 		bzero(&hints, sizeof(hints));
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
+		hints.ai_family = ip_proto.get_ai_family();
+		hints.ai_socktype = ip_proto.get_ai_socktype();
+		hints.ai_protocol = ip_proto.get_ai_protocol();
 
 		int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
@@ -453,16 +454,19 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 			}
 #endif
 			// END BUG FIX TEST
-
-			n = connect(conn_socket, ptr->ai_addr, ptr->ai_addrlen);
-			if (n == SOCKET_ERROR)
+			
+			if (ip_proto.is_tcp())
 			{
-				close(conn_socket);
-				conn_socket = INVALID_SOCKET;
-				continue;
+				n = connect(conn_socket, ptr->ai_addr, ptr->ai_addrlen);
+				if (n == SOCKET_ERROR)
+				{
+					close(conn_socket);
+					conn_socket = INVALID_SOCKET;
+					continue;
+				}
+				auto readable = convert_to_readable(raw_name_data{ *ptr->ai_addr, ptr->ai_addrlen });
+				std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
 			}
-			auto readable = convert_to_readable(raw_name_data{ *ptr->ai_addr, ptr->ai_addrlen });
-			std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
 			break;
 		}
 
@@ -479,7 +483,7 @@ int data_connect_cosntruct(std::string peer_address, std::string peer_port)
 	}
 }
 
-linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port) : LinuxSocket(data_connect_cosntruct(peer_address, peer_port))
+linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port, protocol proto) : LinuxSocket(data_connect_construct(peer_address, peer_port, proto), proto)
 {
 	update_endpoint_info();
 }
@@ -552,7 +556,7 @@ bool linux_data_socket::has_died()
 	}
 }
 
-int reuse_listen_construct(std::string port)
+int reuse_listen_construct(std::string port, protocol proto)
 {
 	try
 	{
@@ -604,7 +608,7 @@ int reuse_listen_construct(std::string port)
 	}
 }
 
-linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port) : LinuxSocket(reuse_listen_construct(port))
+linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port, protocol proto) : LinuxSocket(reuse_listen_construct(port, proto), proto)
 {
 	
 }
@@ -662,7 +666,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	}
 }
 
-int reuse_connection_construct(raw_name_data data)
+int reuse_connection_construct(raw_name_data data, protocol proto)
 {
 	try
 	{
@@ -711,8 +715,9 @@ int reuse_connection_construct(raw_name_data data)
 	}
 }
 
-linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port) : LinuxSocket(reuse_connection_construct(data))
+linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto) : LinuxSocket(reuse_connection_construct(data. proto), proto)
 {
+	// if tcp?
 	this->connect(ip_address, port);
 }
 

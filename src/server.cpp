@@ -210,7 +210,7 @@ void server_loop()
 {
     std::cout << "Starting Rendezvous server!" << std::endl;
 
-    auto init = server_init_kit{ input_thread_func };
+    server_init_kit init{ input_thread_func };
 
     while (true)
     {
