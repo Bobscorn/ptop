@@ -22,6 +22,7 @@
 #include "message.h"
 #include "loop.h"
 
+
 std::string linux_error()
 {
 	auto err_code = errno;
@@ -53,7 +54,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	return out;
 }
 
-LinuxSocket::LinuxSocket(int socket, protocol proto) 
+LinuxSocket::LinuxSocket(SOCKET socket, protocol proto) 
 	: _socket(socket)
 	, _protocol(proto)
 { 
@@ -201,7 +202,7 @@ int listen_construct(std::string port, protocol input_proto)
 	try
 	{
 		std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
-		int listen_socket = socket(input_proto.get_ai_family(), input_proto.get_ai_socktype(), input_proto.get_ai_protocol());
+		SOCKET listen_socket = socket(input_proto.get_ai_family(), input_proto.get_ai_socktype(), input_proto.get_ai_protocol());
 
 		socklen_t cli_len;
 		if (listen_socket == INVALID_SOCKET)
@@ -290,7 +291,7 @@ std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 		std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
 		sockaddr_in client_addr;
 		socklen_t client_len;
-		int new_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
+		SOCKET new_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
 		if (new_socket == INVALID_SOCKET)
 			return nullptr;
 
@@ -319,7 +320,7 @@ int steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 		int n = fcntl(real_old.get_socket(), F_SETFL, flags & (~O_NONBLOCK));
 		if (n == -1)
 			throw std::runtime_error(std::string("Failed to set socket as blocking again: ") + linux_error());
-		int conn_socket = real_old.get_socket();
+		SOCKET conn_socket = real_old.get_socket();
 		real_old.clear_socket();
 		old = nullptr;
 		return conn_socket;
@@ -390,7 +391,7 @@ linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnect
 	update_endpoint_info();
 }
 
-linux_data_socket::linux_data_socket(int socket, protocol ip_proto) : LinuxSocket(socket, ip_proto)
+linux_data_socket::linux_data_socket(SOCKET socket, protocol ip_proto) : LinuxSocket(socket, ip_proto)
 {
 	try
 	{
@@ -426,7 +427,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 		if (n == SOCKET_ERROR)
 			throw PRINT_MSG_LINE("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
 
-		int conn_socket = INVALID_SOCKET;
+		SOCKET conn_socket = INVALID_SOCKET;
 		for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 		{
 			conn_socket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
@@ -572,7 +573,7 @@ int reuse_listen_construct(std::string port, protocol proto)
 		serv_addr.sin_addr.s_addr = INADDR_ANY;
 		serv_addr.sin_port = htons(portno);
 
-		int listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+		SOCKET listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 		if (listen_socket == INVALID_SOCKET)
 			throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
 
@@ -651,7 +652,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 		std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 		sockaddr_in client_addr;
 		socklen_t client_len;
-		int accepted_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
+		SOCKET accepted_socket = accept(_socket, (struct sockaddr*)&client_addr, &client_len);
 
 		if (accepted_socket == INVALID_SOCKET)
 			return nullptr;
@@ -674,7 +675,7 @@ int reuse_connection_construct(raw_name_data data, protocol proto)
 	{
 		auto readable = convert_to_readable(data);
 		std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
-		int conn_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+		SOCKET conn_socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 		if (conn_socket == INVALID_SOCKET)
 		{
 			auto err = linux_error();

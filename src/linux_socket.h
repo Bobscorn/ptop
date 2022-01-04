@@ -10,13 +10,15 @@
 #include "socket.h"
 #include "protocol.h"
 
+using SOCKET = int; 
+
 readable_ip_info convert_to_readable(raw_name_data data);
 
 class LinuxSocket : virtual public ISocket
 {
 protected:
-	LinuxSocket(int socket, protocol ip_proto);
-	int _socket;
+	LinuxSocket(SOCKET socket, protocol ip_proto);
+	SOCKET _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
@@ -45,7 +47,7 @@ public:
 
 	inline std::string get_identifier_str() const override { if (!_endpoint_assigned) return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(pub: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline int get_socket() const { return _socket; }
+	inline SOCKET get_socket() const { return _socket; }
 	inline void clear_socket() { _socket = INVALID_SOCKET; }
 	inline protocol get_protocol() const { return _protocol; }
 };
@@ -67,7 +69,7 @@ class linux_data_socket : public LinuxSocket, public IDataSocket
 	void process_socket_data();
 	public:
 	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_proto);
-	linux_data_socket(int socket, protocol ip_proto);
+	linux_data_socket(SOCKET socket, protocol ip_proto);
 	linux_data_socket(std::string peer_address, std::string peer_port, protocol ip_proto);
 
 	Message receive_message() override;
