@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef __linux__
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -95,3 +96,4 @@ public:
 	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;
 };
+#endif

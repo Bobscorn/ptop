@@ -157,31 +157,6 @@ inline Message create_message(MESSAGE_TYPE type, Types... args)
 	return mess;
 }
 
-//template<>
-//struct copy_to_message_template<std::vector<char>>
-//{
-//	static void copy(std::vector<char>& dst, const std::vector<char>& src)
-//	{
-//		dst.insert(dst.end(), src.begin(), src.end());
-//	}
-//};
-
-//template<class T, typename = std::enable_if_t<std::is_pod<T>::value>, class... Types>
-//inline void copy_to_message(std::vector<char>& dst, T arg, Types... other_args)
-//{
-//	T* back = (T*)&dst.back();
-//	dst.resize(dst.size() + sizeof(T));
-//	*back = arg;
-//	copy_to_message(other_args...);
-//}
-//
-//template<class... Types>
-//inline void copy_to_message<std::vector<char>, Types...>(std::vector<char>& dst, const std::vector<char>& arg, Types... other_args)
-//{
-//	dst.insert(dst.end(), arg.begin(), arg.end());
-//	copy_to_message(other_args...);
-//}
-
 inline Message create_message(MESSAGE_TYPE type, std::string data)
 {
 	Message mess;

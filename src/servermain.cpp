@@ -1,6 +1,6 @@
 #include <iostream>
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -13,9 +13,8 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 #pragma comment(lib, "wininet.lib")
-
 #include "windows_socket.h"
-#endif // WIN32
+#endif
 
 #include <string>
 #include <iostream>
@@ -33,7 +32,6 @@
 #include "socket.h"
 #include "ip.h"
 #include "message.h"
-
 
 int main(int argc, char** argv) {
 

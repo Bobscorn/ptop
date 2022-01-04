@@ -8,7 +8,7 @@
 #include "message.h"
 #include "protocol.h"
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -26,7 +26,7 @@ struct windows_name_data
 };
 
 typedef windows_name_data raw_name_data;
-#elif defined(__linux__)
+#elif __linux__
 
 #include <netinet/in.h>
 
@@ -51,7 +51,7 @@ typedef linux_name_data raw_name_data;
 #define INVALID_SOCKET -1
 #endif
 
-#endif // WIN32/__linux__
+#endif
 
 
 

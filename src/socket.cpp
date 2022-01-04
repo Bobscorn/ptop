@@ -6,7 +6,7 @@
 #include <exception>
 #include <stdexcept>
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 #include "windows_socket.h"
 #elif __linux__
 #include "linux_socket.h"
@@ -18,7 +18,7 @@ const std::string Sockets::ClientListenPort = "6969";
 
 std::unique_ptr<IListenSocket> Sockets::CreateListenSocket(std::string port, protocol input_protocol)
 {
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 	return std::make_unique<windows_listen_socket>(port, input_protocol);
 #elif __linux__
 	return std::make_unique<linux_listen_socket>(port, input_protocol);
@@ -27,7 +27,7 @@ std::unique_ptr<IListenSocket> Sockets::CreateListenSocket(std::string port, pro
 
 std::unique_ptr<IDataSocket> Sockets::CreateConnectionSocket(std::string peer_ip, std::string port, protocol input_protocol)
 {
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 	return std::make_unique<windows_data_socket>(peer_ip, port, input_protocol);
 #elif __linux__
 	return std::make_unique<linux_data_socket>(peer_ip, port, input_protocol);
@@ -36,7 +36,7 @@ std::unique_ptr<IDataSocket> Sockets::CreateConnectionSocket(std::string peer_ip
 
 std::unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBlockingListenSocket(std::string port, protocol input_protocol)
 {
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 	return std::make_unique<windows_reusable_nonblocking_listen_socket>(port, input_protocol);
 #elif __linux__
 	return std::make_unique<linux_reuse_nonblock_listen_socket>(port, input_protocol);
@@ -45,7 +45,7 @@ std::unique_ptr<IReusableNonBlockingListenSocket> Sockets::CreateReusableNonBloc
 
 std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnectSocket(raw_name_data data, std::string ip_address, std::string port, protocol input_protocol)
 {
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 	return std::make_unique<windows_reusable_nonblocking_connection_socket>(data, ip_address, port, input_protocol);
 #elif __linux__
 	return std::make_unique<linux_reuse_nonblock_connection_socket>(data, ip_address, port, input_protocol);
@@ -54,7 +54,7 @@ std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnec
 
 std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 {
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 	if (auto reuse_nb = dynamic_cast<windows_reusable_nonblocking_connection_socket*>(old.get()))
 		return std::make_unique<windows_data_socket>(std::move(old), reuse_nb->get_protocol());
 #elif __linux__

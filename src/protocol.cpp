@@ -1,6 +1,6 @@
 #include "protocol.h"
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 #include <winsock2.h>
 #elif __linux__
 #include <sys/types.h>

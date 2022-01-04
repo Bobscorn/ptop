@@ -1,6 +1,7 @@
 #include <iostream>
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
+
 #ifndef WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -12,13 +13,12 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <mswsock.h>
+#include "windows_socket.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 #pragma comment(lib, "wininet.lib")
-
-#include "windows_socket.h"
-#endif // WIN32
+#endif
 
 #include <string>
 #include <iostream>
@@ -56,7 +56,7 @@ void print_exception(const std::exception& e, int level = 0)
 
 int main(int argc, char** argv) {
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
     // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order
     windows_internet wsa_wrapper(MAKEWORD(2, 2));
 #endif

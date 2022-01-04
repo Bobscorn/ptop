@@ -1,5 +1,15 @@
 #include "linux_socket.h"
 
+#ifdef __linux__
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+#include <unistd.h>
+
+#include <sys/types.h> 
+
 #include <exception>
 #include <stdexcept>
 #include <iostream>
@@ -7,19 +17,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h> 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
-#include <netdb.h>
-#include <poll.h>
 
 #include "message.h"
 #include "loop.h"
-#include "logger.h"
-
 
 std::string linux_error()
 {
@@ -807,3 +808,4 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 		std::throw_with_nested(PRINT_MSG_LINE("failed to determine linux connection socket had connected"));
 	}
 }
+#endif

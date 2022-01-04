@@ -1,14 +1,15 @@
 #include "ip.h"
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 #include <windows.h>
 #include <wininet.h>
 #endif
+
 #include <string>
 #include <iostream>
 #include <cstring>
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN64)
 std::string get_external_ip() {
 
     HINTERNET net = InternetOpen("IP retriever",
@@ -48,17 +49,6 @@ readable_ip_info read_peer_data(const char* data, int& index, size_t data_len)
 
 std::vector<char> readable_ip_info::to_bytes() const
 {
-    /*vector<char> bytes(sizeof(size_t) * 2 + ip_address.length() + port.length(), '0');
-    size_t i = 0;
-    size_t len = ip_address.length();
-    memcpy(bytes.data() + i, &len, sizeof(size_t));
-    i += sizeof(size_t);
-    memcpy(bytes.data() + i, ip_address.data(), len);
-    i += len;
-    len = port.length();
-    memcpy(bytes.data() + i, &len, sizeof(size_t));
-    i += sizeof(size_t);
-    memcpy(bytes.data() + i, port.data(), len);*/
     std::vector<char> bytes(ip_address.length() + port.length() + 2);
     memcpy(bytes.data(), ip_address.data(), ip_address.length() + 1);
     memcpy(bytes.data() + ip_address.length() + 1, port.data(), port.length() + 1);
