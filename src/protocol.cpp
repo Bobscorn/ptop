@@ -4,6 +4,9 @@
 #include <winsock2.h>
 #elif __linux__
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 #endif
 #include <iostream>
 #include <algorithm>
@@ -19,14 +22,12 @@ protocol::protocol(string possible_protocol) {
         ai_family = AF_INET;
         ai_socktype = SOCK_STREAM;
         ai_protocol = IPPROTO_TCP;
-        ai_flags = AI_PASSIVE;
     }
 
     else if (possible_protocol == "udp") {
         ai_family = AF_INET;
         ai_socktype = SOCK_DGRAM;
         ai_protocol = IPPROTO_UDP;
-        ai_flags = AI_PASSIVE;
     }
 
     else {

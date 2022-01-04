@@ -523,7 +523,6 @@ bool linux_data_socket::has_message()
 
 bool linux_data_socket::send_data(const Message& message)
 {
-	log_msg(message, true, *this);
 	std::cout << "Socket " << (*this).get_identifier_str() << "sending " << "a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
 	auto bytes = message.to_bytes();
 	int iSendResult = send(_socket, bytes.data(), (int)bytes.size(), 0);
