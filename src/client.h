@@ -17,6 +17,7 @@ class client_init_kit {
     int auth_key;
     EXECUTION_STATUS status;
     ::protocol protocol;
+    bool is_leader;
 
     client_init_kit(std::string server_address_pair, ::protocol input_protocol);
     ~client_init_kit();
