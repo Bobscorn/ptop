@@ -276,19 +276,23 @@ bool windows_listen_socket::has_connection()
 }
 
 std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
-    std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
-    sockaddr_in endpoint_addr;
-    socklen_t endpoint_len = sizeof(endpoint_addr);
-    SOCKET send_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
+    try {
+        std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
+        sockaddr_in endpoint_addr;
+        socklen_t endpoint_len = sizeof(endpoint_addr);
+        SOCKET send_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
 
-    if (send_socket != INVALID_SOCKET)
-    {
-        auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
-        auto readable = convert_to_readable(raw);
-        std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
-        return std::make_unique<windows_data_socket>(send_socket, _protocol);
+        if (send_socket != INVALID_SOCKET)
+        {
+            auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
+            auto readable = convert_to_readable(raw);
+            std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
+            return std::make_unique<windows_data_socket>(send_socket, _protocol);
     }
-    return nullptr;
+    
+    catch(...) {
+        std::throw_with_nested(PRINT_MSG_LINE("failed to accept connection"));
+    }
 }
 
 SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {

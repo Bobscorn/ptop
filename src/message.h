@@ -18,16 +18,14 @@
 enum class MESSAGE_TYPE
 {
 	NONE = 0,
-	MSG,
-	FILE,
-	SET_NAME,
+	MY_DATA,
+	READY_FOR_P2P,
 	CONNECT_PEER,
 	CONNECT_PEER_AS_LEADER,
-	READY_FOR_P2P,
-	HOLE_PUNCH,
-	MY_DATA,
 	AUTH_PLS,
-	HERES_YOUR_AUTH
+	HERES_YOUR_AUTH,
+	MSG,
+	FILE,
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
@@ -49,25 +47,33 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 {
 	switch (t)
 	{
-	case MESSAGE_TYPE::MSG:
-		return "MSG: Plain Text Msg";
-	case MESSAGE_TYPE::FILE:
-		return "FILE: Incoming File";
-	case MESSAGE_TYPE::SET_NAME:
-		return "SET_NAME: Request to change name alias";
-	case MESSAGE_TYPE::CONNECT_PEER:
-		return "CONNECT_PEER: Data required to connect to a peer";
-	case MESSAGE_TYPE::READY_FOR_P2P:
-		return "READY_FOR_P2P: Connection is ready for P2P";
-	case MESSAGE_TYPE::MY_DATA:
-		return "MY_DATA: Connection's Private :3 Data";
-	case MESSAGE_TYPE::AUTH_PLS:
-		return "AUTH_PLS: Request for Auth";
-	case MESSAGE_TYPE::HERES_YOUR_AUTH:
-		return "HERES_YOUR_AUTH: Auth Request Response";
-	case MESSAGE_TYPE::NONE:
-	default:
-		return "NONE: None";
+		case MESSAGE_TYPE::MY_DATA:
+			return "MY_DATA: Connection's Private :3 Data";
+
+		case MESSAGE_TYPE::READY_FOR_P2P:
+			return "READY_FOR_P2P: Connection is ready for P2P";
+
+		case MESSAGE_TYPE::MSG:
+			return "MSG: Plain Text Msg";
+
+		case MESSAGE_TYPE::FILE:
+			return "FILE: Incoming File";
+
+		case MESSAGE_TYPE::CONNECT_PEER:
+			return "CONNECT_PEER: Data required to connect to a peer";
+
+		case MESSAGE_TYPE::CONNECT_PEER_AS_LEADER:
+			return "CONNECT_PEER_AS_LEADER: your client was marked as first in the pair grouping";
+
+		case MESSAGE_TYPE::AUTH_PLS:
+			return "AUTH_PLS: Request for Auth";
+
+		case MESSAGE_TYPE::HERES_YOUR_AUTH:
+			return "HERES_YOUR_AUTH: Auth Request Response";
+
+		case MESSAGE_TYPE::NONE:
+		default:
+			return "NONE: None";
 	}
 }
 
