@@ -17,5 +17,5 @@ std::vector<char> Message::to_bytes() const
 std::exception print_new_exception(std::string input) {
 	auto together = (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + input);
 	std::cout << together << std::endl;
-	return std::exception(together.c_str());
+	return std::runtime_error(together.c_str());
 }
