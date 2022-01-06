@@ -15,20 +15,14 @@ WindowsSocket::WindowsSocket(SOCKET socket, protocol input_protocol)
     : _socket(socket)
     , _protocol(input_protocol)
 { 
-	try
-	{
-        update_name_info();
+    update_name_info();
 
-	    if (_address == "Unassigned" || _address.empty() ||
-		    _port == "Unassigned" || _port.empty()) {
-		    throw PRINT_MSG_LINE("failed to update name info");
-	    }
-	}
-	catch (...)
-	{
-        std::throw_with_nested(PRINT_MSG_LINE("failed instantiating a WindowsSocket"));
-	}
-	
+    if (_address == "Unassigned" || _address.empty() ||
+        _port == "Unassigned" || _port.empty()) {
+        auto message = "failed to update name info";
+        PRINT_MSG_LINE(message);
+        throw std::exception(message);
+    }
 }
 
 std::string get_last_error()
@@ -79,9 +73,12 @@ readable_ip_info convert_to_readable(raw_name_data name)
 {
     std::vector<char> name_buf(100, '0');
     const char* str = inet_ntop(AF_INET, &name.ipv4_addr().sin_addr, name_buf.data(), name_buf.size());
-    if (!str)
-        throw PRINT_MSG_LINE(std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error());
 
+    if (!str) {
+        auto error = std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error();
+        PRINT_MSG_LINE(error);
+        throw std::exception(error.c_str());
+    }
     std::string port_str = std::to_string(htons(name.ipv4_addr().sin_port));
 
     readable_ip_info out_data;
@@ -92,31 +89,17 @@ readable_ip_info convert_to_readable(raw_name_data name)
 
 void WindowsSocket::update_name_info()
 {
-    try
-    {
-        auto name = get_myname_readable();
-        _address = name.ip_address;
-        _port = name.port;
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    auto name = get_myname_readable();
+    _address = name.ip_address;
+    _port = name.port;
 }
 
 void WindowsSocket::update_endpoint_info()
 {
-    try
-    {
-        auto name = get_peername_readable();
-        _endpoint_address = name.ip_address;
-        _endpoint_port = name.port;
-        _endpoint_assigned = true;
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_MSG_LINE("failed to update_endpoint_info"));
-    }
+    auto name = get_peername_readable();
+    _endpoint_address = name.ip_address;
+    _endpoint_port = name.port;
+    _endpoint_assigned = true;
 }
 
 void WindowsSocket::update_endpoint_if_needed()
@@ -129,29 +112,22 @@ void WindowsSocket::update_endpoint_if_needed()
 
 readable_ip_info WindowsSocket::get_peer_data() const
 {
-    try
-    {
-        sockaddr_in peer_name;
-        socklen_t peer_size = sizeof(peer_name);
-        int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
+    sockaddr_in peer_name;
+    socklen_t peer_size = sizeof(peer_name);
+    int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
 
-        std::vector<char> buf{ 50, '0', std::allocator<char>() };
-        const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
-        if (!str)
-            throw std::runtime_error(std::string("Failed to convert sockaddr to string: ") + get_last_error());
+    std::vector<char> buf{ 50, '0', std::allocator<char>() };
+    const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
+    if (!str)
+        throw std::runtime_error(std::string("Failed to convert sockaddr to string: ") + get_last_error());
 
-        std::string address = str;
+    std::string address = str;
 
-        std::string port = std::to_string(peer_name.sin_port);
-        readable_ip_info out;
-        out.ip_address = address;
-        out.port = port;
-        return out;
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    std::string port = std::to_string(peer_name.sin_port);
+    readable_ip_info out;
+    out.ip_address = address;
+    out.port = port;
+    return out;
 }
 
 raw_name_data WindowsSocket::get_peername_raw() const
@@ -159,8 +135,11 @@ raw_name_data WindowsSocket::get_peername_raw() const
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
     int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
-    if (n != 0)
-        throw PRINT_MSG_LINE(std::string("[Socket] Failed to getpeername with: ") + get_last_error());
+    if (n != 0) {
+        auto error = std::string("[Socket] Failed to getpeername with: ") + get_last_error();
+        PRINT_MSG_LINE(error);
+        throw std::exception(error.c_str());
+    }
 
     raw_name_data raw_data;
     raw_data.name = *(sockaddr*)&peer_name;
@@ -170,87 +149,63 @@ raw_name_data WindowsSocket::get_peername_raw() const
 
 raw_name_data WindowsSocket::get_myname_raw() const
 {
-    try
-    {
-        sockaddr_in peer_name;
-        socklen_t peer_size = sizeof(peer_name);
-        int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
-        if (n != 0)
-            throw PRINT_MSG_LINE(std::string("[Socket] Failed to getsockname with: ") + get_last_error());
+    sockaddr_in peer_name;
+    socklen_t peer_size = sizeof(peer_name);
+    int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
 
-        raw_name_data raw_data;
-        raw_data.name = *(sockaddr*)&peer_name;
-        raw_data.name_len = peer_size;
-        return raw_data;
+    if (n != 0) {
+        auto error = std::string("[Socket] Failed to getsockname with: ") + get_last_error();
+        PRINT_MSG_LINE(error);
+        throw std::exception(error.c_str());
     }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+
+    raw_name_data raw_data;
+    raw_data.name = *(sockaddr*)&peer_name;
+    raw_data.name_len = peer_size;
+    return raw_data;
 }
 
 readable_ip_info WindowsSocket::get_peername_readable() const
 {
-    try
-    {
-        return convert_to_readable(get_peername_raw());
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    return convert_to_readable(get_peername_raw());
 }
 
 readable_ip_info WindowsSocket::get_myname_readable() const
 {
-    try
-    {
-        return convert_to_readable(get_myname_raw());
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    return convert_to_readable(get_myname_raw());
 }
 
 SOCKET construct_windowslistensocket(std::string port, protocol input_protocol) {
-    try
+    std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
+    int iResult;
+    struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = input_protocol.get_ai_family();
+    hints.ai_socktype = input_protocol.get_ai_socktype();
+    hints.ai_protocol = input_protocol.get_ai_protocol();
+    hints.ai_flags = input_protocol.get_ai_flags();
+
+    iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
+    if (iResult != 0)
     {
-        std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
-        int iResult;
-        struct addrinfo* result = NULL, * ptr = NULL, hints;
-
-        ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = input_protocol.get_ai_family();
-        hints.ai_socktype = input_protocol.get_ai_socktype();
-        hints.ai_protocol = input_protocol.get_ai_protocol();
-        hints.ai_flags = input_protocol.get_ai_flags();
-
-        iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
-        if (iResult != 0)
-        {
-            throw std::exception((std::string("[Listen] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
-        }
-
-        SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-
-        if (ConnectSocket == INVALID_SOCKET)
-        {
-            throw std::exception((std::string("[Listen] Failed to create socket with WSA error: ") + get_last_error()).c_str());
-        }
-
-        std::cout << "Binding..." << std::endl;
-        iResult = bind(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
-        if (iResult != 0)
-        {
-            throw std::exception((std::string("Failed to bind to socket with WSA error: ") + get_last_error()).c_str());
-        }
-        return ConnectSocket;
+        throw std::exception((std::string("[Listen] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
     }
-    catch (...)
+
+    SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+    if (ConnectSocket == INVALID_SOCKET)
     {
-        std::throw_with_nested(PRINT_LINE);
+        throw std::exception((std::string("[Listen] Failed to create socket with WSA error: ") + get_last_error()).c_str());
     }
+
+    std::cout << "Binding..." << std::endl;
+    iResult = bind(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
+    if (iResult != 0)
+    {
+        throw std::exception((std::string("Failed to bind to socket with WSA error: ") + get_last_error()).c_str());
+    }
+    return ConnectSocket;
 }
 
 windows_listen_socket::windows_listen_socket(std::string port, protocol input_protocol) : WindowsSocket(
@@ -262,8 +217,12 @@ windows_listen_socket::windows_listen_socket(std::string port, protocol input_pr
 void windows_listen_socket::listen()
 {
     std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
-    if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR)
-        throw PRINT_MSG_LINE(std::string("Socket ") + get_identifier_str() + " Failed to listen with: " + get_last_error());
+    if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR) {
+        auto last_error = get_last_error();
+        std::string error_message = std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + (std::string("Socket ") + get_identifier_str() + " Failed to listen with: " + last_error);
+        std::cout << error_message << std::endl;
+        throw std::exception(error_message.c_str());
+    }
 }
 
 bool windows_listen_socket::has_connection()
@@ -276,86 +235,74 @@ bool windows_listen_socket::has_connection()
 }
 
 std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
-    try {
-        std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
-        sockaddr_in endpoint_addr;
-        socklen_t endpoint_len = sizeof(endpoint_addr);
-        SOCKET send_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
+    std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
+    sockaddr_in endpoint_addr;
+    socklen_t endpoint_len = sizeof(endpoint_addr);
+    SOCKET send_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
 
-        if (send_socket != INVALID_SOCKET)
-        {
-            auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
-            auto readable = convert_to_readable(raw);
-            std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
-            return std::make_unique<windows_data_socket>(send_socket, _protocol);
-        }
-    }
-    catch(...) {
-        std::throw_with_nested(PRINT_MSG_LINE("failed to accept connection"));
+    if (send_socket != INVALID_SOCKET)
+    {
+        auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
+        auto readable = convert_to_readable(raw);
+        std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
+        return std::make_unique<windows_data_socket>(send_socket, _protocol);
     }
 }
 
 SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
-    try
+    std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
+    struct addrinfo* result = NULL,
+        *ptr = NULL,
+        hints;
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = input_protocol.get_ai_family();
+    hints.ai_socktype = input_protocol.get_ai_socktype();
+    hints.ai_protocol = input_protocol.get_ai_protocol();
+
+    // Resolve the server address and port
+    int iResult = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
+
+    if (iResult != 0) {
+        std::cerr << "Failed to resolve server: " << iResult << std::endl;
+        throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
+    }
+
+    SOCKET ConnectSocket = INVALID_SOCKET; //the other one place we need this
+
+    // Go through all available sockets and try to connect
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
     {
-        std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
-        struct addrinfo* result = NULL,
-            *ptr = NULL,
-            hints;
 
-        ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = input_protocol.get_ai_family();
-        hints.ai_socktype = input_protocol.get_ai_socktype();
-        hints.ai_protocol = input_protocol.get_ai_protocol();
-
-        // Resolve the server address and port
-        int iResult = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
-
-        if (iResult != 0) {
-            std::cerr << "Failed to resolve server: " << iResult << std::endl;
-            throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
-        }
-
-        SOCKET ConnectSocket = INVALID_SOCKET; //the other one place we need this
-
-        // Go through all available sockets and try to connect
-        for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
+        ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+        if (ConnectSocket == INVALID_SOCKET)
         {
-
-            ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-            if (ConnectSocket == INVALID_SOCKET)
-            {
-                auto last_error = get_last_error();
-                std::cerr << "[Data] Error creating client socket (socket()):" << last_error << std::endl;
-                freeaddrinfo(result);
-                throw std::exception((std::string("[Data] Failed to create data socket with: ") + last_error).c_str());
-            }
-
-            // Connect to server.
-            iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
-            if (iResult == SOCKET_ERROR) {
-                closesocket(ConnectSocket);
-                ConnectSocket = INVALID_SOCKET; //the one place we need this
-                continue;
-            }
-            auto readable = convert_to_readable(*ptr->ai_addr);
-            std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
-            break;
+            auto last_error = get_last_error();
+            std::cerr << "[Data] Error creating client socket (socket()):" << last_error << std::endl;
+            freeaddrinfo(result);
+            throw std::exception((std::string("[Data] Failed to create data socket with: ") + last_error).c_str());
         }
 
-
-
-        freeaddrinfo(result);
-
-        if (ConnectSocket == INVALID_SOCKET) {
-            throw std::exception("[Data] No sockets successfully connected to peer");
+        // Connect to server.
+        iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+        if (iResult == SOCKET_ERROR) {
+            closesocket(ConnectSocket);
+            ConnectSocket = INVALID_SOCKET; //the one place we need this
+            continue;
         }
-        return ConnectSocket;
+        auto readable = convert_to_readable(*ptr->ai_addr);
+        std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
+        break;
     }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
+
+
+
+    freeaddrinfo(result);
+
+    if (ConnectSocket == INVALID_SOCKET) {
+        throw std::exception("[Data] No sockets successfully connected to peer");
     }
+    return ConnectSocket;
 }
 
 windows_data_socket::windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) : WindowsSocket(
@@ -380,23 +327,16 @@ bool windows_data_socket::send_data(const Message& message)
 
 SOCKET windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 {
-    try
-    {
-        std::cout << "[Data] Moving windows_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-        windows_reusable_nonblocking_connection_socket& real_old = *dynamic_cast<windows_reusable_nonblocking_connection_socket*>(old.get());
-        u_long blockMode = 1;
-        int iResult = ioctlsocket(real_old.get_socket(), FIONBIO, &blockMode);
-        if (iResult == SOCKET_ERROR)
-            throw std::exception((std::string("Failed to convert reusable non blocking connection socket to regular socket with:") + get_last_error()).c_str());
-        SOCKET ConnectSocket = real_old.get_socket();
-        real_old.clear_socket();
-        old = nullptr;
-        return ConnectSocket;
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    std::cout << "[Data] Moving windows_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
+    windows_reusable_nonblocking_connection_socket& real_old = *dynamic_cast<windows_reusable_nonblocking_connection_socket*>(old.get());
+    u_long blockMode = 1;
+    int iResult = ioctlsocket(real_old.get_socket(), FIONBIO, &blockMode);
+    if (iResult == SOCKET_ERROR)
+        throw std::exception((std::string("Failed to convert reusable non blocking connection socket to regular socket with:") + get_last_error()).c_str());
+    SOCKET ConnectSocket = real_old.get_socket();
+    real_old.clear_socket();
+    old = nullptr;
+    return ConnectSocket;
 }
 
 void windows_data_socket::process_socket_data()
@@ -453,20 +393,13 @@ windows_data_socket::windows_data_socket(std::unique_ptr<IReusableNonBlockingCon
 
 windows_data_socket::windows_data_socket(SOCKET source_socket, protocol input_protocol) : WindowsSocket(source_socket, input_protocol)
 {
-    try
+    auto readable = get_peername_readable();
+    std::cout << "[Data] Copy Constructor Data socket with endpoint: " << readable.ip_address << ":" << readable.port << std::endl;
+    if (_socket == INVALID_SOCKET)
     {
-        auto readable = get_peername_readable();
-        std::cout << "[Data] Copy Constructor Data socket with endpoint: " << readable.ip_address << ":" << readable.port << std::endl;
-        if (_socket == INVALID_SOCKET)
-        {
-            throw std::exception("Invalid Socket Given");
-        }
-        update_endpoint_info();
+        throw std::exception("Invalid Socket Given");
     }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    update_endpoint_info();
 }
 
 Message windows_data_socket::receive_message() {
@@ -508,8 +441,12 @@ void WindowsSocket::shutdown()
 windows_internet::windows_internet(WORD versionRequested)
 {
     int iResult = WSAStartup(versionRequested, &_data);
-    if (iResult != 0)
-        throw PRINT_MSG_LINE("Winsock API initialization failed: " + std::to_string(iResult));
+    
+    if (iResult != 0) {
+        auto error = "Winsock API initialization failed: " + std::to_string(iResult);
+        PRINT_MSG_LINE(error);
+        throw std::exception(error.c_str());
+    }
     std::cout << "Winsock has been started" << std::endl;
 }
 
@@ -521,60 +458,53 @@ windows_internet::~windows_internet()
 
 SOCKET windows_reuse_nb_listen_construct(std::string port)
 {
-    try
+    std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
+    int iResult;
+    struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
+    if (iResult != 0)
     {
-        std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
-        int iResult;
-        struct addrinfo* result = NULL, * ptr = NULL, hints;
-
-        ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-        hints.ai_flags = AI_PASSIVE;
-
-        iResult = getaddrinfo(NULL, port.c_str(), &hints, &result);
-        if (iResult != 0)
-        {
-            throw std::exception((std::string("[ListenReuseNoB] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
-        }
-
-        SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-
-        if (ConnectSocket == INVALID_SOCKET)
-        {
-            throw std::exception((std::string("Failed to create socket with WSA error: ") + get_last_error()).c_str());
-        }
-
-        int reuseVal = 1;
-        iResult = setsockopt(ConnectSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuseVal, sizeof(reuseVal));
-        if (iResult == SOCKET_ERROR)
-        {
-            closesocket(ConnectSocket);
-            throw std::exception("Failed to set socket as SO_REUSEADDR");
-        }
-
-        u_long blockMode = 1;
-        iResult = ioctlsocket(ConnectSocket, FIONBIO, &blockMode);
-        if (iResult == SOCKET_ERROR)
-        {
-            closesocket(ConnectSocket);
-            throw std::exception("Failed to set socket as non-blocking");
-        }
-
-        iResult = bind(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
-        if (iResult == SOCKET_ERROR)
-        {
-            auto last_err = get_last_error();
-            closesocket(ConnectSocket);
-            throw std::exception((std::string("Failed to bind to socket with WSA error: ") + last_err).c_str());
-        }
-        return ConnectSocket;
+        throw std::exception((std::string("[ListenReuseNoB] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
     }
-    catch (...)
+
+    SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+    if (ConnectSocket == INVALID_SOCKET)
     {
-        std::throw_with_nested(PRINT_LINE);
+        throw std::exception((std::string("Failed to create socket with WSA error: ") + get_last_error()).c_str());
     }
+
+    int reuseVal = 1;
+    iResult = setsockopt(ConnectSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuseVal, sizeof(reuseVal));
+    if (iResult == SOCKET_ERROR)
+    {
+        closesocket(ConnectSocket);
+        throw std::exception("Failed to set socket as SO_REUSEADDR");
+    }
+
+    u_long blockMode = 1;
+    iResult = ioctlsocket(ConnectSocket, FIONBIO, &blockMode);
+    if (iResult == SOCKET_ERROR)
+    {
+        closesocket(ConnectSocket);
+        throw std::exception("Failed to set socket as non-blocking");
+    }
+
+    iResult = bind(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
+    if (iResult == SOCKET_ERROR)
+    {
+        auto last_err = get_last_error();
+        closesocket(ConnectSocket);
+        throw std::exception((std::string("Failed to bind to socket with WSA error: ") + last_err).c_str());
+    }
+    return ConnectSocket;
 }
 windows_reusable_nonblocking_listen_socket::windows_reusable_nonblocking_listen_socket(std::string port, protocol input_protocol) : WindowsSocket(
     windows_reuse_nb_listen_construct(port), input_protocol)
@@ -583,8 +513,11 @@ windows_reusable_nonblocking_listen_socket::windows_reusable_nonblocking_listen_
 void windows_reusable_nonblocking_listen_socket::listen()
 {
     std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
-    if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR)
-        throw PRINT_MSG_LINE("Socket: " + get_identifier_str() + " Failed to listen with : " + get_last_error());
+    if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR) {
+        auto message = "Socket: " + get_identifier_str() + " Failed to listen with : " + get_last_error();
+        PRINT_MSG_LINE(message);
+        throw std::exception(message.c_str());
+    }
 }
 
 bool windows_reusable_nonblocking_listen_socket::has_connection()

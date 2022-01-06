@@ -6,10 +6,8 @@
 #include <cstring>
 
 #ifndef PRINT_LINE
-#define PRINT_LINE std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ")")
-#define PRINT_MSG_LINE(x) std::runtime_error(std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + x)
+#define PRINT_MSG_LINE(x) std::cout << (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + x) << std::endl;
 #endif
-
 
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA

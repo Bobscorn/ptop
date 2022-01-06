@@ -24,43 +24,36 @@ client_init_kit::~client_init_kit() {}
 
 EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>& socket, int my_auth)
 {
-    try
+    const char* data = mess.Data.data();
+    size_t data_len = mess.Length;
+    int i = 0;
+    int auth_key = 0;
+    MESSAGE_TYPE type = mess.Type;
+
+    switch (type)
     {
-        const char* data = mess.Data.data();
-        size_t data_len = mess.Length;
-        int i = 0;
-        int auth_key = 0;
-        MESSAGE_TYPE type = mess.Type;
-
-        switch (type)
-        {
-            case MESSAGE_TYPE::AUTH_PLS:
-                std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") requesting Auth, responding with key" << std::endl;
-                socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
-                return EXECUTION_STATUS::CONTINUE;
-            case MESSAGE_TYPE::HERES_YOUR_AUTH:
-                std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") has replied with key" << std::endl;
-                if (!try_read_data<int>(data, i, data_len, auth_key))
-                {
-                    std::cout << "Failed to read key from peer" << std::endl;
-                    return EXECUTION_STATUS::FAILED;
-                }
-
-                if (auth_key == my_auth)
-                {
-                    std::cout << "Key matches, we should be connected!" << std::endl;
-                    return EXECUTION_STATUS::CONNECTED;
-                }
-                std::cout << "Key did not match" << std::endl;
+        case MESSAGE_TYPE::AUTH_PLS:
+            std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") requesting Auth, responding with key" << std::endl;
+            socket->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, my_auth));
+            return EXECUTION_STATUS::CONTINUE;
+        case MESSAGE_TYPE::HERES_YOUR_AUTH:
+            std::cout << "Peer (" << socket->get_endpoint_ip() << ":" << socket->get_endpoint_port() << ") has replied with key" << std::endl;
+            if (!try_read_data<int>(data, i, data_len, auth_key))
+            {
+                std::cout << "Failed to read key from peer" << std::endl;
                 return EXECUTION_STATUS::FAILED;
-            default:
-                std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(type) << std::endl;
-                return EXECUTION_STATUS::CONTINUE;
-        }
-    }
-    catch (...)
-    {
-        std::throw_with_nested(std::runtime_error("process_auth failed"));
+            }
+
+            if (auth_key == my_auth)
+            {
+                std::cout << "Key matches, we should be connected!" << std::endl;
+                return EXECUTION_STATUS::CONNECTED;
+            }
+            std::cout << "Key did not match" << std::endl;
+            return EXECUTION_STATUS::FAILED;
+        default:
+            std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(type) << std::endl;
+            return EXECUTION_STATUS::CONTINUE;
     }
 }
 
@@ -176,195 +169,172 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
 
 EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& message, std::string port)
 {
-    try
+    const char* data = message.Data.data();
+    auto data_len = message.Length;
+
+    if (message == Message::null_message)
     {
-        const char* data = message.Data.data();
-        auto data_len = message.Length;
-
-        if (message == Message::null_message)
-        {
-            std::cout << "Received empty data, disconnecting" << std::endl;
-            return EXECUTION_STATUS::COMPLETE;
-        }
-
-        int i = 0;
-
-        auto msg_type = message.Type;
-        switch (msg_type)
-        {
-            case MESSAGE_TYPE::MSG:
-            {
-                std::string msg = read_string(data, i, data_len);
-                std::cout << "Message received from server: " << msg << std::endl;
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            case MESSAGE_TYPE::FILE:
-            {
-                std::cout << "Received file from server" << std::endl;
-                // TODO: actually read the file
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            case MESSAGE_TYPE::CONNECT_PEER:
-            {
-                return hole_punch(kit, data, kit.auth_key, i, data_len, port);
-            }
-
-            case MESSAGE_TYPE::CONNECT_PEER_AS_LEADER:
-            {
-                kit.is_leader = true;
-                return hole_punch(kit, data, kit.auth_key, i, data_len, port);
-            }                
-
-            case MESSAGE_TYPE::NONE:
-            default:
-                std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
-                return EXECUTION_STATUS::CONTINUE;
-        }
+        std::cout << "Received empty data, disconnecting" << std::endl;
+        return EXECUTION_STATUS::COMPLETE;
     }
-    catch (...)
+
+    int i = 0;
+
+    auto msg_type = message.Type;
+    switch (msg_type)
     {
-        std::throw_with_nested(PRINT_LINE);
+        case MESSAGE_TYPE::MSG:
+        {
+            std::string msg = read_string(data, i, data_len);
+            std::cout << "Message received from server: " << msg << std::endl;
+            return EXECUTION_STATUS::CONTINUE;
+        }
+        case MESSAGE_TYPE::FILE:
+        {
+            std::cout << "Received file from server" << std::endl;
+            // TODO: actually read the file
+            return EXECUTION_STATUS::CONTINUE;
+        }
+        case MESSAGE_TYPE::CONNECT_PEER:
+        {
+            return hole_punch(kit, data, kit.auth_key, i, data_len, port);
+        }
+
+        case MESSAGE_TYPE::CONNECT_PEER_AS_LEADER:
+        {
+            kit.is_leader = true;
+            return hole_punch(kit, data, kit.auth_key, i, data_len, port);
+        }                
+
+        case MESSAGE_TYPE::NONE:
+        default:
+            std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
+            return EXECUTION_STATUS::CONTINUE;
     }
 }
 
 EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocket>& peer, int auth_key)
-{
-    try
+{  
+    const char* data = mess.Data.data();
+    auto data_len = mess.Length;
+    if (mess == Message::null_message)
     {
+        std::cout << "Received empty data, disconnecting" << std::endl;
+        return EXECUTION_STATUS::COMPLETE;
+    }
+
+    int i = 0;
+
+    auto msg_type = mess.Type;
+    switch (msg_type)
+    {
+        case MESSAGE_TYPE::AUTH_PLS:
+        {
+            std::cout << "Peer requesting authentication" << std::endl;
+
+            peer->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, auth_key));
+
+            return EXECUTION_STATUS::CONTINUE;
+        }
+        case MESSAGE_TYPE::MSG:
+        {
+            std::string msg = read_string(data, i, data_len);
+            std::cout << "Message received from peer: " << msg << std::endl;
+            return EXECUTION_STATUS::CONTINUE;
+        }
+        case MESSAGE_TYPE::FILE:
+        {
+            std::cout << "Received file from peer" << std::endl;
+            // TODO: actually read the file
+            return EXECUTION_STATUS::CONTINUE;
+        }
+        case MESSAGE_TYPE::CONNECT_PEER:
+        {
+            std::cout << "Received Connect Peer message when already connected" << std::endl;
+
+            return EXECUTION_STATUS::CONTINUE;
+        }
         
-        const char* data = mess.Data.data();
-        auto data_len = mess.Length;
-        if (mess == Message::null_message)
-        {
-            std::cout << "Received empty data, disconnecting" << std::endl;
-            return EXECUTION_STATUS::COMPLETE;
-        }
-
-        int i = 0;
-
-        auto msg_type = mess.Type;
-        switch (msg_type)
-        {
-            case MESSAGE_TYPE::AUTH_PLS:
-            {
-                std::cout << "Peer requesting authentication" << std::endl;
-
-                peer->send_data(create_message(MESSAGE_TYPE::HERES_YOUR_AUTH, auth_key));
-
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            case MESSAGE_TYPE::MSG:
-            {
-                std::string msg = read_string(data, i, data_len);
-                std::cout << "Message received from peer: " << msg << std::endl;
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            case MESSAGE_TYPE::FILE:
-            {
-                std::cout << "Received file from peer" << std::endl;
-                // TODO: actually read the file
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            case MESSAGE_TYPE::CONNECT_PEER:
-            {
-                std::cout << "Received Connect Peer message when already connected" << std::endl;
-
-                return EXECUTION_STATUS::CONTINUE;
-            }
-            
-            case MESSAGE_TYPE::NONE:
-            default:
-                std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
-                return EXECUTION_STATUS::CONTINUE;
-        }
-
-        return EXECUTION_STATUS::CONTINUE;
+        case MESSAGE_TYPE::NONE:
+        default:
+            std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
+            return EXECUTION_STATUS::CONTINUE;
     }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
-    }
+    return EXECUTION_STATUS::CONTINUE;
 }
 
 
 void client_loop(std::string server_address_pair, protocol input_protocol)
 {
-    try
-    {
-        std::cout << "Starting ptop!" << std::endl;
-        std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
-        client_init_kit kit{ server_address_pair, input_protocol };
+    std::cout << "Starting ptop!" << std::endl;
+    std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
+    client_init_kit kit{ server_address_pair, input_protocol };
 
-        while (kit.status == EXECUTION_STATUS::CONTINUE) //listen at the start of protocol
+    while (kit.status == EXECUTION_STATUS::CONTINUE) //listen at the start of protocol
+    {
+        auto now = std::chrono::system_clock::now();
+        if (now - kit.last_send > 3s)
         {
-            auto now = std::chrono::system_clock::now();
-            if (now - kit.last_send > 3s)
+            kit.conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
+            kit.last_send = now;
+        }
+        if (kit.conn_socket->has_message())
+        {
+            auto message = kit.conn_socket->receive_message();
+            process_server_data(kit, message, Sockets::ClientListenPort);
+        }
+
+        std::this_thread::sleep_for(100ms);
+    }
+
+
+    if (kit.status == EXECUTION_STATUS::CONNECTED)
+    {
+        kit.status = EXECUTION_STATUS::CONTINUE;
+        std::cout << "connected to peer. enter your message!" << std::endl;
+        thread_queue message_queue{};
+
+        std::thread input_thread = std::thread([&message_queue]()
             {
-                kit.conn_socket->send_data(create_message(MESSAGE_TYPE::READY_FOR_P2P));
-                kit.last_send = now;
-            }
+                std::string input;
+                do
+                {
+                    std::getline(std::cin, input); //waits until cin input
+                    {
+                        std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
+                        message_queue.messages.push(input);
+                    }
+
+                    std::this_thread::sleep_for(100ms);
+                } while (true);
+            });
+        input_thread.detach();
+
+        std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
+
+        do {
             if (kit.conn_socket->has_message())
             {
                 auto message = kit.conn_socket->receive_message();
-                process_server_data(kit, message, Sockets::ClientListenPort);
+                kit.status = process_peer_data(message, kit.conn_socket, kit.auth_key);
             }
 
-            std::this_thread::sleep_for(100ms);
-        }
-
-
-        if (kit.status == EXECUTION_STATUS::CONNECTED)
-        {
-            kit.status = EXECUTION_STATUS::CONTINUE;
-            std::cout << "connected to peer. enter your message!" << std::endl;
-            thread_queue message_queue{};
-
-            std::thread input_thread = std::thread([&message_queue]()
+            {
+                if (take_message_lock.try_lock())
                 {
-                    std::string input;
-                    do
+                    if (!message_queue.messages.empty())
                     {
-                        std::getline(std::cin, input); //waits until cin input
-                        {
-                            std::unique_lock<std::shared_mutex> lock(message_queue.queue_mutex);
-                            message_queue.messages.push(input);
-                        }
-
-                        std::this_thread::sleep_for(100ms);
-                    } while (true);
-                });
-            input_thread.detach();
-
-            std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
-
-            do {
-                if (kit.conn_socket->has_message())
-                {
-                    auto message = kit.conn_socket->receive_message();
-                    kit.status = process_peer_data(message, kit.conn_socket, kit.auth_key);
-                }
-
-                {
-                    if (take_message_lock.try_lock())
-                    {
-                        if (!message_queue.messages.empty())
-                        {
-                            std::string input_message = message_queue.messages.front();
-                            message_queue.messages.pop();
-                            kit.conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
-                        }
-                        take_message_lock.unlock();
+                        std::string input_message = message_queue.messages.front();
+                        message_queue.messages.pop();
+                        kit.conn_socket->send_data(create_message(MESSAGE_TYPE::MSG, input_message));
                     }
+                    take_message_lock.unlock();
                 }
+            }
+            std::this_thread::sleep_for(100ms);
+            
+        } while (kit.status == EXECUTION_STATUS::CONTINUE);
 
-                std::this_thread::sleep_for(100ms);
-            } while (kit.status == EXECUTION_STATUS::CONTINUE);
-
-            std::cout << "finished sending to peer" << std::endl;
-        }
-    }
-    catch (...)
-    {
-        std::throw_with_nested(PRINT_LINE);
+        std::cout << "finished sending to peer" << std::endl;
     }
 }
