@@ -5,7 +5,7 @@
 #include <string>
 #include <cstring>
 
-void PRINT_MSG_LINE(std::string input);
+std::exception print_new_exception(std::string input);
 
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA

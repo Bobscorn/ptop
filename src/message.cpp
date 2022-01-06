@@ -14,6 +14,8 @@ std::vector<char> Message::to_bytes() const
 	return out_data;
 }
 
-void PRINT_MSG_LINE(std::string input) {
-	std::cout << (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + input) << std::endl;
+std::exception print_new_exception(std::string input) {
+	auto together = (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + input);
+	std::cout << together << std::endl;
+	return std::exception(together.c_str());
 }
