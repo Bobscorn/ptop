@@ -288,8 +288,8 @@ std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
             auto readable = convert_to_readable(raw);
             std::cout << "[Listen] " << get_identifier_str() << " Accepted a connection : " << readable.ip_address << " : " << readable.port << std::endl;
             return std::make_unique<windows_data_socket>(send_socket, _protocol);
+        }
     }
-    
     catch(...) {
         std::throw_with_nested(PRINT_MSG_LINE("failed to accept connection"));
     }
