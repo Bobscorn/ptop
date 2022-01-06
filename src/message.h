@@ -5,9 +5,7 @@
 #include <string>
 #include <cstring>
 
-#ifndef PRINT_LINE
-#define PRINT_MSG_LINE(x) std::cout << (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + x) << std::endl;
-#endif
+void PRINT_MSG_LINE(std::string input);
 
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
