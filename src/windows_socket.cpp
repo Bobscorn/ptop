@@ -212,6 +212,10 @@ windows_listen_socket::windows_listen_socket(std::string port, protocol input_pr
 
 void windows_listen_socket::listen()
 {
+    if(_protocol.is_udp()) {
+        std::cout << "UDP doesn't need a listen socket" << std::endl;
+        return;
+    }
     std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
     if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR) {
         auto last_error = get_last_error();

@@ -12,9 +12,6 @@
 
 using namespace std::chrono;
 
-void process_user_input(const server_init_kit& tcp, const server_init_kit& udp, thread_queue& queue);
-void print_status(const server_init_kit& kit);
-
 server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
     clientA = std::unique_ptr<IDataSocket>();
     clientB = std::unique_ptr<IDataSocket>();
@@ -149,6 +146,47 @@ EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSo
     }
 }
 
+void print_status(const server_init_kit& protocol_kit)
+{
+    std::cout << "Server Socket " << (protocol_kit.server_socket->has_connection() ? "does " : "does NOT ") << "have a connection available" << std::endl;
+    if (!protocol_kit.clientA)
+        std::cout << "ClientA: NULL" << std::endl << "ClientA has sent and received 0 bytes (it is NULL)" << std::endl;
+    else
+        std::cout << "ClientA: " << protocol_kit.clientA->get_endpoint_ip() << ":" << protocol_kit.clientA->get_endpoint_port() << std::endl << "ClientA has seen " << protocol_kit.clientA->bytes_seen() << " bytes and sent " << protocol_kit.clientA->bytes_sent() << " bytes" << std::endl;
+    if (!protocol_kit.clientB)
+        std::cout << "ClientB: NULL" << std::endl << "ClientB has sent and received 0 bytes (is it NULL)" << std::endl;
+    else
+        std::cout << "ClientB: " << protocol_kit.clientB->get_endpoint_ip() << ":" << protocol_kit.clientB->get_endpoint_port() << std::endl << "ClientB has seen " << protocol_kit.clientB->bytes_seen() << " bytes and sent " << protocol_kit.clientB->bytes_sent() << " bytes" << std::endl;
+}
+
+
+void process_user_input(const server_init_kit& tcp_kit, const server_init_kit& udp_kit, thread_queue& queue)
+{   std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
+    if (lock.try_lock())
+    {
+        if (!queue.messages.empty())
+        {
+            std::string input_message = queue.messages.front();
+            queue.messages.pop();
+            if (input_message == "report" || input_message == "debug")
+            {
+                std::cout << "Reporting:" << std::endl;
+                std::cout << "TCP Status: " << std::endl;
+                print_status(tcp_kit);
+                std::cout << "UDP Status: " << std::endl;
+                print_status(udp_kit);
+            }
+            else if (input_message == "close" || input_message == "quit" || input_message == "shutdown")
+            {
+                std::cout << "Closing server..." << std::endl;
+                lock.unlock();
+                return;
+            }
+        }
+        lock.unlock();
+    }
+}
+
 void input_thread_func(thread_queue& message_queue)
 {
     try
@@ -242,44 +280,4 @@ void process_server_protocol(server_init_kit& protocol_kit)
             protocol_kit.status = EXECUTION_STATUS::CONTINUE;
         }
     }
-}
-
-void process_user_input(const server_init_kit& tcp_kit, const server_init_kit& udp_kit, thread_queue& queue)
-{   std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
-    if (lock.try_lock())
-    {
-        if (!queue.messages.empty())
-        {
-            std::string input_message = queue.messages.front();
-            queue.messages.pop();
-            if (input_message == "report" || input_message == "debug")
-            {
-                std::cout << "Reporting:" << std::endl;
-                std::cout << "TCP Status: " << std::endl;
-                print_status(tcp_kit);
-                std::cout << "UDP Status: " << std::endl;
-                print_status(udp_kit);
-            }
-            else if (input_message == "close" || input_message == "quit" || input_message == "shutdown")
-            {
-                std::cout << "Closing server..." << std::endl;
-                lock.unlock();
-                return;
-            }
-        }
-        lock.unlock();
-    }
-}
-
-void print_status(const server_init_kit& protocol_kit)
-{
-    std::cout << "Server Socket " << (protocol_kit.server_socket->has_connection() ? "does " : "does NOT ") << "have a connection available" << std::endl;
-    if (!protocol_kit.clientA)
-        std::cout << "ClientA: NULL" << std::endl << "ClientA has sent and received 0 bytes (it is NULL)" << std::endl;
-    else
-        std::cout << "ClientA: " << protocol_kit.clientA->get_endpoint_ip() << ":" << protocol_kit.clientA->get_endpoint_port() << std::endl << "ClientA has seen " << protocol_kit.clientA->bytes_seen() << " bytes and sent " << protocol_kit.clientA->bytes_sent() << " bytes" << std::endl;
-    if (!protocol_kit.clientB)
-        std::cout << "ClientB: NULL" << std::endl << "ClientB has sent and received 0 bytes (is it NULL)" << std::endl;
-    else
-        std::cout << "ClientB: " << protocol_kit.clientB->get_endpoint_ip() << ":" << protocol_kit.clientB->get_endpoint_port() << std::endl << "ClientB has seen " << protocol_kit.clientB->bytes_seen() << " bytes and sent " << protocol_kit.clientB->bytes_sent() << " bytes" << std::endl;
 }
