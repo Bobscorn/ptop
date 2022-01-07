@@ -217,6 +217,11 @@ linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto)
 
 void linux_listen_socket::listen()
 {
+	if(_protocol.is_udp()) {
+        std::cout << "UDP doesn't need a listen socket" << std::endl;
+        return;
+    }
+	
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	if (::listen(_socket, 5) == SOCKET_ERROR)
 		throw print_new_exception(std::string("[Listen] Error when listening: ") + linux_error());
