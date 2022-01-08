@@ -44,7 +44,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
 
 	if (!str) {
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error());
+		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), CONTEXT);
 	}
 		
 
@@ -65,7 +65,7 @@ LinuxSocket::LinuxSocket(SOCKET socket, protocol proto)
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
-		throw print_new_exception("failed to update name info");
+		throw print_new_exception("failed to update name info", CONTEXT);
 	}
 }
 
@@ -111,12 +111,12 @@ readable_ip_info LinuxSocket::get_peer_data() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw print_new_exception("Failed to getpeername: " + linux_error());
+		throw print_new_exception("Failed to getpeername: " + linux_error(), CONTEXT);
 
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
 	if (!str)
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error());
+		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), CONTEXT);
 
 	std::string address = str;
 
@@ -133,7 +133,7 @@ raw_name_data LinuxSocket::get_peername_raw() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw print_new_exception(std::string("[Socket] Failed to getpeername with: ") + linux_error());
+		throw print_new_exception(std::string("[Socket] Failed to getpeername with: ") + linux_error(), CONTEXT);
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
@@ -147,7 +147,7 @@ raw_name_data LinuxSocket::get_myname_raw() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_socket, (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw print_new_exception(std::string("[Socket] Failed to getsockname with: ") + linux_error());
+		throw print_new_exception(std::string("[Socket] Failed to getsockname with: ") + linux_error(), CONTEXT);
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
@@ -224,7 +224,7 @@ void linux_listen_socket::listen()
 	
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	if (::listen(_socket, 5) == SOCKET_ERROR)
-		throw print_new_exception(std::string("[Listen] Error when listening: ") + linux_error());
+		throw print_new_exception(std::string("[Listen] Error when listening: ") + linux_error(), CONTEXT);
 }
 
 bool linux_listen_socket::has_connection()
@@ -246,7 +246,7 @@ bool linux_listen_socket::has_connection()
 	if (num_polled > 0)
 		return poll_thing.revents | POLLRDNORM;
 	if (num_polled == SOCKET_ERROR)
-		throw print_new_exception(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error());
+		throw print_new_exception(std::string("[Listen] Failed to poll linux socket readability: ") + linux_error(), CONTEXT);
 	return false;
 }
 
@@ -368,7 +368,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 	if (n == SOCKET_ERROR)
-		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error());
+		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), CONTEXT);
 
 	SOCKET conn_socket = INVALID_SOCKET;
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
@@ -378,7 +378,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 		{
 			auto last_err = linux_error();
 			freeaddrinfo(result);
-			throw print_new_exception("[Data] Failed to create data socket with: " + last_err);
+			throw print_new_exception("[Data] Failed to create data socket with: " + last_err, CONTEXT);
 		}
 
 		// BEGIN POTENTIAL BUG FIX TEST
@@ -388,7 +388,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 		{
 			auto err = linux_error();
 			close(conn_socket);
-			throw print_new_exception("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: " + err);
+			throw print_new_exception("[Data] Failed to set socket SO_REUSEADDR (bug testing) with: " + err, CONTEXT);
 		}
 #ifdef SO_REUSEPORT
 		n = setsockopt(conn_socket, SOL_SOCKET, SO_REUSEPORT, &reuseVal, sizeof(reuseVal));
@@ -396,7 +396,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 		{
 			auto err = linux_error();
 			close(conn_socket);
-			throw print_new_exception("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: " + err);
+			throw print_new_exception("[Data] Failed to set socket SO_REUSEPORT (bug testing) with: " + err, CONTEXT);
 		}
 #endif
 		// END BUG FIX TEST
@@ -419,7 +419,7 @@ int data_connect_construct(std::string peer_address, std::string peer_port, prot
 	freeaddrinfo(result);
 
 	if (conn_socket == INVALID_SOCKET)
-		throw print_new_exception("[Data] No sockets successfully connected to peer");
+		throw print_new_exception("[Data] No sockets successfully connected to peer", CONTEXT);
 
 	return conn_socket;
 }
@@ -440,7 +440,7 @@ Message linux_data_socket::receive_message()
 		return tmp;
 	}
 
-	throw print_new_exception("Failed to parse incoming data");
+	throw print_new_exception("Failed to parse incoming data", CONTEXT);
 }
 
 bool linux_data_socket::has_message()
@@ -455,7 +455,7 @@ bool linux_data_socket::has_message()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n == SOCKET_ERROR)
-		throw print_new_exception("[Data] Failed to poll linux socket readability: " + linux_error());
+		throw print_new_exception("[Data] Failed to poll linux socket readability: " + linux_error(), CONTEXT);
 
 	return n > 0;
 }
@@ -548,7 +548,7 @@ void linux_reuse_nonblock_listen_socket::listen()
 	{
 		auto err = errno;
 		if (err && err != EINPROGRESS && err != EAGAIN)
-			throw print_new_exception("[ListenReuseNoB] Failed to listen with: " + linux_error());
+			throw print_new_exception("[ListenReuseNoB] Failed to listen with: " + linux_error(), CONTEXT);
 	}
 }
 
@@ -564,7 +564,7 @@ bool linux_reuse_nonblock_listen_socket::has_connection()
 
 	int n = select(_socket + 1, &poll_read_set, 0, 0, &timeout);
 	if (n == SOCKET_ERROR)
-		throw print_new_exception("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error());
+		throw print_new_exception("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error(), CONTEXT);
 
 	return n > 0;
 }

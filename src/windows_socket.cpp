@@ -20,7 +20,7 @@ WindowsSocket::WindowsSocket(SOCKET socket, protocol input_protocol)
     if (_address == "Unassigned" || _address.empty() ||
         _port == "Unassigned" || _port.empty()) {
         auto message = "failed to update name info";        
-        throw print_new_exception(message);
+        throw print_new_exception(message, CONTEXT);
     }
 }
 
@@ -75,7 +75,7 @@ readable_ip_info convert_to_readable(raw_name_data name)
 
     if (!str) {
         auto error = std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error();        
-        throw print_new_exception(error);
+        throw print_new_exception(error, CONTEXT);
     }
     std::string port_str = std::to_string(htons(name.ipv4_addr().sin_port));
 
@@ -135,7 +135,7 @@ raw_name_data WindowsSocket::get_peername_raw() const
     int n = getpeername(_socket, (sockaddr*)&peer_name, &peer_size);
     if (n != 0) {
         auto error = std::string("[Socket] Failed to getpeername with: ") + get_last_error();        
-        throw print_new_exception(error);
+        throw print_new_exception(error, CONTEXT);
     }
 
     raw_name_data raw_data;
@@ -152,7 +152,7 @@ raw_name_data WindowsSocket::get_myname_raw() const
 
     if (n != 0) {
         auto error = std::string("[Socket] Failed to getsockname with: ") + get_last_error();        
-        throw print_new_exception(error);
+        throw print_new_exception(error, CONTEXT);
     }
 
     raw_name_data raw_data;
@@ -444,7 +444,7 @@ windows_internet::windows_internet(WORD versionRequested)
     
     if (iResult != 0) {
         auto error = "Winsock API initialization failed: " + std::to_string(iResult);        
-        throw print_new_exception(error);
+        throw print_new_exception(error, CONTEXT);
     }
     std::cout << "Winsock has been started" << std::endl;
 }
@@ -514,7 +514,7 @@ void windows_reusable_nonblocking_listen_socket::listen()
     std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
     if (::listen(_socket, SOMAXCONN) == SOCKET_ERROR) {
         auto message = "Socket: " + get_identifier_str() + " Failed to listen with : " + get_last_error();
-        throw print_new_exception(message);
+        throw print_new_exception(message, CONTEXT);
     }
 }
 

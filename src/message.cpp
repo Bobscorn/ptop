@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 
+
+
 const Message Message::null_message = Message{ MESSAGE_TYPE::NONE, (MESSAGE_LENGTH_T)-1, std::vector<char>() };
 
 std::vector<char> Message::to_bytes() const
@@ -14,8 +16,8 @@ std::vector<char> Message::to_bytes() const
 	return out_data;
 }
 
-std::exception print_new_exception(std::string input) {
-	auto together = (std::string(__func__) + "(" + std::to_string(__LINE__) + ") " + input);
+std::nested_exception print_new_exception(std::string input, std::string line_context) {
+	auto together = (line_context + input);
 	std::cout << together << std::endl;
-	return std::runtime_error(together.c_str());
+	return std::nested_exception();
 }

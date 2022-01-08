@@ -5,7 +5,11 @@
 #include <string>
 #include <cstring>
 
-std::exception print_new_exception(std::string input);
+#ifndef CONTEXT
+#define CONTEXT std::string("(" + std::to_string(__LINE__) + ", " + __func__ + ")")
+#endif
+
+std::nested_exception print_new_exception(std::string input, std::string line_context);
 
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
