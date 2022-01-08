@@ -57,15 +57,6 @@ EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>&
     }
 }
 
-void private_punch() {
-
-}
-
-void public_punch() {
-
-}
-
-
 EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_key_out, int i, MESSAGE_LENGTH_T data_len, std::string port) {
     // Server giving us a peer to connect to
     // Attempt to connect to peer by connecting to it and listening for a connection

@@ -40,20 +40,6 @@
 
 using namespace std::chrono;
 
-void print_exception(const std::exception& e, int level = 0)
-{
-    std::cerr << std::string(level, ' ') << "exception: " << e.what() << std::endl;
-    try
-    {
-        std::rethrow_if_nested(e);
-    }
-    catch (const std::exception& e)
-    {
-        print_exception(e, level + 1);
-    }
-    catch (...) {}
-}
-
 int main(int argc, char** argv) {
 
 #if defined(WIN32) | defined(_WIN64)
@@ -61,47 +47,39 @@ int main(int argc, char** argv) {
     windows_internet wsa_wrapper(MAKEWORD(2, 2));
 #endif
 
-    try
-    {
-        std::cout << "Please enter the rendezvous server's IP:" << std::endl;
-        std::string raw_ip{};
+    std::cout << "Please enter the rendezvous server's IP:" << std::endl;
+    std::string raw_ip{};
 
-        std::cin >> raw_ip;
+    std::cin >> raw_ip;
 
-        if (raw_ip == "") {
-            std::this_thread::sleep_for(100ms); //epic optimization
-            return 0;
-        }
+    if (raw_ip == "") {
+        std::this_thread::sleep_for(100ms); //epic optimization
+        return 0;
+    }
 
-        std::cout << "Please enter your protocol of choice:" << std::endl;
-        std::string possible_protocol{};
+    std::cout << "Please enter your protocol of choice:" << std::endl;
+    std::string possible_protocol{};
 
-        std::cin >> possible_protocol;
-        protocol validated{ possible_protocol };
-            
-        client_loop(raw_ip, validated);
+    std::cin >> possible_protocol;
+    protocol validated{ possible_protocol };
         
-
-
-        // std::string raw_ip{};
-        // std::cin >> raw_ip;
-
-        // if (raw_ip == "") {
-        //     continue;
-        // }
-
-        // //TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
-
-        // int last_error = WSAGetLastError();
-
-        // if (last_error != 0) {
-
-        // }
-    }
+    client_loop(raw_ip, validated);
     
-    catch (const std::exception& e)
-    {
-        print_exception(e);
-    }
+
+
+    // std::string raw_ip{};
+    // std::cin >> raw_ip;
+
+    // if (raw_ip == "") {
+    //     continue;
+    // }
+
+    // //TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
+
+    // int last_error = WSAGetLastError();
+
+    // if (last_error != 0) {
+
+    // }
 }
 

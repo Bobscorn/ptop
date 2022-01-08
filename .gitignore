@@ -33,3 +33,5 @@
 # Executables
 *.out
 *.app
+
+.vscode/cmake_install.cmake
