@@ -3,18 +3,19 @@
 #ifdef WIN32
 #include <WinSock2.h>
 
-typedef SOCKET epic_sock_type_t;
-constexpr epic_sock_type_t Invalid_Socket = INVALID_SOCKET;
 #elif defined(__linux__)
 #include <sys/types.h>
 
-typedef int epic_sock_type_t;
-constexpr epic_sock_type_t Invalid_Socket = -1;
+
+using SOCKET = int; 
+
+constexpr SOCKET REALLY_INVALID_SOCKET = -1;
 #endif
 
 #include <string>
 
 #include "socket.h"
+#include "protocol.h"
 
 void throw_if_socket_error(int n, std::string message);
 //void throw_if_non_block_error(int n, std::string message);
@@ -26,18 +27,28 @@ enum select_for
     EXCEPT
 };
 
-struct epic_socket
+class epic_socket
 {
-    epic_socket() : handle(Invalid_Socket) {}
-    explicit epic_socket(epic_sock_type_t handle) : handle(handle) {}
-    epic_socket(int family, int type, int protocol);
-    epic_socket(epic_socket&& other) : handle(other.handle) { other.handle = Invalid_Socket; }
+    private:
+    SOCKET _handle;
+    protocol _protocol;
+    epic_socket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto) {}
+
+    public:
+
+    explicit epic_socket(protocol proto) : _protocol(proto) {
+
+    };
+
+    epic_socket(epic_socket&& other) : _handle(other._handle), _protocol(other._protocol) { 
+        other._handle = REALLY_INVALID_SOCKET;
+    };
     ~epic_socket();
 
     template<class OptT>
     epic_socket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
     {
-        int result = setsockopt(handle, SOL_SOCKET, option_name, &optionVal, sizeof(OptT));
+        int result = setsockopt(_handle, SOL_SOCKET, option_name, &optionVal, sizeof(OptT));
         throw_if_socket_error(result, error_message);
         return *this;
     }
@@ -61,6 +72,8 @@ struct epic_socket
     epic_socket& bind_socket(const raw_name_data& name, std::string error_mess = "Failed to bind");
     epic_socket& start_listening();
 
+    epic_socket&& accept_data_socket();
+
     epic_socket& connect(sockaddr* addr, socklen_t len);
     bool try_connect(sockaddr* addr, socklen_t len);
 
@@ -69,9 +82,13 @@ struct epic_socket
 
     bool has_message() const;
 
-    inline bool is_invalid() const { return handle == Invalid_Socket; }
-    inline bool is_valid() const { return handle != Invalid_Socket; }
+    std::vector<char> recv();
 
+    raw_name_data get_peer_raw() const;
+    raw_name_data get_name_raw() const;
 
-    epic_sock_type_t handle;
+    inline bool is_invalid() const { return _handle == REALLY_INVALID_SOCKET; }
+    inline bool is_valid() const { return _handle != REALLY_INVALID_SOCKET; }
+
+    inline SOCKET get_handle() const { return _handle; }
 };

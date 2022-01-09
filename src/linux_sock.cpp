@@ -40,18 +40,18 @@ void throw_if_socket_error(int val, std::string error_message)
 
 epic_socket::~epic_socket()
 {
-	if (handle != Invalid_Socket)
+	if (_handle != REALLY_INVALID_SOCKET)
 	{
-		close(handle);
-		handle = Invalid_Socket;
+		close(_handle);
+		_handle = REALLY_INVALID_SOCKET;
 	}
 }
 
 epic_socket& epic_socket::set_non_blocking(bool value)
 {
-	int flags = fcntl(handle, F_GETFL);
+	int flags = fcntl(_handle, F_GETFL);
 	throw_if_socket_error(flags, "Failed to retrieve socket flags");
-	int n = fcntl(handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
+	int n = fcntl(_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
 	throw_if_socket_error(n, "Failed to set blocking value");
 }
 

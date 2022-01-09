@@ -47,10 +47,6 @@ typedef linux_name_data raw_name_data;
 #define SOCKET_ERROR -1
 #endif // SOCKET_ERROR
 
-#ifndef INVALID_SOCKET
-#define INVALID_SOCKET -1
-#endif
-
 #endif
 
 

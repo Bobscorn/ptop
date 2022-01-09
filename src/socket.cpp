@@ -55,11 +55,9 @@ std::unique_ptr<IReusableNonBlockingConnectSocket> Sockets::CreateReusableConnec
 std::unique_ptr<IDataSocket> Sockets::ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 {
 #if defined(WIN32) | defined(_WIN64)
-	if (auto reuse_nb = dynamic_cast<windows_reusable_nonblocking_connection_socket*>(old.get()))
-		return std::make_unique<windows_data_socket>(std::move(old), reuse_nb->get_protocol());
+	return std::make_unique<windows_data_socket>(std::move(old));
 #elif __linux__
-	if (auto reuse_nb = dynamic_cast<linux_reuse_nonblock_connection_socket*>(old.get()))
-		return std::make_unique<linux_data_socket>(std::move(old), reuse_nb->get_protocol());
+	return std::make_unique<linux_data_socket>(std::move(old));
 #endif
 	throw std::runtime_error("Failed to convert to datasocket");
 }

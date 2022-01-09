@@ -57,9 +57,8 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	return out;
 }
 
-LinuxSocket::LinuxSocket(epic_socket&& socket, protocol proto) 
+LinuxSocket::LinuxSocket(epic_socket&& socket) 
 	: _socket(std::move(socket))
-	, _protocol(proto)
 { 
 	update_name_info();
 
@@ -105,7 +104,7 @@ readable_ip_info LinuxSocket::get_peer_data() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
-	int n = getpeername(_socket.handle, (sockaddr*)&peer_name, &peer_size);
+	int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
 		throw print_new_exception("Failed to getpeername: " + linux_error(), CONTEXT);
 
@@ -125,30 +124,12 @@ readable_ip_info LinuxSocket::get_peer_data() const
 
 raw_name_data LinuxSocket::get_peername_raw() const
 {
-	sockaddr_in peer_name;
-	socklen_t peer_size = sizeof(peer_name);
-	int n = getpeername(_socket.handle, (sockaddr*)&peer_name, &peer_size);
-	if (n != 0)
-		throw print_new_exception(std::string("[Socket] Failed to getpeername with: ") + linux_error(), CONTEXT);
-
-	raw_name_data raw_data;
-	raw_data.name = *(sockaddr*)&peer_name;
-	raw_data.name_len = peer_size;
-	return raw_data;
+	return _socket.get_peer_raw();
 }
 
 raw_name_data LinuxSocket::get_myname_raw() const
 {
-	sockaddr_in peer_name;
-	socklen_t peer_size = sizeof(peer_name);
-	int n = getsockname(_socket.handle, (sockaddr*)&peer_name, &peer_size);
-	if (n != 0)
-		throw print_new_exception(std::string("[Socket] Failed to getsockname with: ") + linux_error(), CONTEXT);
-
-	raw_name_data raw_data;
-	raw_data.name = *(sockaddr*)&peer_name;
-	raw_data.name_len = peer_size;
-	return raw_data;
+	return _socket.get_name_raw();
 }
 
 readable_ip_info LinuxSocket::get_peername_readable() const 
@@ -164,7 +145,7 @@ readable_ip_info LinuxSocket::get_myname_readable() const
 epic_socket listen_construct(std::string port, protocol input_proto)
 {
 	std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
-	epic_socket listen_socket = epic_socket(input_proto.get_ai_family(), input_proto.get_ai_socktype(), input_proto.get_ai_protocol());
+	auto listen_socket = epic_socket(input_proto);
 
 	socklen_t cli_len;
 	if (listen_socket.is_invalid())
@@ -186,17 +167,12 @@ epic_socket listen_construct(std::string port, protocol input_proto)
 	return listen_socket;
 }
 
-linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto) : LinuxSocket(listen_construct(port, input_proto), input_proto)
+linux_listen_socket::linux_listen_socket(std::string port, protocol input_proto) : LinuxSocket(listen_construct(port, input_proto))
 {
 }
 
 void linux_listen_socket::listen()
-{
-	if(_protocol.is_udp()) {
-        std::cout << "UDP doesn't need a listen socket" << std::endl;
-        return;
-    }
-	
+{	
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	_socket.start_listening();
 }
@@ -209,18 +185,8 @@ bool linux_listen_socket::has_connection()
 std::unique_ptr<IDataSocket> linux_listen_socket::accept_connection()
 {
 	std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
-	sockaddr_in client_addr;
-	socklen_t client_len;
-	SOCKET new_socket = accept(_socket.handle, (struct sockaddr*)&client_addr, &client_len);
-	if (new_socket == INVALID_SOCKET)
-		return nullptr;
-
-	raw_name_data name;
-	name.name = *(sockaddr*)&client_addr;
-	name.name_len = client_len;
-	auto readable = convert_to_readable(name);
-	std::cout << "[Listen] Accepted a connection: " << readable.ip_address << ":" << readable.port << std::endl;
-	return std::make_unique<linux_data_socket>(new_socket, _protocol);
+	auto tmp = _socket.accept_data_socket();
+	return std::make_unique<linux_data_socket>(std::move(tmp));
 }
 
 epic_socket&& steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
@@ -235,13 +201,11 @@ epic_socket&& steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>
 void linux_data_socket::process_socket_data()
 {
 	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
-	std::vector<char> recv_data = std::vector<char>(500, (char)0);
-	int iResult = recv(_socket.handle, recv_data.data(), (int)recv_data.size(), 0);
-	if (iResult > 0)
+	std::vector<char> recv_data = _socket.recv();
+	if (recv_data.size() > 0)
 	{
-		std::cout << "Received " << iResult << " bytes" << std::endl;
-		recv_data.resize(iResult);
-		_seen_data += iResult;
+		std::cout << "Received " << recv_data.size() << " bytes" << std::endl;
+		_seen_data += recv_data.size();
 
 		int data_read = 0;
 
@@ -276,10 +240,6 @@ void linux_data_socket::process_socket_data()
 			std::cout << "Socket " << (*this).get_identifier_str() << "Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes" << std::endl;
 		}
 	}
-	else if (iResult == -1)
-	{
-		std::cerr << "Receiving data failed: " << linux_error() << std::endl;
-	}
 	else
 	{
 		std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
@@ -287,7 +247,7 @@ void linux_data_socket::process_socket_data()
 	}
 }
 
-linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_proto) : LinuxSocket(steal_construct(std::move(old)), input_proto)
+linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : LinuxSocket(steal_construct(std::move(old)))
 {
 	update_endpoint_info();
 }

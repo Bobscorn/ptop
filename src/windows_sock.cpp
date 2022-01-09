@@ -24,17 +24,17 @@ void throw_if_socket_error(int val, std::string error_message)
 
 epic_socket& epic_socket::~epic_socket()
 {
-	if (handle != Invalid_Socket)
+	if (_handle != Invalid_Socket)
 	{
-		closesocket(handle);
-		handle = Invalid_Socket;
+		closesocket(_handle);
+		_handle = Invalid_Socket;
 	}
 }
 
 epic_socket& epic_socket::set_non_blocking(bool value)
 {
 	u_long blockMode = value;
-	int result = ioctlsocket(handle, FIONBIO, &blockMode);
+	int result = ioctlsocket(_handle, FIONBIO, &blockMode);
 	if (result == SOCKET_ERROR)
 		throw std::runtime_error("Failed to set non blocking mode: " + get_last_error());
 }
