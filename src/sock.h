@@ -29,6 +29,7 @@ enum select_for
 struct epic_socket
 {
     epic_socket() : handle(Invalid_Socket) {}
+    explicit epic_socket(epic_sock_type_t handle) : handle(handle) {}
     epic_socket(int family, int type, int protocol);
     epic_socket(epic_socket&& other) : handle(other.handle) { other.handle = Invalid_Socket; }
     ~epic_socket();

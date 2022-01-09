@@ -477,7 +477,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	name.name_len = client_len;
 	auto readable = convert_to_readable(name);
 	std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
-	return std::make_unique<linux_data_socket>(accepted_socket, _protocol);
+	return std::make_unique<linux_data_socket>(epic_socket(accepted_socket), _protocol);
 }
 
 epic_socket reuse_connection_construct(raw_name_data data, protocol proto)
