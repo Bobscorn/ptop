@@ -81,8 +81,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
 
     std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
 
-    time_point start_time = std::chrono::system_clock::now();
-    time_point current_time = start_time;
+    time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
+    time_point<std::chrono::system_clock> current_time = start_time;
 
     do
     {
