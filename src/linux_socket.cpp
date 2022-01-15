@@ -44,7 +44,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
 
 	if (!str) {
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
+		throw_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
 	}
 		
 
@@ -64,7 +64,7 @@ LinuxSocket::LinuxSocket(epic_socket&& socket)
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
-		throw print_new_exception("failed to update name info", LINE_CONTEXT);
+		throw_new_exception("failed to update name info", LINE_CONTEXT);
 	}
 }
 
@@ -106,12 +106,12 @@ readable_ip_info LinuxSocket::get_peer_data() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw print_new_exception("Failed to getpeername: " + linux_error(), LINE_CONTEXT);
+		throw_new_exception("Failed to getpeername: " + linux_error(), LINE_CONTEXT);
 
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
 	if (!str)
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
+		throw_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
 
 	std::string address = str;
 
@@ -277,7 +277,7 @@ epic_socket data_connect_construct(std::string peer_address, std::string peer_po
 	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 	if (n == SOCKET_ERROR)
-		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
+		throw_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
 
 	epic_socket conn_socket = epic_socket(ip_proto);
 	conn_socket.connect(result->ai_addr, result->ai_addrlen);
@@ -301,7 +301,7 @@ Message linux_data_socket::receive_message()
 		return tmp;
 	}
 
-	throw print_new_exception("Failed to parse incoming data", LINE_CONTEXT);
+	throw_new_exception("Failed to parse incoming data", LINE_CONTEXT);
 }
 
 bool linux_data_socket::has_message()
