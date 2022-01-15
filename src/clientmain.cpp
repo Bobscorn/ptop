@@ -33,7 +33,7 @@
 
 #include "server.h"
 #include "client.h"
-#include "socket.h"
+#include "socket_wrapper.h"
 #include "ip.h"
 #include "message.h"
 #include "protocol.h"

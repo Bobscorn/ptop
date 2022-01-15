@@ -12,7 +12,7 @@ constexpr SOCKET REALLY_INVALID_SOCKET = -1;
 
 #include <string>
 
-#include "socket.h"
+#include "socket_wrapper.h"
 #include "protocol.h"
 
 void throw_if_socket_error(int n, std::string message);
@@ -27,26 +27,26 @@ enum select_for
     EXCEPT
 };
 
-class epic_socket
+class socket
 {
     private:
     SOCKET _handle;
     protocol _protocol;
     raw_name_data _endpoint;
-    epic_socket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto), _endpoint() {}
-    epic_socket(SOCKET handle, protocol proto, raw_name_data endpoint) : _handle(handle), _protocol(proto), _endpoint(endpoint) {}
+    socket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto), _endpoint() {}
+    socket(SOCKET handle, protocol proto, raw_name_data endpoint) : _handle(handle), _protocol(proto), _endpoint(endpoint) {}
 
     public:
 
-    explicit epic_socket(protocol proto);
+    explicit socket(protocol proto);
 
-    epic_socket(epic_socket&& other) : _handle(other._handle), _protocol(other._protocol) { 
+    socket(socket&& other) : _handle(other._handle), _protocol(other._protocol) { 
         other._handle = REALLY_INVALID_SOCKET;
     };
-    ~epic_socket();
+    ~socket();
 
     template<class OptT>
-    epic_socket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
+    socket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
     {
         int result = setsockopt(_handle, SOL_SOCKET, option_name, (char*)&optionVal, sizeof(OptT));
         throw_if_socket_error(result, error_message);
@@ -54,7 +54,7 @@ class epic_socket
     }
 
     template<class OptT>
-    epic_socket& set_socket_option(int option_name, OptT optionVal)
+    socket& set_socket_option(int option_name, OptT optionVal)
     {
         return set_socket_option<OptT>(option_name, optionVal, "Failed to set socket option: " + std::to_string(option_name));
     }
@@ -70,21 +70,21 @@ class epic_socket
     }
     
 #ifdef __linux__
-    inline epic_socket& set_socket_reuse() { set_socket_option(SO_REUSEPORT, (int)1, "Failed to set socket (port) reusability"); return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
-    inline epic_socket& set_socket_no_reuse() { set_socket_option(SO_REUSEPORT, (int)0, "Failed to set socket (port) un-reusability"); return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
+    inline socket& set_socket_reuse() { set_socket_option(SO_REUSEPORT, (int)1, "Failed to set socket (port) reusability"); return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
+    inline socket& set_socket_no_reuse() { set_socket_option(SO_REUSEPORT, (int)0, "Failed to set socket (port) un-reusability"); return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
 #elif defined(WIN32)
-    inline epic_socket& set_socket_reuse() { return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
-    inline epic_socket& set_socket_no_reuse() { return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
+    inline socket& set_socket_reuse() { return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
+    inline socket& set_socket_no_reuse() { return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
 #endif
 
-    epic_socket& set_non_blocking(bool value);
+    socket& set_non_blocking(bool value);
 
-    epic_socket& bind_socket(const raw_name_data& name, std::string error_mess = "Failed to bind");
-    epic_socket& start_listening();
+    socket& bind_socket(const raw_name_data& name, std::string error_mess = "Failed to bind");
+    socket& start_listening();
 
-    epic_socket accept_data_socket();
+    socket accept_data_socket();
 
-    epic_socket& connect(sockaddr* addr, socklen_t len);
+    socket& connect(sockaddr* addr, socklen_t len);
     bool try_connect(sockaddr* addr, socklen_t len);
 
     void listen(int max_conns);

@@ -7,13 +7,13 @@
 #include <string>
 #include <queue>
 
-#include "socket.h"
+#include "socket_wrapper.h"
 #include "protocol.h"
 #include "sock.h"
 
 readable_ip_info convert_to_readable(raw_name_data data);
 
-class LinuxSocket : virtual public ISocket
+class LinuxSocket : virtual public ISocketWrapper
 {
 protected:
 	LinuxSocket(epic_socket&& socket);
@@ -48,23 +48,23 @@ public:
 	inline epic_socket&& release_socket() { return std::move(_socket); }
 };
 
-class linux_listen_socket : public LinuxSocket, public IListenSocket
+class linux_listen_socket : public LinuxSocket, public IListenSocketWrapper
 {
 public:
 	linux_listen_socket(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
-	std::unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class linux_data_socket : public LinuxSocket, public IDataSocket
+class linux_data_socket : public LinuxSocket, public IDataSocketWrapper
 {
 	std::queue<Message> _stored_messages;
 
 	void process_socket_data();
 	public:
-	linux_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	linux_data_socket(std::unique_ptr<INonBlockingConnector>&& old);
 	linux_data_socket(epic_socket&& socket);
 	linux_data_socket(std::string peer_address, std::string peer_port, protocol ip_proto);
 
@@ -76,17 +76,17 @@ class linux_data_socket : public LinuxSocket, public IDataSocket
 	bool has_died();
 };
 
-class linux_reuse_nonblock_listen_socket : public LinuxSocket, public IReusableNonBlockingListenSocket
+class linux_reuse_nonblock_listen_socket : public LinuxSocket, public INonBlockingListener
 {
 public:
 	linux_reuse_nonblock_listen_socket(std::string port, protocol proto);
 
 	void listen() override;
 	bool has_connection() override;
-	std::unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class linux_reuse_nonblock_connection_socket : public LinuxSocket, public IReusableNonBlockingConnectSocket
+class linux_reuse_nonblock_connection_socket : public LinuxSocket, public INonBlockingConnector
 {
 public:
 	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto);
