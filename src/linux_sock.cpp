@@ -1,5 +1,6 @@
 #include "sock.h"
 
+#ifdef __linux__
 #include <exception>
 #include <stdexcept>
 #include <iostream>
@@ -34,8 +35,20 @@ void throw_if_socket_error(int val, std::string error_message)
 	{
 		auto last_err = errno;
 		if (last_err != EAGAIN || last_err != EINPROGRESS)
-			throw std::runtime_error(error_message + " with: " + linux_error(last_err));
+		{
+			throw_new_exception(error_message, LINE_CONTEXT);
+		}
 	}
+}
+
+std::string socket_error_to_string(int err)
+{
+	return linux_error(err);
+}
+
+std::string get_last_error()
+{
+	return linux_error();
 }
 
 epic_socket::~epic_socket()
@@ -55,3 +68,4 @@ epic_socket& epic_socket::set_non_blocking(bool value)
 	throw_if_socket_error(n, "Failed to set blocking value");
 }
 
+#endif

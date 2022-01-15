@@ -161,7 +161,8 @@ void print_status(const server_init_kit& protocol_kit)
 
 
 void process_user_input(const server_init_kit& tcp_kit, const server_init_kit& udp_kit, thread_queue& queue)
-{   std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
+{   
+    std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
     if (lock.try_lock())
     {
         if (!queue.messages.empty())
@@ -203,9 +204,9 @@ void input_thread_func(thread_queue& message_queue)
             std::this_thread::sleep_for(100ms);
         } while (true);
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
-        std::cerr << "Input Thread encountered exception: " << e.what() << std::endl;
+        throw_with_context(e, LINE_CONTEXT);
     }
 }
 
@@ -219,14 +220,14 @@ void server_loop()
     std::thread user_input_thread{ input_thread_func, std::ref(user_input_queue) };
 
     server_init_kit init_tcp{ protocol{"tcp"} };
-    server_init_kit init_udp{ protocol{"udp"} };
+    //server_init_kit init_udp{ protocol{"udp"} };
 
     while (true)
     {
         process_server_protocol(init_tcp);
-        process_server_protocol(init_udp);
+        //process_server_protocol(init_udp);
 
-        process_user_input(init_tcp, init_udp, user_input_queue);
+        process_user_input(init_tcp, init_tcp, user_input_queue);
 
         std::this_thread::sleep_for(100ms);
     }

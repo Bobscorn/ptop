@@ -20,9 +20,14 @@ void throw_if_socket_error(int val, std::string error_message)
 
 		if (last_err != WSAEWOULDBLOCK) {
 			auto input = error_message + " with: " + get_win_error(last_err);
-			throw print_new_exception(input, CONTEXT);
+			throw_new_exception(input, LINE_CONTEXT);
 		}
 	}
+}
+
+std::string socket_error_to_string(int err)
+{
+	return get_win_error(err);
 }
 
 epic_socket::~epic_socket()
@@ -39,9 +44,6 @@ epic_socket& epic_socket::set_non_blocking(bool value)
 	u_long blockMode = value;
 	int result = ioctlsocket(_handle, FIONBIO, &blockMode);
 
-	if (result == SOCKET_ERROR) {
-		auto input = "Failed to set non blocking mode: " + get_last_error();
-		throw print_new_exception(input, CONTEXT);
-		
-	}
+	throw_if_socket_error(result, "Failed to set non blocking state");
+	return *this;
 }

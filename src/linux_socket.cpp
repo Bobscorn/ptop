@@ -44,7 +44,7 @@ readable_ip_info convert_to_readable(raw_name_data data)
 	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
 
 	if (!str) {
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), CONTEXT);
+		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
 	}
 		
 
@@ -64,7 +64,7 @@ LinuxSocket::LinuxSocket(epic_socket&& socket)
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
-		throw print_new_exception("failed to update name info", CONTEXT);
+		throw print_new_exception("failed to update name info", LINE_CONTEXT);
 	}
 }
 
@@ -106,12 +106,12 @@ readable_ip_info LinuxSocket::get_peer_data() const
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
 	if (n != 0)
-		throw print_new_exception("Failed to getpeername: " + linux_error(), CONTEXT);
+		throw print_new_exception("Failed to getpeername: " + linux_error(), LINE_CONTEXT);
 
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &peer_name.sin_addr, buf.data(), buf.size());
 	if (!str)
-		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), CONTEXT);
+		throw print_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
 
 	std::string address = str;
 
@@ -201,7 +201,7 @@ epic_socket&& steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>
 void linux_data_socket::process_socket_data()
 {
 	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
-	std::vector<char> recv_data = _socket.recv();
+	std::vector<char> recv_data = _socket.recv_bytes();
 	if (recv_data.size() > 0)
 	{
 		std::cout << "Received " << recv_data.size() << " bytes" << std::endl;
@@ -252,12 +252,12 @@ linux_data_socket::linux_data_socket(std::unique_ptr<IReusableNonBlockingConnect
 	update_endpoint_info();
 }
 
-linux_data_socket::linux_data_socket(epic_socket&& socket, protocol ip_proto) : LinuxSocket(std::move(socket), ip_proto)
+linux_data_socket::linux_data_socket(epic_socket&& socket) : LinuxSocket(std::move(socket))
 {
 	std::cout << "[Data] Copy Constructor Data socket" << std::endl;
 	update_endpoint_info();
 
-	if (socket.is_invalid())
+	if (_socket.is_invalid())
 		throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
 }
 
@@ -277,42 +277,15 @@ epic_socket data_connect_construct(std::string peer_address, std::string peer_po
 	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 	if (n == SOCKET_ERROR)
-		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), CONTEXT);
+		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
 
-	SOCKET conn_socket = REALLY_INVALID_SOCKET;
-	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
-	{
-		epic_socket conn_socket = epic_socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-		if (conn_socket.is_invalid())
-		{
-			auto last_err = linux_error();
-			freeaddrinfo(result);
-			throw print_new_exception("[Data] Failed to create data socket with: " + last_err, CONTEXT);
-		}
+	epic_socket conn_socket = epic_socket(ip_proto);
+	conn_socket.connect(result->ai_addr, result->ai_addrlen);
 
-		conn_socket.set_socket_reuse();
-		
-		if (ip_proto.is_tcp())
-		{
-			if (!conn_socket.try_connect(ptr->ai_addr, ptr->ai_addrlen))
-				continue;
-
-			auto readable = convert_to_readable(raw_name_data{ *ptr->ai_addr, ptr->ai_addrlen });
-			std::cout << "[Data] Successfully connected to: " << readable.ip_address << ":" << readable.port << std::endl;
-			return conn_socket;
-		}
-		break;
-	}
-
-	freeaddrinfo(result);
-
-	if (conn_socket == REALLY_INVALID_SOCKET)
-		throw print_new_exception("[Data] No sockets successfully connected to peer", CONTEXT);
-
-	return epic_socket();
+	return conn_socket;
 }
 
-linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port, protocol proto) : LinuxSocket(data_connect_construct(peer_address, peer_port, proto), proto)
+linux_data_socket::linux_data_socket(std::string peer_address, std::string peer_port, protocol proto) : LinuxSocket(data_connect_construct(peer_address, peer_port, proto))
 {
 	update_endpoint_info();
 }
@@ -328,7 +301,7 @@ Message linux_data_socket::receive_message()
 		return tmp;
 	}
 
-	throw print_new_exception("Failed to parse incoming data", CONTEXT);
+	throw print_new_exception("Failed to parse incoming data", LINE_CONTEXT);
 }
 
 bool linux_data_socket::has_message()
@@ -338,32 +311,19 @@ bool linux_data_socket::has_message()
 
 bool linux_data_socket::send_data(const Message& message)
 {
-	std::cout << "Socket " << (*this).get_identifier_str() << "sending " << "a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
+	std::cout << "Socket " << (*this).get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
 	auto bytes = message.to_bytes();
-	int iSendResult = send(_socket.handle, bytes.data(), (int)bytes.size(), 0);
-	if (iSendResult == SOCKET_ERROR)
+	if (_socket.send_bytes(bytes))
 	{
-		std::cerr << "Failed to send data with: " << linux_error() << std::endl;
-		return false;
+		_sent_bytes += bytes.size();
+		return true;
 	}
-	_sent_bytes += bytes.size();
-	return true;
+	return false;
 }
 
 bool linux_data_socket::has_died()
 {
-	if (has_message())
-	{
-		std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
-		int n = recv(_socket.handle, recv_data.data(), recv_data.size(), MSG_PEEK);
-		if (n == SOCKET_ERROR)
-		{
-			std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << linux_error() << std::endl;
-			return true;
-		}
-		return n == 0;
-	}
-	return false;
+	return _socket.has_died();
 }
 
 epic_socket reuse_listen_construct(std::string port, protocol proto)
@@ -378,18 +338,19 @@ epic_socket reuse_listen_construct(std::string port, protocol proto)
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(portno);
 
-	epic_socket listen_socket = epic_socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+	epic_socket listen_socket = epic_socket(proto);
 	if (listen_socket.is_invalid())
 		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
 
+	listen_socket.set_non_blocking(true);
 	listen_socket.set_socket_reuse();
 
-	listen_socket.bind_socket(raw_name_data{ *(sockaddr*)&serv_addr, sizeof(serv_addr) });
+	listen_socket.bind_socket(raw_name_data{ serv_addr });
 
 	return listen_socket;
 }
 
-linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port, protocol proto) : LinuxSocket(reuse_listen_construct(port, proto), proto)
+linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::string port, protocol proto) : LinuxSocket(reuse_listen_construct(port, proto))
 {
 	
 }
@@ -397,57 +358,31 @@ linux_reuse_nonblock_listen_socket::linux_reuse_nonblock_listen_socket(std::stri
 void linux_reuse_nonblock_listen_socket::listen()
 {
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
-	auto n = ::listen(_socket.handle, 4);
-	if (n == SOCKET_ERROR && n != EINPROGRESS && n != EAGAIN)
-	{
-		auto err = errno;
-		if (err && err != EINPROGRESS && err != EAGAIN)
-			throw print_new_exception("[ListenReuseNoB] Failed to listen with: " + linux_error(), CONTEXT);
-	}
+	_socket.listen(4);
 }
 
 bool linux_reuse_nonblock_listen_socket::has_connection()
 {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-
-	fd_set poll_read_set;
-	FD_ZERO(&poll_read_set);
-	FD_SET(_socket.handle, &poll_read_set);
-
-	int n = select(_socket.handle + 1, &poll_read_set, 0, 0, &timeout);
-	if (n == SOCKET_ERROR)
-		throw print_new_exception("[ListenReuseNoB] Failed to poll linux socket readability (has connection): " + linux_error(), CONTEXT);
-
-	return n > 0;
+	return _socket.has_connection();
 }
 
 std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connection()
 {
 	std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
-	sockaddr_in client_addr;
-	socklen_t client_len;
-	SOCKET accepted_socket = accept(_socket.handle, (struct sockaddr*)&client_addr, &client_len);
 
-	if (accepted_socket == REALLY_INVALID_SOCKET)
-		return nullptr;
-	raw_name_data name;
-	name.name = *(sockaddr*)&client_addr;
-	name.name_len = client_len;
-	auto readable = convert_to_readable(name);
-	std::cout << "[ListenReuseNoB] Accepted Connection from: " << readable.ip_address << ":" << readable.port << std::endl;
-	return std::make_unique<linux_data_socket>(epic_socket(accepted_socket), _protocol);
+	auto new_sock = _socket.accept_data_socket();
+	return std::make_unique<linux_data_socket>(std::move(new_sock));
 }
 
 epic_socket reuse_connection_construct(raw_name_data data, protocol proto)
 {
 	auto readable = convert_to_readable(data);
 	std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
-	epic_socket conn_socket = epic_socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+	epic_socket conn_socket = epic_socket(proto);
 	if (conn_socket.is_invalid())
 		throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + linux_error());
 
+	conn_socket.set_non_blocking(true);
 	conn_socket.set_socket_reuse();
 
 	conn_socket.bind_socket(data, "[DataReuseNoB] Failed to bind");
@@ -456,7 +391,7 @@ epic_socket reuse_connection_construct(raw_name_data data, protocol proto)
 	return conn_socket;
 }
 
-linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto) : LinuxSocket(reuse_connection_construct(data, proto), proto)
+linux_reuse_nonblock_connection_socket::linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto) : LinuxSocket(reuse_connection_construct(data, proto))
 {
 	// if tcp?
 	this->connect(ip_address, port);
@@ -499,10 +434,7 @@ ConnectionStatus linux_reuse_nonblock_connection_socket::has_connected()
 	if (!_socket.select_for(select_for::EXCEPT))
 		return ConnectionStatus::PENDING;
 
-	int sock_error = 0;
-	socklen_t sock_error_size = sizeof(sock_error);
-	if (getsockopt(_socket.handle, SOL_SOCKET, SO_ERROR, (char*)&sock_error, &sock_error_size) == SOCKET_ERROR)
-		throw std::runtime_error(std::string("Failed to get socket error code with: ") + linux_error());
+	auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
 
 	std::cerr << "Socket has error code: " << sock_error << std::endl;
 

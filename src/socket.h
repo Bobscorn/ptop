@@ -18,11 +18,25 @@ struct windows_name_data
 	windows_name_data() = default;
 	windows_name_data(sockaddr addr) : name(addr), name_len(sizeof(addr)) {}
 	windows_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
+	windows_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)) {}
 
 	sockaddr name;
-	int name_len;
+	socklen_t name_len;
 
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+
+	inline bool operator==(const windows_name_data& other) const
+	{
+		if (name_len != other.name_len)
+			return false;
+		return !std::memcmp(&name, &other.name, name_len);
+	}
+	inline bool operator!=(const windows_name_data& other) const
+	{
+		return !(*this == other);
+	}
+
+	readable_ip_info as_readable() const;
 };
 
 typedef windows_name_data raw_name_data;
@@ -32,13 +46,27 @@ typedef windows_name_data raw_name_data;
 
 struct linux_name_data
 {
-	linux_name_data() = default;
+	linux_name_data() { bzero(this, sizeof(linux_name_data)); }
 	linux_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
+	linux_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)) {}
 
 	sockaddr name;
 	socklen_t name_len;
 
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+
+	inline bool operator==(const linux_name_data& other) const 
+	{ 
+		if (name_len != other.name_len)
+			return false;
+		return !std::memcmp(&name, &other.name, name_len);
+	}
+	inline bool operator!=(const linux_name_data& other) const
+	{
+		return !(*this == other);
+	}
+
+	readable_ip_info as_readable() const;
 };
 
 typedef linux_name_data raw_name_data;

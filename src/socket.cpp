@@ -8,8 +8,14 @@
 
 #if defined(WIN32) | defined(_WIN64)
 #include "windows_socket.h"
+
+extern readable_ip_info convert_to_readable(raw_name_data data);
+readable_ip_info windows_name_data::as_readable() const { return convert_to_readable(*this); }
 #elif __linux__
 #include "linux_socket.h"
+
+extern readable_ip_info convert_to_readable(raw_name_data data);
+readable_ip_info linux_name_data::as_readable() const { return convert_to_readable(*this); }
 #endif
 
 const std::string Sockets::ServerListenPort = "27069";

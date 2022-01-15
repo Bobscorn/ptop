@@ -41,20 +41,19 @@ readable_ip_info convert_to_readable(raw_name_data);
 class WindowsSocket : virtual public ISocket
 {
 protected:
-	WindowsSocket(SOCKET socket, protocol input_protocol);
-	SOCKET _socket;
+	WindowsSocket(epic_socket&& sock);
+	epic_socket _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
-	protocol _protocol;
 	bool _endpoint_assigned = false;
 
 	void update_name_info();
 	void update_endpoint_info();
 	void update_endpoint_if_needed();
 
-	virtual ~WindowsSocket();
+	virtual ~WindowsSocket() {}
 
 public:
 	void shutdown() override;
@@ -71,10 +70,7 @@ public:
 
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline SOCKET get_socket() const { return _socket; }
-	inline void clear_socket() { _socket = REALLY_INVALID_SOCKET; }
-
-	inline protocol get_protocol() { return _protocol; };
+	inline epic_socket&& release_socket() { return std::move(_socket); }
 };
 
 class windows_listen_socket : public WindowsSocket, public IListenSocket
@@ -94,8 +90,8 @@ class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 	void process_socket_data();
 
 	public:
-	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_protocol);
-	windows_data_socket(SOCKET source_socket, protocol input_protocol);
+	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	windows_data_socket(epic_socket&& socket);
 	windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol);
 
 	Message receive_message() override;
