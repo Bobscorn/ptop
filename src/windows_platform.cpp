@@ -1,5 +1,6 @@
-#include "windows_socket.h"
+#include "ptop_socket.h"
 
+#if defined(WIN32) | defined(_WIN64)
 #include <exception>
 #include <string>
 #include <array>
@@ -8,11 +9,11 @@
 #include "message.h"
 #include "loop.h"
 #include "protocol.h"
-#include "sock.h"
+#include "ptop_socket.h"
 
 #define AF_FAM AF_INET
 
-WindowsPlatform::WindowsPlatform(epic_socket&& socket) 
+WindowsPlatform::WindowsPlatform(socket&& socket) 
     : _socket(std::move(socket))
 { 
     update_name_info();
@@ -192,7 +193,7 @@ readable_ip_info WindowsPlatform::get_myname_readable() const
     return convert_to_readable(get_myname_raw());
 }
 
-epic_socket construct_windowslistensocket(std::string port, protocol input_protocol) {
+socket construct_windowslistensocket(std::string port, protocol input_protocol) {
     try
     {
         std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
@@ -211,7 +212,7 @@ epic_socket construct_windowslistensocket(std::string port, protocol input_proto
             throw std::exception((std::string("[Listen] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
         }
 
-        epic_socket conn_socket = epic_socket(input_protocol);
+        socket conn_socket = socket(input_protocol);
 
         if (conn_socket.is_invalid())
         {
@@ -250,7 +251,7 @@ std::unique_ptr<IDataSocket> WindowsPlatformListener::accept_connection() {
     return std::make_unique<WindowsPlatformAnalyser>(std::move(tmp));
 }
 
-epic_socket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
+socket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
     std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
     struct addrinfo* result = NULL,
         *ptr = NULL,
@@ -269,7 +270,7 @@ epic_socket construct_windows_data_socket(std::string peer_address, std::string 
         throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
     }
 
-    epic_socket conn_socket = epic_socket(input_protocol);
+    socket conn_socket = socket(input_protocol);
 
     conn_socket.connect(result->ai_addr, result->ai_addrlen);
 
@@ -300,11 +301,11 @@ bool WindowsPlatformAnalyser::send_data(const Message& message)
     return false;
 }
 
-epic_socket windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
+socket windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
 {
     std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
     WindowsReusableConnector& real_old = *dynamic_cast<WindowsReusableConnector*>(old.get());
-    epic_socket epic = real_old.release_socket();
+    socket epic = real_old.release_socket();
     epic.set_non_blocking(false);
     return epic;
 }
@@ -370,7 +371,7 @@ WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<IReusableNonBlo
     }
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(epic_socket&& socket) : WindowsPlatform(std::move(socket))
+WindowsPlatformAnalyser::WindowsPlatformAnalyser(socket&& socket) : WindowsPlatform(std::move(socket))
 {
 	try
 	{
@@ -425,7 +426,7 @@ windows_internet::~windows_internet()
     std::cout << "Winsock has been cleaned" << std::endl;
 }
 
-epic_socket windows_reuse_nb_listen_construct(std::string port, protocol proto)
+socket windows_reuse_nb_listen_construct(std::string port, protocol proto)
 {
     try
     {
@@ -439,7 +440,7 @@ epic_socket windows_reuse_nb_listen_construct(std::string port, protocol proto)
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(portno);
 
-        epic_socket listen_socket = epic_socket(proto);
+        socket listen_socket = socket(proto);
         if (listen_socket.is_invalid())
             throw_new_exception("[ListenReuseNoB] (localhost:" + port + ") Failed to create reusable nonblocking listen socket: " + get_last_error(), LINE_CONTEXT);
 
@@ -478,12 +479,12 @@ std::unique_ptr<IDataSocket> WindowsReusableListener::accept_connection()
     return std::make_unique<WindowsPlatformAnalyser>(std::move(new_sock));
 }
 
-epic_socket windows_reuse_nb_construct(raw_name_data name, protocol proto)
+socket windows_reuse_nb_construct(raw_name_data name, protocol proto)
 {
 	try {
 		auto readable = convert_to_readable(name);
 		std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
-		epic_socket conn_socket = epic_socket(proto);
+		socket conn_socket = socket(proto);
 		if (conn_socket.is_invalid())
 			throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + get_last_error());
 
@@ -565,3 +566,4 @@ ConnectionStatus WindowsReusableConnector::has_connected()
 		throw_with_context(e, LINE_CONTEXT);
 	}
 }
+#endif

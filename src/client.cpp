@@ -4,7 +4,7 @@
 
 #include "loop.h"
 #include "message.h"
-#include "socket.h"
+#include "ptop_socket.h"
 #include "protocol.h"
 
 using namespace std::chrono;
@@ -22,7 +22,7 @@ client_init_kit::client_init_kit(std::string server_address_pair, ::protocol cho
 
 client_init_kit::~client_init_kit() {}
 
-EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>& socket, int my_auth)
+EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket, int my_auth)
 {
     const char* data = mess.Data.data();
     size_t data_len = mess.Length;
@@ -74,12 +74,12 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
     std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
     std::this_thread::sleep_for(100ms);
 
-    std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port, kit.protocol);
+    std::unique_ptr<INonBlockingListener> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port, kit.protocol);
     listen_sock->listen();
     auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
     auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
 
-    std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
+    std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};
 
     auto start_time = std::chrono::system_clock::now();
     auto current_time = start_time;
@@ -203,7 +203,7 @@ EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& messag
     }
 }
 
-EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocket>& peer, int auth_key)
+EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer, int auth_key)
 {  
     const char* data = mess.Data.data();
     auto data_len = mess.Length;

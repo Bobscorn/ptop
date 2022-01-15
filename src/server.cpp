@@ -8,13 +8,13 @@
 
 #include "loop.h"
 #include "message.h"
-#include "socket.h"
+#include "ptop_socket.h"
 
 using namespace std::chrono;
 
 server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
-    clientA = std::unique_ptr<IDataSocket>();
-    clientB = std::unique_ptr<IDataSocket>();
+    clientA = std::unique_ptr<IDataSocketWrapper>();
+    clientB = std::unique_ptr<IDataSocketWrapper>();
     cA = nullptr;
     cB = nullptr;
     server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort, ip_proto);
@@ -27,7 +27,7 @@ server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
 
 server_init_kit::~server_init_kit() {}
 
-void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
+void hole_punch_clients(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
 {
     readable_ip_info dataA, dataB;
     dataA = clientA->get_peer_data();
@@ -42,7 +42,7 @@ void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const read
     clientB = nullptr;
 }
 
-bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std::unique_ptr<readable_ip_info>& privA, const std::unique_ptr<readable_ip_info>& privB)
+bool hole_punch_if_ready(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, const std::unique_ptr<readable_ip_info>& privA, const std::unique_ptr<readable_ip_info>& privB)
 {
     if (clientA && clientB && privA && privB)
     {
@@ -53,7 +53,7 @@ bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std
     return false;
 }
 
-EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSocket>& source, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
+EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSocketWrapper>& source, std::string port, IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
 {
     const char* data = msg.Data.data();
     auto data_len = msg.Length;

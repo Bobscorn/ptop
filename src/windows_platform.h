@@ -18,7 +18,7 @@
 
 #include "message.h"
 #include "protocol.h"
-#include "sock.h"
+#include "socket.h"
 
 #pragma warning( push )
 #pragma warning(disable : 4250)
@@ -41,8 +41,8 @@ readable_ip_info convert_to_readable(raw_name_data);
 class WindowsPlatform : virtual public ISocketWrapper
 {
 protected:
-	WindowsPlatform(epic_socket&& sock);
-	epic_socket _socket;
+	WindowsPlatform(EpicSocket&& sock);
+	EpicSocket _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
@@ -70,7 +70,7 @@ public:
 
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline epic_socket&& release_socket() { return std::move(_socket); }
+	inline socket&& release_socket() { return std::move(_socket); }
 };
 
 class WindowsPlatformListener : public WindowsPlatform, public IListenSocketWrapper
@@ -91,7 +91,7 @@ class WindowsPlatformAnalyser : public WindowsPlatform, public virtual IDataSock
 
 	public:
 	WindowsPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
-	WindowsPlatformAnalyser(epic_socket&& socket);
+	WindowsPlatformAnalyser(socket&& socket);
 	WindowsPlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol);
 
 	Message receive_message() override;

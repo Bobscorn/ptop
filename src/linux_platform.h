@@ -9,15 +9,15 @@
 
 #include "socket_wrapper.h"
 #include "protocol.h"
-#include "sock.h"
+#include "ptop_socket.h"
 
 readable_ip_info convert_to_readable(raw_name_data data);
 
-class LinuxSocket : virtual public ISocketWrapper
+class LinuxPlatform : virtual public ISocketWrapper
 {
 protected:
-	LinuxSocket(epic_socket&& socket);
-	epic_socket _socket;
+	LinuxPlatform(PtopSocket&& socket);
+	PtopSocket _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
@@ -28,7 +28,7 @@ protected:
 	void update_endpoint_info();
 	void update_endpoint_if_needed();
 
-	virtual ~LinuxSocket();
+	virtual ~LinuxPlatform();
 
 public:
 	void shutdown() override;
@@ -45,28 +45,28 @@ public:
 
 	inline std::string get_identifier_str() const override { if (!_endpoint_assigned) return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(pub: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline epic_socket&& release_socket() { return std::move(_socket); }
+	inline PtopSocket&& release_socket() { return std::move(_socket); }
 };
 
-class linux_listen_socket : public LinuxSocket, public IListenSocketWrapper
+class LinuxPlatformListener : public LinuxPlatform, public IListenSocketWrapper
 {
 public:
-	linux_listen_socket(std::string port, protocol input_protocol);
+	LinuxPlatformListener(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class linux_data_socket : public LinuxSocket, public IDataSocketWrapper
+class LinuxPlatformAnalyser : public LinuxPlatform, public IDataSocketWrapper
 {
 	std::queue<Message> _stored_messages;
 
 	void process_socket_data();
 	public:
-	linux_data_socket(std::unique_ptr<INonBlockingConnector>&& old);
-	linux_data_socket(epic_socket&& socket);
-	linux_data_socket(std::string peer_address, std::string peer_port, protocol ip_proto);
+	LinuxPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
+	LinuxPlatformAnalyser(PtopSocket&& socket);
+	LinuxPlatformAnalyser(std::string peer_address, std::string peer_port, protocol ip_proto);
 
 	Message receive_message() override;
 	bool has_message() override;
@@ -76,20 +76,20 @@ class linux_data_socket : public LinuxSocket, public IDataSocketWrapper
 	bool has_died();
 };
 
-class linux_reuse_nonblock_listen_socket : public LinuxSocket, public INonBlockingListener
+class LinuxReusableListener : public LinuxPlatform, public INonBlockingListener
 {
 public:
-	linux_reuse_nonblock_listen_socket(std::string port, protocol proto);
+	LinuxReusableListener(std::string port, protocol proto);
 
 	void listen() override;
 	bool has_connection() override;
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class linux_reuse_nonblock_connection_socket : public LinuxSocket, public INonBlockingConnector
+class LinuxReusableConnector : public LinuxPlatform, public INonBlockingConnector
 {
 public:
-	linux_reuse_nonblock_connection_socket(raw_name_data data, std::string ip_address, std::string port, protocol proto);
+	LinuxReusableConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto);
 
 	void connect(std::string ip_address, std::string port) override;
 	ConnectionStatus has_connected() override;

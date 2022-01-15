@@ -1,5 +1,6 @@
-#include "sock.h"
+#include "ptop_socket.h"
 
+#if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -30,7 +31,7 @@ std::string socket_error_to_string(int err)
 	return get_win_error(err);
 }
 
-socket::~socket()
+PtopSocket::~socket()
 {
 	if (_handle != REALLY_INVALID_SOCKET)
 	{
@@ -39,7 +40,7 @@ socket::~socket()
 	}
 }
 
-socket& socket::set_non_blocking(bool value)
+PtopSocket& PtopSocket::set_non_blocking(bool value)
 {
 	u_long blockMode = value;
 	int result = ioctlsocket(_handle, FIONBIO, &blockMode);
@@ -47,3 +48,4 @@ socket& socket::set_non_blocking(bool value)
 	throw_if_socket_error(result, "Failed to set non blocking state");
 	return *this;
 }
+#endif

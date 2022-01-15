@@ -29,7 +29,7 @@
 
 #include "server.h"
 #include "client.h"
-#include "socket.h"
+#include "ptop_socket.h"
 #include "ip.h"
 #include "message.h"
 

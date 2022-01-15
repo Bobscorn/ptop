@@ -1,4 +1,5 @@
-#include "sock.h"
+#include "ptop_socket.h"
+#include "socket_wrapper.h"
 
 #if defined(WIN32)
 	#ifndef WIN32_LEAN_AND_MEAN
@@ -21,7 +22,7 @@
 
 #include <iostream>
 
-epic_socket::epic_socket(protocol proto) : _protocol(proto)
+PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
 {
 	int domain = _protocol.get_ai_family();
 	int type = _protocol.get_ai_socktype();
@@ -29,14 +30,14 @@ epic_socket::epic_socket(protocol proto) : _protocol(proto)
 	_handle = socket(domain, type, protocol);
 }
 
-epic_socket& epic_socket::bind_socket(const raw_name_data& name, std::string error_message)
+PtopSocket& PtopSocket::bind_socket(const raw_name_data& name, std::string error_message)
 {
 	int result = bind(_handle, &name.name, name.name_len);
 	throw_if_socket_error(result, error_message);
 	return *this;
 }
 
-epic_socket& epic_socket::connect(sockaddr* addr, socklen_t len)
+PtopSocket& PtopSocket::connect(sockaddr* addr, socklen_t len)
 {
 	if (_protocol.is_tcp())
 	{
@@ -50,7 +51,7 @@ epic_socket& epic_socket::connect(sockaddr* addr, socklen_t len)
 	return *this;
 }
 
-epic_socket& epic_socket::start_listening()
+PtopSocket& PtopSocket::start_listening()
 {
 	if(_protocol.is_udp()) {
         std::cout << "UDP doesn't need a listen socket" << std::endl;
@@ -62,27 +63,27 @@ epic_socket& epic_socket::start_listening()
 }
 
 ///returns a data socket using the listen socket
-epic_socket epic_socket::accept_data_socket()
+PtopSocket PtopSocket::accept_data_socket()
 {
 	sockaddr_in client_addr;
 	socklen_t client_len;
 	SOCKET new_socket = accept(_handle, (struct sockaddr*)&client_addr, &client_len);
-	return epic_socket(new_socket, _protocol, raw_name_data(client_addr));
+	return PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
 }
 
-bool epic_socket::try_connect(sockaddr* addr, socklen_t len)
+bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)
 {
 	int n = ::connect(_handle, addr, len);
 	return n != SOCKET_ERROR;
 }
 
-void epic_socket::listen(int max_conns)
+void PtopSocket::listen(int max_conns)
 {
 	auto n = ::listen(_handle, max_conns);
 	throw_if_socket_error(n, "Failed to listen on socket");
 }
 
-bool epic_socket::has_connection() const
+bool PtopSocket::has_connection() const
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -98,7 +99,7 @@ bool epic_socket::has_connection() const
 	return n > 0;
 }
 
-bool epic_socket::poll_for(int poll_flag) const
+bool PtopSocket::poll_for(int poll_flag) const
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -125,7 +126,7 @@ bool epic_socket::poll_for(int poll_flag) const
 	return false;
 }
 
-bool epic_socket::select_for(::select_for epic_for) const
+bool PtopSocket::select_for(::select_for epic_for) const
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -152,7 +153,7 @@ bool epic_socket::select_for(::select_for epic_for) const
 	return FD_ISSET(_handle, &set);
 }
 
-bool epic_socket::has_message() const
+bool PtopSocket::has_message() const
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -168,7 +169,7 @@ bool epic_socket::has_message() const
 	return n > 0;
 }
 
-bool epic_socket::has_died() const
+bool PtopSocket::has_died() const
 {
 	if (is_tcp())
 	{
@@ -189,7 +190,7 @@ bool epic_socket::has_died() const
 	throw_new_exception("Invalid protocol", LINE_CONTEXT);
 }
 
-raw_name_data epic_socket::get_peer_raw() const
+raw_name_data PtopSocket::get_peer_raw() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -202,7 +203,7 @@ raw_name_data epic_socket::get_peer_raw() const
 	return raw_data;
 }
 
-raw_name_data epic_socket::get_name_raw() const
+raw_name_data PtopSocket::get_name_raw() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -215,7 +216,7 @@ raw_name_data epic_socket::get_name_raw() const
 	return raw_data;
 }
 
-bool epic_socket::send_bytes(std::vector<char> bytes)
+bool PtopSocket::send_bytes(std::vector<char> bytes)
 {
 	if (is_tcp())
 	{
@@ -237,7 +238,7 @@ bool epic_socket::send_bytes(std::vector<char> bytes)
 	}
 }
 
-std::vector<char> epic_socket::recv_bytes()
+std::vector<char> PtopSocket::recv_bytes()
 {
 	if (is_tcp())
 	{

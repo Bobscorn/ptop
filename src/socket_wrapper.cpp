@@ -7,12 +7,12 @@
 #include <stdexcept>
 
 #if defined(WIN32) | defined(_WIN64)
-#include "windows_socket.h"
+#include "windows_platform.h"
 
 extern readable_ip_info convert_to_readable(raw_name_data data);
 readable_ip_info windows_name_data::as_readable() const { return convert_to_readable(*this); }
 #elif __linux__
-#include "linux_socket.h"
+#include "linux_platform.h"
 
 extern readable_ip_info convert_to_readable(raw_name_data data);
 readable_ip_info linux_name_data::as_readable() const { return convert_to_readable(*this); }
@@ -29,7 +29,7 @@ std::unique_ptr<IListenSocketWrapper> Sockets::CreateListenSocket(std::string po
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsPlatformListener>(port, input_protocol);
 #elif __linux__
-		return std::make_unique<linux_listen_socket>(port, input_protocol);
+		return std::make_unique<LinuxPlatformListener>(port, input_protocol);
 #endif
 	}
 	catch (const std::exception& e)
@@ -45,7 +45,7 @@ std::unique_ptr<IDataSocketWrapper> Sockets::CreateConnectionSocket(std::string 
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsPlatformAnalyser>(peer_ip, port, input_protocol);
 #elif __linux__
-		return std::make_unique<linux_data_socket>(peer_ip, port, input_protocol);
+		return std::make_unique<LinuxPlatformAnalyser>(peer_ip, port, input_protocol);
 #endif
 	}
 	catch (const std::exception& e)
@@ -61,7 +61,7 @@ std::unique_ptr<INonBlockingListener> Sockets::CreateReusableNonBlockingListenSo
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsReusableListener>(port, input_protocol);
 #elif __linux__
-		return std::make_unique<linux_reuse_nonblock_listen_socket>(port, input_protocol);
+		return std::make_unique<LinuxReusableListener>(port, input_protocol);
 #endif
 	}
 	catch (const std::exception& e)
@@ -77,7 +77,7 @@ std::unique_ptr<INonBlockingConnector> Sockets::CreateReusableConnectSocket(raw_
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsReusableConnector>(data, ip_address, port, input_protocol);
 #elif __linux__
-		return std::make_unique<linux_reuse_nonblock_connection_socket>(data, ip_address, port, input_protocol);
+		return std::make_unique<LinuxReusableConnector>(data, ip_address, port, input_protocol);
 #endif
 	}
 	catch (const std::exception& e)
@@ -93,7 +93,7 @@ std::unique_ptr<IDataSocketWrapper> Sockets::ConvertToDataSocket(std::unique_ptr
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsPlatformAnalyser>(std::move(old));
 #elif __linux__
-		return std::make_unique<linux_data_socket>(std::move(old));
+		return std::make_unique<LinuxPlatformAnalyser>(std::move(old));
 #endif
 	}
 	catch (const std::exception& e)
