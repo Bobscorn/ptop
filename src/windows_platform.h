@@ -1,6 +1,7 @@
 #pragma once
 
 #include "socket_wrapper.h"
+#include "ptop_socket.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -18,8 +19,7 @@
 
 #include "message.h"
 #include "protocol.h"
-#include "socket.h"
-
+#include "windows_platform.h"
 #pragma warning( push )
 #pragma warning(disable : 4250)
 
@@ -41,8 +41,8 @@ readable_ip_info convert_to_readable(raw_name_data);
 class WindowsPlatform : virtual public ISocketWrapper
 {
 protected:
-	WindowsPlatform(EpicSocket&& sock);
-	EpicSocket _socket;
+	WindowsPlatform(PtopSocket&& sock);
+	PtopSocket _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
@@ -70,7 +70,7 @@ public:
 
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline socket&& release_socket() { return std::move(_socket); }
+	inline PtopSocket&& release_socket() { return std::move(_socket); }
 };
 
 class WindowsPlatformListener : public WindowsPlatform, public IListenSocketWrapper
@@ -91,7 +91,7 @@ class WindowsPlatformAnalyser : public WindowsPlatform, public virtual IDataSock
 
 	public:
 	WindowsPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
-	WindowsPlatformAnalyser(socket&& socket);
+	WindowsPlatformAnalyser(PtopSocket&& socket);
 	WindowsPlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol);
 
 	Message receive_message() override;

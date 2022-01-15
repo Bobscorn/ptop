@@ -13,7 +13,6 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <mswsock.h>
-#include "windows_socket.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
@@ -37,6 +36,7 @@
 #include "ip.h"
 #include "message.h"
 #include "protocol.h"
+#include "windows_platform.h"
 
 using namespace std::chrono;
 

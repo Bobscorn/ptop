@@ -31,7 +31,7 @@ std::string socket_error_to_string(int err)
 	return get_win_error(err);
 }
 
-PtopSocket::~socket()
+PtopSocket::~PtopSocket()
 {
 	if (_handle != REALLY_INVALID_SOCKET)
 	{

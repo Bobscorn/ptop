@@ -9,11 +9,11 @@
 #include "message.h"
 #include "loop.h"
 #include "protocol.h"
-#include "ptop_socket.h"
+#include "windows_platform.h"
 
 #define AF_FAM AF_INET
 
-WindowsPlatform::WindowsPlatform(socket&& socket) 
+WindowsPlatform::WindowsPlatform(PtopSocket&& socket) 
     : _socket(std::move(socket))
 { 
     update_name_info();
@@ -193,7 +193,7 @@ readable_ip_info WindowsPlatform::get_myname_readable() const
     return convert_to_readable(get_myname_raw());
 }
 
-socket construct_windowslistensocket(std::string port, protocol input_protocol) {
+PtopSocket construct_windowslistensocket(std::string port, protocol input_protocol) {
     try
     {
         std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
@@ -212,7 +212,7 @@ socket construct_windowslistensocket(std::string port, protocol input_protocol) 
             throw std::exception((std::string("[Listen] Failed to create windows socket: getaddrinfo failed with") + std::to_string(iResult)).c_str());
         }
 
-        socket conn_socket = socket(input_protocol);
+        PtopSocket conn_socket = PtopSocket(input_protocol);
 
         if (conn_socket.is_invalid())
         {
@@ -245,13 +245,13 @@ bool WindowsPlatformListener::has_connection()
     return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocket> WindowsPlatformListener::accept_connection() {
+std::unique_ptr<IDataSocketWrapper> WindowsPlatformListener::accept_connection() {
     std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
     auto tmp = _socket.accept_data_socket();
     return std::make_unique<WindowsPlatformAnalyser>(std::move(tmp));
 }
 
-socket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
+PtopSocket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
     std::cout << "[Data] Creating a Windows Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
     struct addrinfo* result = NULL,
         *ptr = NULL,
@@ -270,7 +270,7 @@ socket construct_windows_data_socket(std::string peer_address, std::string peer_
         throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
     }
 
-    socket conn_socket = socket(input_protocol);
+    PtopSocket conn_socket = PtopSocket(input_protocol);
 
     conn_socket.connect(result->ai_addr, result->ai_addrlen);
 
@@ -301,11 +301,11 @@ bool WindowsPlatformAnalyser::send_data(const Message& message)
     return false;
 }
 
-socket windows_data_socket_steal_construct(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old)
+PtopSocket windows_data_socket_steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
     std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
     WindowsReusableConnector& real_old = *dynamic_cast<WindowsReusableConnector*>(old.get());
-    socket epic = real_old.release_socket();
+    PtopSocket epic = real_old.release_socket();
     epic.set_non_blocking(false);
     return epic;
 }
@@ -359,7 +359,8 @@ void WindowsPlatformAnalyser::process_socket_data()
     }
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : WindowsPlatform(windows_data_socket_steal_construct(std::move(old)))
+WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
+: WindowsPlatform(windows_data_socket_steal_construct(std::move(old)))
 {
     try
     {
@@ -371,7 +372,8 @@ WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<IReusableNonBlo
     }
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(socket&& socket) : WindowsPlatform(std::move(socket))
+WindowsPlatformAnalyser::WindowsPlatformAnalyser(PtopSocket&& socket) 
+: WindowsPlatform(std::move(socket))
 {
 	try
 	{
@@ -426,7 +428,7 @@ windows_internet::~windows_internet()
     std::cout << "Winsock has been cleaned" << std::endl;
 }
 
-socket windows_reuse_nb_listen_construct(std::string port, protocol proto)
+PtopSocket windows_reuse_nb_listen_construct(std::string port, protocol proto)
 {
     try
     {
@@ -440,7 +442,7 @@ socket windows_reuse_nb_listen_construct(std::string port, protocol proto)
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(portno);
 
-        socket listen_socket = socket(proto);
+        PtopSocket listen_socket = PtopSocket(proto);
         if (listen_socket.is_invalid())
             throw_new_exception("[ListenReuseNoB] (localhost:" + port + ") Failed to create reusable nonblocking listen socket: " + get_last_error(), LINE_CONTEXT);
 
@@ -471,7 +473,7 @@ bool WindowsReusableListener::has_connection()
     return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocket> WindowsReusableListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> WindowsReusableListener::accept_connection()
 {
     std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 
@@ -479,12 +481,12 @@ std::unique_ptr<IDataSocket> WindowsReusableListener::accept_connection()
     return std::make_unique<WindowsPlatformAnalyser>(std::move(new_sock));
 }
 
-socket windows_reuse_nb_construct(raw_name_data name, protocol proto)
+PtopSocket windows_reuse_nb_construct(raw_name_data name, protocol proto)
 {
 	try {
 		auto readable = convert_to_readable(name);
 		std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
-		socket conn_socket = socket(proto);
+		auto conn_socket = PtopSocket(proto);
 		if (conn_socket.is_invalid())
 			throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + get_last_error());
 
