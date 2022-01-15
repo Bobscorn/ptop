@@ -5,12 +5,10 @@
 
 #elif defined(__linux__)
 #include <sys/types.h>
-
-
-using SOCKET = int; 
+using SOCKET = int;
+#endif
 
 constexpr SOCKET REALLY_INVALID_SOCKET = -1;
-#endif
 
 #include <string>
 
@@ -32,10 +30,10 @@ class epic_socket
     private:
     SOCKET _handle;
     protocol _protocol;
-    epic_socket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto) {}
-
+    
     public:
-
+    epic_socket::epic_socket(int input_family, int input_aitype, int input_aiprotocol);
+    epic_socket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto) {}
     explicit epic_socket(protocol proto) : _protocol(proto) {
 
     };
@@ -48,7 +46,7 @@ class epic_socket
     template<class OptT>
     epic_socket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
     {
-        int result = setsockopt(_handle, SOL_SOCKET, option_name, &optionVal, sizeof(OptT));
+        int result = setsockopt(_handle, SOL_SOCKET, option_name, (char*)&optionVal, sizeof(OptT));
         throw_if_socket_error(result, error_message);
         return *this;
     }

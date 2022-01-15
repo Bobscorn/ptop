@@ -279,7 +279,7 @@ epic_socket data_connect_construct(std::string peer_address, std::string peer_po
 	if (n == SOCKET_ERROR)
 		throw print_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), CONTEXT);
 
-	SOCKET conn_socket = INVALID_SOCKET;
+	SOCKET conn_socket = REALLY_INVALID_SOCKET;
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 	{
 		epic_socket conn_socket = epic_socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
@@ -306,7 +306,7 @@ epic_socket data_connect_construct(std::string peer_address, std::string peer_po
 
 	freeaddrinfo(result);
 
-	if (conn_socket == INVALID_SOCKET)
+	if (conn_socket == REALLY_INVALID_SOCKET)
 		throw print_new_exception("[Data] No sockets successfully connected to peer", CONTEXT);
 
 	return epic_socket();
@@ -430,7 +430,7 @@ std::unique_ptr<IDataSocket> linux_reuse_nonblock_listen_socket::accept_connecti
 	socklen_t client_len;
 	SOCKET accepted_socket = accept(_socket.handle, (struct sockaddr*)&client_addr, &client_len);
 
-	if (accepted_socket == INVALID_SOCKET)
+	if (accepted_socket == REALLY_INVALID_SOCKET)
 		return nullptr;
 	raw_name_data name;
 	name.name = *(sockaddr*)&client_addr;

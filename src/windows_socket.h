@@ -18,6 +18,7 @@
 
 #include "message.h"
 #include "protocol.h"
+#include "sock.h"
 
 #pragma warning( push )
 #pragma warning(disable : 4250)
@@ -71,7 +72,7 @@ public:
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
 	inline SOCKET get_socket() const { return _socket; }
-	inline void clear_socket() { _socket = INVALID_SOCKET; }
+	inline void clear_socket() { _socket = REALLY_INVALID_SOCKET; }
 
 	inline protocol get_protocol() { return _protocol; };
 };

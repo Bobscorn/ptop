@@ -8,6 +8,7 @@
 #include "message.h"
 #include "loop.h"
 #include "protocol.h"
+#include "sock.h"
 
 #define AF_FAM AF_INET
 
@@ -190,7 +191,7 @@ SOCKET construct_windowslistensocket(std::string port, protocol input_protocol) 
 
     SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
-    if (ConnectSocket == INVALID_SOCKET)
+    if (ConnectSocket == REALLY_INVALID_SOCKET)
     {
         throw std::exception((std::string("[Listen] Failed to create socket with WSA error: ") + get_last_error()).c_str());
     }
@@ -240,7 +241,7 @@ std::unique_ptr<IDataSocket> windows_listen_socket::accept_connection() {
     socklen_t endpoint_len = sizeof(endpoint_addr);
     SOCKET send_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
 
-    if (send_socket != INVALID_SOCKET)
+    if (send_socket != REALLY_INVALID_SOCKET)
     {
         auto raw = raw_name_data{ *(sockaddr*)&endpoint_addr, endpoint_len };
         auto readable = convert_to_readable(raw);
@@ -268,14 +269,14 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
         throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
     }
 
-    SOCKET ConnectSocket = INVALID_SOCKET; //the other one place we need this
+    SOCKET ConnectSocket = REALLY_INVALID_SOCKET; //the other one place we need this
 
     // Go through all available sockets and try to connect
     for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
     {
 
         ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-        if (ConnectSocket == INVALID_SOCKET)
+        if (ConnectSocket == REALLY_INVALID_SOCKET)
         {
             auto last_error = get_last_error();
             std::cerr << "[Data] Error creating client socket (socket()):" << last_error << std::endl;
@@ -287,7 +288,7 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
         iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
         if (iResult == SOCKET_ERROR) {
             closesocket(ConnectSocket);
-            ConnectSocket = INVALID_SOCKET; //the one place we need this
+            ConnectSocket = REALLY_INVALID_SOCKET; //the one place we need this
             continue;
         }
         auto readable = convert_to_readable(*ptr->ai_addr);
@@ -299,7 +300,7 @@ SOCKET construct_windows_data_socket(std::string peer_address, std::string peer_
 
     freeaddrinfo(result);
 
-    if (ConnectSocket == INVALID_SOCKET) {
+    if (ConnectSocket == REALLY_INVALID_SOCKET) {
         throw std::exception("[Data] No sockets successfully connected to peer");
     }
     return ConnectSocket;
@@ -395,7 +396,7 @@ windows_data_socket::windows_data_socket(SOCKET source_socket, protocol input_pr
 {
     auto readable = get_peername_readable();
     std::cout << "[Data] Copy Constructor Data socket with endpoint: " << readable.ip_address << ":" << readable.port << std::endl;
-    if (_socket == INVALID_SOCKET)
+    if (_socket == REALLY_INVALID_SOCKET)
     {
         throw std::exception("Invalid Socket Given");
     }
@@ -426,7 +427,7 @@ bool windows_data_socket::has_message()
 
 WindowsSocket::~WindowsSocket()
 {
-    if (_socket != INVALID_SOCKET && _socket != NULL)
+    if (_socket != REALLY_INVALID_SOCKET && _socket != NULL)
     {
         std::cout << "Closing socket: " << get_identifier_str() << std::endl;
         closesocket(_socket);
@@ -475,7 +476,7 @@ SOCKET windows_reuse_nb_listen_construct(std::string port)
 
     SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
-    if (ConnectSocket == INVALID_SOCKET)
+    if (ConnectSocket == REALLY_INVALID_SOCKET)
     {
         throw std::exception((std::string("Failed to create socket with WSA error: ") + get_last_error()).c_str());
     }
@@ -542,7 +543,7 @@ std::unique_ptr<IDataSocket> windows_reusable_nonblocking_listen_socket::accept_
     socklen_t endpoint_len = 0;
     SOCKET accepted_socket = accept(_socket, (sockaddr*)&endpoint_addr, &endpoint_len);
 
-    if (accepted_socket == INVALID_SOCKET)
+    if (accepted_socket == REALLY_INVALID_SOCKET)
         return nullptr;
     raw_name_data name;
     name.name = *(sockaddr*)&endpoint_addr;
@@ -559,7 +560,7 @@ SOCKET windows_reuse_nb_construct(raw_name_data name)
 
     SOCKET ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    if (ConnectSocket == INVALID_SOCKET)
+    if (ConnectSocket == REALLY_INVALID_SOCKET)
     {
         auto last_error = get_last_error();
         std::cerr << "Error creating client socket (socket()):" << last_error << std::endl;
@@ -633,7 +634,7 @@ void windows_reusable_nonblocking_connection_socket::connect(std::string ip_addr
 
 ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()
 {
-    if (_socket == INVALID_SOCKET)
+    if (_socket == REALLY_INVALID_SOCKET)
         return ConnectionStatus::FAILED;
     fd_set write_fd;
     fd_set except_fd;

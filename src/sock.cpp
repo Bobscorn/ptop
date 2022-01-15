@@ -1,11 +1,9 @@
 #include "sock.h"
 
-#include <iostream>
-
-#ifdef WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
+#if defined(WIN32) | defined(_WIN64)
+	#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+	#endif
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -22,14 +20,11 @@
 #include <errno.h>
 #endif
 
+#include <iostream>
 
-
-epic_socket::epic_socket(protocol input_proto) : _protocol(input_proto)
-{
-	auto family = input_proto.get_ai_family();
-	auto aitype = input_proto.get_ai_socktype();
-	auto aiproto = input_proto.get_ai_protocol();
-	_handle = socket(family, aitype, aiproto);
+epic_socket::epic_socket(int input_family, int input_aitype, int input_aiprotocol) : {
+	_handle = socket(input_family, input_aitype, input_aiprotocol);
+	_protocol = protocol{}
 }
 
 epic_socket& epic_socket::bind_socket(const raw_name_data& name, std::string error_message)
@@ -50,7 +45,7 @@ epic_socket& epic_socket::start_listening()
 {
 	if(_protocol.is_udp()) {
         std::cout << "UDP doesn't need a listen socket" << std::endl;
-        return;
+        return *this;
     }
 	int n = ::listen(_handle, 4);
 	throw_if_socket_error(n, "Failed to listen");
@@ -87,10 +82,15 @@ bool epic_socket::poll_for(int poll_flag) const
 	poll_thing.events = poll_flag;
 	poll_thing.revents = 0;
 
+	#if defined(WIN32) | defined(_WIN64)
+	int num_polled = WSAPoll(&poll_thing, 1, 0);
+	#elif defined(__linux__)
 	int num_polled = poll(&poll_thing, 1, 0);
-	throw_if_socket_error(num_polled, std::string("Failed to poll linux socket readability"));
+	#endif
 	if (num_polled > 0)
 		return poll_thing.revents | poll_flag;
+	
+	throw_if_socket_error(num_polled, std::string("Failed to poll linux socket readability"));
 	return false;
 }
 
