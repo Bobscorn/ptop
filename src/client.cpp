@@ -81,8 +81,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
 
     std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
 
-    time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
-    time_point<std::chrono::system_clock> current_time = start_time;
+    auto start_time = std::chrono::system_clock::now();
+    auto current_time = start_time;
 
     do
     {
@@ -90,7 +90,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
         {
             auto& sock = unauthed_sockets[i];
 
-            if (sock->has_message())
+            if (sock && sock->has_message())
             {
                 auto status = process_auth(sock->receive_message(), sock, auth_key_out);
 
@@ -103,8 +103,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 else if (status == EXECUTION_STATUS::CONNECTED)
                 {
                     std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has successfully authenticated" << std::endl;
-                    kit.conn_socket = std::move(sock);
-                    continue;
+                    kit.conn_socket = std::move(sock); //caused a bug if we dont return immediately after
+                    return EXECUTION_STATUS::CONNECTED; //we only care if either private or public sockets got punched, not both
                 }
             }
         }
@@ -150,9 +150,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
             std::cout << "Public Connection has failed, damn that sucks" << std::endl;
         }
         std::this_thread::sleep_for(100ms);
-        current_time = std::chrono::system_clock::now();
     } 
-    while (current_time - start_time > 15s);
+    while (current_time - start_time < 15s);
 
     std::cerr << "Time out trying to hole punch reached" << std::endl;
     return EXECUTION_STATUS::FAILED;
@@ -272,7 +271,7 @@ void client_loop(std::string server_address_pair, protocol input_protocol)
         if (kit.conn_socket->has_message())
         {
             auto message = kit.conn_socket->receive_message();
-            process_server_data(kit, message, Sockets::ClientListenPort);
+            kit.status = process_server_data(kit, message, Sockets::ClientListenPort);
         }
 
         std::this_thread::sleep_for(100ms);

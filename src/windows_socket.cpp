@@ -94,18 +94,32 @@ void WindowsSocket::update_name_info()
 
 void WindowsSocket::update_endpoint_info()
 {
-    auto name = get_peername_readable();
-    _endpoint_address = name.ip_address;
-    _endpoint_port = name.port;
-    _endpoint_assigned = true;
+    try
+	{
+		auto name = get_peername_readable();
+		_endpoint_address = name.ip_address;
+		_endpoint_port = name.port;
+		_endpoint_assigned = true;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 void WindowsSocket::update_endpoint_if_needed()
 {
-    if (!_endpoint_assigned)
-    {
-        update_endpoint_info();
-    }
+	try
+	{
+		if (!_endpoint_assigned)
+		{
+			update_endpoint_info();
+		}
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 readable_ip_info WindowsSocket::get_peer_data() const
@@ -134,7 +148,7 @@ raw_name_data WindowsSocket::get_peername_raw() const
     socklen_t peer_size = sizeof(peer_name);
     int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
     if (n != 0) {
-        auto error = std::string("[Socket] Failed to getpeername with: ") + get_last_error();        
+        auto error = std::string("[Socket] Failed to getpeername with: ") + get_last_error();      
         throw_new_exception(error, LINE_CONTEXT);
     }
 
@@ -163,7 +177,14 @@ raw_name_data WindowsSocket::get_myname_raw() const
 
 readable_ip_info WindowsSocket::get_peername_readable() const
 {
-    return convert_to_readable(get_peername_raw());
+    try
+    {
+        return convert_to_readable(get_peername_raw());
+    }
+    catch (const std::exception& e)
+    {
+        throw_with_context(e, LINE_CONTEXT);
+    }
 }
 
 readable_ip_info WindowsSocket::get_myname_readable() const
@@ -257,7 +278,14 @@ epic_socket construct_windows_data_socket(std::string peer_address, std::string 
 
 windows_data_socket::windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) : WindowsSocket(construct_windows_data_socket(peer_address, peer_port, input_protocol)) 
 {
-    update_endpoint_info();
+    try
+    {
+        update_endpoint_info();
+    }
+    catch (const std::exception& e)
+    {
+        throw_with_context(e, LINE_CONTEXT);
+    }
 }
 
 bool windows_data_socket::send_data(const Message& message)
@@ -332,16 +360,30 @@ void windows_data_socket::process_socket_data()
 
 windows_data_socket::windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old) : WindowsSocket(windows_data_socket_steal_construct(std::move(old)))
 {
-    update_endpoint_info();
+    try
+    {
+        update_endpoint_info();
+    }
+    catch (const std::exception& e)
+    {
+        throw_with_context(e, LINE_CONTEXT);
+    }
 }
 
 windows_data_socket::windows_data_socket(epic_socket&& socket) : WindowsSocket(std::move(socket))
 {
-    std::cout << "[Data] Copy Constructor Data socket" << std::endl;
-    update_endpoint_info();
+	try
+	{
+		std::cout << "[Data] Copy Constructor Data socket" << std::endl;
+		update_endpoint_info();
 
-    if (_socket.is_invalid())
-        throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
+		if (_socket.is_invalid())
+			throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 Message windows_data_socket::receive_message() {
@@ -468,44 +510,58 @@ windows_reusable_nonblocking_connection_socket::windows_reusable_nonblocking_con
 
 void windows_reusable_nonblocking_connection_socket::connect(std::string ip_address, std::string port)
 {
-    std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
-    struct addrinfo* results, hints;
-    ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+	try
+	{
+		std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
+		struct addrinfo* results, hints;
+		ZeroMemory(&hints, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
 
-    int iResult = 0;
+		int iResult = 0;
 
-    iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
-    if (iResult != 0)
-        throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
+		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
+		if (iResult != 0)
+			throw std::exception((std::string("Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
 
-    if (results == nullptr)
-        throw std::exception((std::string("Could not resolve '") + ip_address + ":" + port + "'").c_str());
+		if (results == nullptr)
+			throw std::exception((std::string("Could not resolve '") + ip_address + ":" + port + "'").c_str());
 
-    _socket.connect(results->ai_addr, results->ai_addrlen);
-    std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+		_socket.connect(results->ai_addr, results->ai_addrlen);
+		std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 ConnectionStatus windows_reusable_nonblocking_connection_socket::has_connected()
 {
-    if (_socket.is_invalid())
-        return ConnectionStatus::FAILED;
+	try
+	{
+		if (_socket.is_invalid())
+			return ConnectionStatus::FAILED;
 
-    if (_socket.poll_for(POLLWRNORM))
-    {
-        update_endpoint_if_needed();
-        return ConnectionStatus::SUCCESS;
-    }
+		if (_socket.poll_for(POLLWRNORM))
+		{
+			//update_endpoint_if_needed();
+			return ConnectionStatus::SUCCESS;
+		}
 
 
-    if (!_socket.select_for(select_for::EXCEPT))
-        return ConnectionStatus::PENDING;
+		if (!_socket.select_for(select_for::EXCEPT))
+			return ConnectionStatus::PENDING;
 
-    auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
+		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
 
-    std::cerr << "Socket has error code: " << sock_error << std::endl;
+		std::cerr << "Socket has error code: " << sock_error << std::endl;
 
-    return ConnectionStatus::FAILED;
+		return ConnectionStatus::FAILED;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }

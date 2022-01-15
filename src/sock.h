@@ -82,7 +82,7 @@ class epic_socket
     epic_socket& bind_socket(const raw_name_data& name, std::string error_mess = "Failed to bind");
     epic_socket& start_listening();
 
-    epic_socket&& accept_data_socket();
+    epic_socket accept_data_socket();
 
     epic_socket& connect(sockaddr* addr, socklen_t len);
     bool try_connect(sockaddr* addr, socklen_t len);

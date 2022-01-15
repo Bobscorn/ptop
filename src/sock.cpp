@@ -62,7 +62,7 @@ epic_socket& epic_socket::start_listening()
 }
 
 ///returns a data socket using the listen socket
-epic_socket&& epic_socket::accept_data_socket()
+epic_socket epic_socket::accept_data_socket()
 {
 	sockaddr_in client_addr;
 	socklen_t client_len;
