@@ -328,7 +328,7 @@ PlatformAnalyser::PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old)
 {
     try
     {
-        update_endpoint_info();
+        //update_endpoint_info();
     }
     catch (const std::exception& e)
     {
