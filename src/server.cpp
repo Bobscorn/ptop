@@ -219,16 +219,17 @@ void server_loop()
     thread_queue user_input_queue{};
 
     std::thread user_input_thread{ input_thread_func, std::ref(user_input_queue) };
+    user_input_thread.detach();
 
     server_init_kit init_tcp{ protocol{"tcp"} };
-    //server_init_kit init_udp{ protocol{"udp"} };
+    server_init_kit init_udp{ protocol{"udp"} };
 
     while (true)
     {
         process_server_protocol(init_tcp);
-        //process_server_protocol(init_udp);
+        process_server_protocol(init_udp);
 
-        process_user_input(init_tcp, init_tcp, user_input_queue);
+        process_user_input(init_tcp, init_udp, user_input_queue);
 
         std::this_thread::sleep_for(100ms);
     }
