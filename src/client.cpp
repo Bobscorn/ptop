@@ -4,7 +4,7 @@
 
 #include "loop.h"
 #include "message.h"
-#include "socket.h"
+#include "ptop_socket.h"
 #include "protocol.h"
 
 using namespace std::chrono;
@@ -22,7 +22,7 @@ client_init_kit::client_init_kit(std::string server_address_pair, ::protocol cho
 
 client_init_kit::~client_init_kit() {}
 
-EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>& socket, int my_auth)
+EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket, int my_auth)
 {
     const char* data = mess.Data.data();
     size_t data_len = mess.Length;
@@ -58,122 +58,146 @@ EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocket>&
 }
 
 EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_key_out, int i, MESSAGE_LENGTH_T data_len, std::string port) {
-    // Server giving us a peer to connect to
-    // Attempt to connect to peer by connecting to it and listening for a connection
-    // The connect socket must have same local address binding as the socket that connected to the server
-    // And we must disconnect the connection to the server
-
-    std::cout << "Attempting to Hole Punch" << std::endl;
-
-    auto peer_public = read_peer_data(data, i, data_len);
-    auto peer_private = read_peer_data(data, i, data_len);
-    auth_key_out = read_data<int>(data, i, data_len);
-    raw_name_data old_privatename = kit.conn_socket->get_myname_raw();
-    kit.conn_socket = nullptr;
-
-    std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
-    std::this_thread::sleep_for(100ms);
-
-    std::unique_ptr<IReusableNonBlockingListenSocket> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port, kit.protocol);
-    listen_sock->listen();
-    auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
-    auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
-
-    std::vector<std::unique_ptr<IDataSocket>> unauthed_sockets{};
-
-    time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
-    time_point<std::chrono::system_clock> current_time = start_time;
-
-    do
+    try
     {
-        for (size_t i = unauthed_sockets.size(); i-- > 0; )
+        // Server giving us a peer to connect to
+        // Attempt to connect to peer by connecting to it and listening for a connection
+        // The connect socket must have same local address binding as the socket that connected to the server
+        // And we must disconnect the connection to the server
+
+        std::cout << "Attempting to Hole Punch" << std::endl;
+
+        auto peer_public = read_peer_data(data, i, data_len);
+        auto peer_private = read_peer_data(data, i, data_len);
+        auth_key_out = read_data<int>(data, i, data_len);
+        raw_name_data old_privatename = kit.conn_socket->get_myname_raw();
+        kit.conn_socket = nullptr;
+
+        std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
+        std::this_thread::sleep_for(100ms);
+
+        std::unique_ptr<INonBlockingListener> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(old_privatename, kit.protocol);
+        listen_sock->listen();
+        auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
+        auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
+
+        std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};
+
+        auto start_time = std::chrono::system_clock::now();
+        auto current_time = start_time;
+
+        do
         {
-            auto& sock = unauthed_sockets[i];
-
-            if (sock->has_message())
+            for (size_t i = unauthed_sockets.size(); i-- > 0; )
             {
-                auto status = process_auth(sock->receive_message(), sock, auth_key_out);
+                auto& sock = unauthed_sockets[i];
 
-                if (status == EXECUTION_STATUS::FAILED)
+                if (sock && sock->has_message())
                 {
-                    std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has failed to authenticate" << std::endl;
-                    unauthed_sockets.pop_back();
-                }
+                    auto status = process_auth(sock->receive_message(), sock, auth_key_out);
 
-                else if (status == EXECUTION_STATUS::CONNECTED)
-                {
-                    std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has successfully authenticated" << std::endl;
-                    kit.conn_socket = std::move(sock);
-                    continue;
+                    if (status == EXECUTION_STATUS::FAILED)
+                    {
+                        std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has failed to authenticate" << std::endl;
+                        unauthed_sockets.pop_back();
+                    }
+
+                    else if (status == EXECUTION_STATUS::CONNECTED)
+                    {
+                        std::cout << "Socket '" << sock->get_endpoint_ip() << ":" << sock->get_endpoint_port() << "' has successfully authenticated" << std::endl;
+                        kit.conn_socket = std::move(sock); //caused a bug if we dont return immediately after
+                        return EXECUTION_STATUS::CONNECTED; //we only care if either private or public sockets got punched, not both
+                    }
                 }
             }
-        }
+            if (unauthed_sockets.size())
+                continue;
 
-        if (listen_sock->has_connection())
-        {
-            std::cout << "Successfully accepted peer connection, now authenticating them" << std::endl;
-            unauthed_sockets.emplace_back(listen_sock->accept_connection());
+            if (listen_sock->has_connection())
+            {
+                std::cout << "Successfully accepted peer connection, now authenticating them" << std::endl;
+                unauthed_sockets.emplace_back(listen_sock->accept_connection());
 
-            if(kit.is_leader)
-                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+                if (kit.is_leader)
+                    unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+
+                std::this_thread::sleep_for(100ms);
+                continue;
+            }
+
+            if (peer_priv_connect)
+            {
+                auto status = peer_priv_connect->has_connected();
+                if (status == ConnectionStatus::SUCCESS)
+                {
+                    std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
+                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
+                    peer_priv_connect = nullptr;
+
+                    if (kit.is_leader)
+                        unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+
+                    std::this_thread::sleep_for(100ms);
+                    continue;
+                }
+                else if (status == ConnectionStatus::FAILED)
+                {
+                    std::cout << "Private Connection attempt failed, retrying..." << std::endl;
+                    peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
+                }
+            }
+
+            if (peer_pub_connect)
+            {
+                auto status = peer_pub_connect->has_connected();
+                if (status == ConnectionStatus::SUCCESS)
+                {
+                    std::cout << "Public Connection has connected, now authenticating" << std::endl;
+                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_pub_connect)));
+
+                    if (kit.is_leader)
+                        unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
+
+                    std::this_thread::sleep_for(100ms);
+                    continue;
+                }
+                else if (status == ConnectionStatus::FAILED)
+                {
+                    std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
+                    peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
+                }
+            }
 
             std::this_thread::sleep_for(100ms);
-            continue;
-        }
+        } while (current_time - start_time < 15s);
 
-        if (peer_priv_connect && peer_priv_connect->has_connected() == ConnectionStatus::SUCCESS)
-        {
-            std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
-            unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
-
-            if(kit.is_leader)
-                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
-
-            std::this_thread::sleep_for(100ms);
-            continue;
-        }
-
-        if (peer_pub_connect && peer_pub_connect->has_connected() == ConnectionStatus::SUCCESS)
-        {
-            std::cout << "Public Connection has connected, now authenticating" << std::endl;
-            unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_pub_connect)));
-
-            if(kit.is_leader)
-                unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
-
-            std::this_thread::sleep_for(100ms);
-            continue;
-        }
-
-        if (peer_pub_connect && peer_pub_connect->has_connected() == ConnectionStatus::FAILED)
-        {
-            std::cout << "Public Connection has failed, damn that sucks" << std::endl;
-        }
-        std::this_thread::sleep_for(100ms);
-        current_time = std::chrono::system_clock::now();
-    } 
-    while (current_time - start_time > 15s);
-
-    std::cerr << "Time out trying to hole punch reached" << std::endl;
-    return EXECUTION_STATUS::FAILED;
+        std::cerr << "Time out trying to hole punch reached" << std::endl;
+        return EXECUTION_STATUS::FAILED;
+    }
+    catch (const std::exception& e)
+    {
+        throw_with_context(e, LINE_CONTEXT);
+    }
 }
 
 EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& message, std::string port)
 {
-    const char* data = message.Data.data();
-    auto data_len = message.Length;
-
-    if (message == Message::null_message)
+    try
     {
-        std::cout << "Received empty data, disconnecting" << std::endl;
-        return EXECUTION_STATUS::COMPLETE;
-    }
+        const char* data = message.Data.data();
+        auto data_len = message.Length;
 
-    int i = 0;
+        if (message == Message::null_message)
+        {
+            std::cout << "Received empty data, disconnecting" << std::endl;
+            return EXECUTION_STATUS::COMPLETE;
+        }
 
-    auto msg_type = message.Type;
-    switch (msg_type)
-    {
+        int i = 0;
+
+        auto msg_type = message.Type;
+        switch (msg_type)
+        {
         case MESSAGE_TYPE::MSG:
         {
             std::string msg = read_string(data, i, data_len);
@@ -195,16 +219,21 @@ EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& messag
         {
             kit.is_leader = true;
             return hole_punch(kit, data, kit.auth_key, i, data_len, port);
-        }                
+        }
 
         case MESSAGE_TYPE::NONE:
         default:
             std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
             return EXECUTION_STATUS::CONTINUE;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw_with_context(e, LINE_CONTEXT);
     }
 }
 
-EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocket>& peer, int auth_key)
+EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer, int auth_key)
 {  
     const char* data = mess.Data.data();
     auto data_len = mess.Length;
@@ -272,7 +301,7 @@ void client_loop(std::string server_address_pair, protocol input_protocol)
         if (kit.conn_socket->has_message())
         {
             auto message = kit.conn_socket->receive_message();
-            process_server_data(kit, message, Sockets::ClientListenPort);
+            kit.status = process_server_data(kit, message, Sockets::ClientListenPort);
         }
 
         std::this_thread::sleep_for(100ms);

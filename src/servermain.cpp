@@ -9,11 +9,12 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <mswsock.h>
+
+#include "windows_platform.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 #pragma comment(lib, "wininet.lib")
-#include "windows_socket.h"
 #endif
 
 #include <string>
@@ -29,7 +30,7 @@
 
 #include "server.h"
 #include "client.h"
-#include "socket.h"
+#include "ptop_socket.h"
 #include "ip.h"
 #include "message.h"
 
@@ -46,7 +47,7 @@ int main(int argc, char** argv) {
     }
     catch (const std::exception& e)
     {
-        std::cout << "Caught exception: " << e.what() << std::endl;
+        print_exception(e);
         return -1;
     }
 }

@@ -13,7 +13,6 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <mswsock.h>
-#include "windows_socket.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
@@ -33,39 +32,48 @@
 
 #include "server.h"
 #include "client.h"
-#include "socket.h"
+#include "socket_wrapper.h"
 #include "ip.h"
 #include "message.h"
 #include "protocol.h"
+#include "windows_platform.h"
 
 using namespace std::chrono;
 
 int main(int argc, char** argv) {
 
+    try
+    {
 #if defined(WIN32) | defined(_WIN64)
-    // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order
-    windows_internet wsa_wrapper(MAKEWORD(2, 2));
+        // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order
+        windows_internet wsa_wrapper(MAKEWORD(2, 2));
 #endif
 
-    std::cout << "Please enter the rendezvous server's IP:" << std::endl;
-    std::string raw_ip{};
+        std::cout << "Please enter the rendezvous server's IP:" << std::endl;
+        std::string raw_ip{};
 
-    std::cin >> raw_ip;
+        std::cin >> raw_ip;
 
-    if (raw_ip == "") {
-        std::this_thread::sleep_for(100ms); //epic optimization
-        return 0;
+        if (raw_ip == "") {
+            std::this_thread::sleep_for(100ms); //epic optimization
+            return 0;
+        }
+
+        std::cout << "Please enter your protocol of choice:" << std::endl;
+        std::string possible_protocol{};
+
+        std::cin >> possible_protocol;
+        protocol validated{ possible_protocol };
+
+        client_loop(raw_ip, validated);
+    }
+    catch (const std::exception& e)
+    {
+        print_exception(e);
+        return -1;
     }
 
-    std::cout << "Please enter your protocol of choice:" << std::endl;
-    std::string possible_protocol{};
-
-    std::cin >> possible_protocol;
-    protocol validated{ possible_protocol };
-        
-    client_loop(raw_ip, validated);
-    
-
+    return 0;
 
     // std::string raw_ip{};
     // std::cin >> raw_ip;

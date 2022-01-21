@@ -1,6 +1,7 @@
 #pragma once
 
-#include "socket.h"
+#include "socket_wrapper.h"
+#include "ptop_socket.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -18,7 +19,7 @@
 
 #include "message.h"
 #include "protocol.h"
-
+#include "windows_platform.h"
 #pragma warning( push )
 #pragma warning(disable : 4250)
 
@@ -37,23 +38,22 @@ class windows_internet
 
 readable_ip_info convert_to_readable(raw_name_data);
 
-class WindowsSocket : virtual public ISocket
+class WindowsPlatform : virtual public ISocketWrapper
 {
 protected:
-	WindowsSocket(SOCKET socket, protocol input_protocol);
-	SOCKET _socket;
+	WindowsPlatform(PtopSocket&& sock);
+	PtopSocket _socket;
 	std::string _address;
 	std::string _port;
 	std::string _endpoint_address;
 	std::string _endpoint_port;
-	protocol _protocol;
 	bool _endpoint_assigned = false;
 
 	void update_name_info();
 	void update_endpoint_info();
 	void update_endpoint_if_needed();
 
-	virtual ~WindowsSocket();
+	virtual ~WindowsPlatform() {}
 
 public:
 	void shutdown() override;
@@ -70,32 +70,29 @@ public:
 
 	inline std::string get_identifier_str() const override { if (_endpoint_address.empty()) return std::string("(private: ") + _address + ":" + _port + ", pub: N/A)"; return std::string("(public: ") + _endpoint_address + ":" + _endpoint_port + ")"; }
 
-	inline SOCKET get_socket() const { return _socket; }
-	inline void clear_socket() { _socket = INVALID_SOCKET; }
-
-	inline protocol get_protocol() { return _protocol; };
+	inline PtopSocket&& release_socket() { return std::move(_socket); }
 };
 
-class windows_listen_socket : public WindowsSocket, public IListenSocket
+class WindowsPlatformListener : public WindowsPlatform, public IListenSocketWrapper
 {
 	public:
-	windows_listen_socket(std::string port, protocol input_protocol);
+	WindowsPlatformListener(std::string port, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
-	std::unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class windows_data_socket : public WindowsSocket, public virtual IDataSocket
+class WindowsPlatformAnalyser : public WindowsPlatform, public virtual IDataSocketWrapper
 {
 	std::queue<Message> _stored_messages;
 
 	void process_socket_data();
 
 	public:
-	windows_data_socket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old, protocol input_protocol);
-	windows_data_socket(SOCKET source_socket, protocol input_protocol);
-	windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol);
+	WindowsPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
+	WindowsPlatformAnalyser(PtopSocket&& socket);
+	WindowsPlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol);
 
 	Message receive_message() override;
 	bool has_message() override;
@@ -103,20 +100,20 @@ class windows_data_socket : public WindowsSocket, public virtual IDataSocket
 	bool send_data(const Message& message) override;
 };
 
-class windows_reusable_nonblocking_listen_socket : public WindowsSocket, public IReusableNonBlockingListenSocket
+class WindowsReusableListener : public WindowsPlatform, public INonBlockingListener
 {
 public:
-	windows_reusable_nonblocking_listen_socket(std::string port, protocol input_protocol);
+	WindowsReusableListener(raw_name_data data, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
-	std::unique_ptr<IDataSocket> accept_connection() override;
+	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class windows_reusable_nonblocking_connection_socket : public WindowsSocket, public IReusableNonBlockingConnectSocket
+class WindowsReusableConnector : public WindowsPlatform, public INonBlockingConnector
 {
 public:
-	windows_reusable_nonblocking_connection_socket(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol);
+	WindowsReusableConnector(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol);
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;

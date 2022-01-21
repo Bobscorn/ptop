@@ -8,13 +8,13 @@
 
 #include "loop.h"
 #include "message.h"
-#include "socket.h"
+#include "ptop_socket.h"
 
 using namespace std::chrono;
 
 server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
-    clientA = std::unique_ptr<IDataSocket>();
-    clientB = std::unique_ptr<IDataSocket>();
+    clientA = std::unique_ptr<IDataSocketWrapper>();
+    clientB = std::unique_ptr<IDataSocketWrapper>();
     cA = nullptr;
     cB = nullptr;
     server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort, ip_proto);
@@ -27,7 +27,7 @@ server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
 
 server_init_kit::~server_init_kit() {}
 
-void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
+void hole_punch_clients(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, const readable_ip_info& privA, const readable_ip_info& privB) //pointer reference allows changing the underlying data
 {
     readable_ip_info dataA, dataB;
     dataA = clientA->get_peer_data();
@@ -42,7 +42,7 @@ void hole_punch_clients(IDataSocket*& clientA, IDataSocket*& clientB, const read
     clientB = nullptr;
 }
 
-bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std::unique_ptr<readable_ip_info>& privA, const std::unique_ptr<readable_ip_info>& privB)
+bool hole_punch_if_ready(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, const std::unique_ptr<readable_ip_info>& privA, const std::unique_ptr<readable_ip_info>& privB)
 {
     if (clientA && clientB && privA && privB)
     {
@@ -53,7 +53,7 @@ bool hole_punch_if_ready(IDataSocket*& clientA, IDataSocket*& clientB, const std
     return false;
 }
 
-EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSocket>& source, std::string port, IDataSocket*& clientA, IDataSocket*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
+EXECUTION_STATUS process_data_server(const Message& msg, std::unique_ptr<IDataSocketWrapper>& source, std::string port, IDataSocketWrapper*& clientA, IDataSocketWrapper*& clientB, std::unique_ptr<readable_ip_info>& privA, std::unique_ptr<readable_ip_info>& privB)
 {
     const char* data = msg.Data.data();
     auto data_len = msg.Length;
@@ -161,7 +161,8 @@ void print_status(const server_init_kit& protocol_kit)
 
 
 void process_user_input(const server_init_kit& tcp_kit, const server_init_kit& udp_kit, thread_queue& queue)
-{   std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
+{   
+    std::unique_lock<std::shared_mutex> lock = std::unique_lock<std::shared_mutex>(queue.queue_mutex, std::defer_lock);
     if (lock.try_lock())
     {
         if (!queue.messages.empty())
@@ -203,9 +204,9 @@ void input_thread_func(thread_queue& message_queue)
             std::this_thread::sleep_for(100ms);
         } while (true);
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
-        std::cerr << "Input Thread encountered exception: " << e.what() << std::endl;
+        throw_with_context(e, LINE_CONTEXT);
     }
 }
 
@@ -219,14 +220,14 @@ void server_loop()
     std::thread user_input_thread{ input_thread_func, std::ref(user_input_queue) };
 
     server_init_kit init_tcp{ protocol{"tcp"} };
-    server_init_kit init_udp{ protocol{"udp"} };
+    //server_init_kit init_udp{ protocol{"udp"} };
 
     while (true)
     {
         process_server_protocol(init_tcp);
-        process_server_protocol(init_udp);
+        //process_server_protocol(init_udp);
 
-        process_user_input(init_tcp, init_udp, user_input_queue);
+        process_user_input(init_tcp, init_tcp, user_input_queue);
 
         std::this_thread::sleep_for(100ms);
     }

@@ -18,11 +18,25 @@ struct windows_name_data
 	windows_name_data() = default;
 	windows_name_data(sockaddr addr) : name(addr), name_len(sizeof(addr)) {}
 	windows_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
+	windows_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)) {}
 
 	sockaddr name;
-	int name_len;
+	socklen_t name_len;
 
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+
+	inline bool operator==(const windows_name_data& other) const
+	{
+		if (name_len != other.name_len)
+			return false;
+		return !std::memcmp(&name, &other.name, name_len);
+	}
+	inline bool operator!=(const windows_name_data& other) const
+	{
+		return !(*this == other);
+	}
+
+	readable_ip_info as_readable() const;
 };
 
 typedef windows_name_data raw_name_data;
@@ -32,13 +46,27 @@ typedef windows_name_data raw_name_data;
 
 struct linux_name_data
 {
-	linux_name_data() = default;
+	linux_name_data() { bzero(this, sizeof(linux_name_data)); }
 	linux_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
+	linux_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)) {}
 
 	sockaddr name;
 	socklen_t name_len;
 
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+
+	inline bool operator==(const linux_name_data& other) const 
+	{ 
+		if (name_len != other.name_len)
+			return false;
+		return !std::memcmp(&name, &other.name, name_len);
+	}
+	inline bool operator!=(const linux_name_data& other) const
+	{
+		return !(*this == other);
+	}
+
+	readable_ip_info as_readable() const;
 };
 
 typedef linux_name_data raw_name_data;
@@ -46,10 +74,6 @@ typedef linux_name_data raw_name_data;
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
 #endif // SOCKET_ERROR
-
-#ifndef INVALID_SOCKET
-#define INVALID_SOCKET -1
-#endif
 
 #endif
 
@@ -62,10 +86,10 @@ enum class ConnectionStatus
 	FAILED = 2,
 };
 
-class ISocket
+class ISocketWrapper
 {
 	public:
-	virtual ~ISocket() {}
+	virtual ~ISocketWrapper() {}
 
 	virtual void shutdown() = 0;
 
@@ -84,13 +108,13 @@ class ISocket
 	virtual std::string get_identifier_str() const = 0;
 };
 
-class IDataSocket : virtual public ISocket
+class IDataSocketWrapper : virtual public ISocketWrapper
 {
 protected:
 	size_t _seen_data = 0;
 	size_t _sent_bytes = 0;
 public:
-	virtual ~IDataSocket() {}
+	virtual ~IDataSocketWrapper() {}
 
 
 	virtual Message receive_message() = 0;
@@ -102,42 +126,42 @@ public:
 	inline size_t bytes_sent() { return _sent_bytes; }
 };
 
-class IListenSocket
+class IListenSocketWrapper
 {
 	public:
-	virtual ~IListenSocket() {}
+	virtual ~IListenSocketWrapper() {}
 
 	virtual void listen() = 0;
 	virtual bool has_connection() = 0;
-	virtual std::unique_ptr<IDataSocket> accept_connection() = 0;
+	virtual std::unique_ptr<IDataSocketWrapper> accept_connection() = 0;
 };
 
-class IReusableSocket : virtual public ISocket
+class IReuseableSocketWrapper : virtual public ISocketWrapper
 {
 	protected:
-	IReusableSocket() {}
+	IReuseableSocketWrapper() {}
 
 	public:
-	virtual ~IReusableSocket() {}
+	virtual ~IReuseableSocketWrapper() {}
 };
 
-class IReusableNonBlockingConnectSocket : public IReusableSocket
+class INonBlockingConnector : public IReuseableSocketWrapper
 {
 	public:
-	virtual ~IReusableNonBlockingConnectSocket() {}
+	virtual ~INonBlockingConnector() {}
 
 	virtual void connect(std::string ip_address, std::string port) = 0;
 	virtual ConnectionStatus has_connected() = 0;
 };
 
-class IReusableNonBlockingListenSocket : public IReusableSocket
+class INonBlockingListener : public IReuseableSocketWrapper
 {
 	public:
-	virtual ~IReusableNonBlockingListenSocket() {}
+	virtual ~INonBlockingListener() {}
 
 	virtual void listen() = 0;
 	virtual bool has_connection() = 0;
-	virtual std::unique_ptr<IDataSocket> accept_connection() = 0;
+	virtual std::unique_ptr<IDataSocketWrapper> accept_connection() = 0;
 };
 
 class Sockets
@@ -146,9 +170,9 @@ class Sockets
 	static const std::string ServerListenPort;
 	static const std::string ClientListenPort;
 
-	static std::unique_ptr<IListenSocket> CreateListenSocket(std::string port, protocol proto);
-	static std::unique_ptr<IDataSocket> CreateConnectionSocket(std::string peer_ip, std::string port, protocol proto);
-	static std::unique_ptr<IReusableNonBlockingListenSocket> CreateReusableNonBlockingListenSocket(std::string port, protocol proto);
-	static std::unique_ptr<IReusableNonBlockingConnectSocket> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
-	static std::unique_ptr<IDataSocket> ConvertToDataSocket(std::unique_ptr<IReusableNonBlockingConnectSocket>&& old);
+	static std::unique_ptr<IListenSocketWrapper> CreateListenSocket(std::string port, protocol proto);
+	static std::unique_ptr<IDataSocketWrapper> CreateConnectionSocket(std::string peer_ip, std::string port, protocol proto);
+	static std::unique_ptr<INonBlockingListener> CreateReusableNonBlockingListenSocket(raw_name_data data, protocol proto);
+	static std::unique_ptr<INonBlockingConnector> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
+	static std::unique_ptr<IDataSocketWrapper> ConvertToDataSocket(std::unique_ptr<INonBlockingConnector>&& old);
 };
