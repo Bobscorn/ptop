@@ -10,6 +10,7 @@ set(srcs ${srcs} "src/linux_socket.cpp" "src/linux_platform.cpp")
 endif(WIN32)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE Debug)
 add_executable(ptop ${PROJECT_SOURCE_DIR}/src/clientmain.cpp ${srcs})
 add_executable(ptop_rendezvous ${PROJECT_SOURCE_DIR}/src/servermain.cpp ${srcs})
 

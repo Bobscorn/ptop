@@ -23,9 +23,10 @@
 
 std::string linux_error()
 {
-	auto err_code = errno;
-	std::string error = "Err code: " + std::to_string(err_code) + " (";
-	error += strerror(err_code);
+	int err_code = errno;
+	int copy = err_code;
+	std::string error = "Err code: " + std::to_string(copy) + " (";
+	error += strerror(copy);
 	return error + ")";
 }
 
