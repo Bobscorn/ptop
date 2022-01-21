@@ -26,14 +26,14 @@ std::string linux_error()
 {
 	auto err_code = errno;
 	std::string error = "Err code: " + std::to_string(err_code) + " (";
-	error += strerror(errno);
+	error += strerror(err_code);
 	return error + ")";
 }
 
 std::string linux_error(int err_code)
 {
 	std::string error = "Err code: " + std::to_string(err_code) + " (";
-	error += strerror(errno);
+	error += strerror(err_code);
 	return error + ")";
 }
 
@@ -76,17 +76,31 @@ void LinuxPlatform::update_name_info()
 
 void LinuxPlatform::update_endpoint_info()
 {
-	auto name = get_peername_readable();
-	_endpoint_address = name.ip_address;
-	_endpoint_port = name.port;
-	_endpoint_assigned = true;
+	try
+	{
+		auto name = get_peername_readable();
+		_endpoint_address = name.ip_address;
+		_endpoint_port = name.port;
+		_endpoint_assigned = true;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 void LinuxPlatform::update_endpoint_if_needed()
 {
-	if (!_endpoint_assigned)
+	try
 	{
-		update_endpoint_info();
+		if (!_endpoint_assigned)
+		{
+			update_endpoint_info();
+		}
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
 	}
 }
 
@@ -236,7 +250,7 @@ void LinuxPlatformAnalyser::process_socket_data()
 			data_read += length;
 			auto new_message = Message{ type, length, std::move(data) };
 			_stored_messages.push(new_message);
-			std::cout << "Socket " << (*this).get_identifier_str() << "Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes" << std::endl;
+			std::cout << "Socket " << get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
 		}
 	}
 	else
@@ -445,8 +459,15 @@ ConnectionStatus LinuxReusableConnector::has_connected()
 		if (_socket.is_invalid())
 			return ConnectionStatus::FAILED;
 
-		if (_socket.poll_for(POLLWRNORM))
+		if (_socket.select_for(select_for::WRITE))
 		{
+			auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
+			if (sock_error != 0 && sock_error != EAGAIN && sock_error != EINPROGRESS)
+			{
+				std::cerr << LINE_CONTEXT << " [DataReuseNoB] Socket failed to connect with: " << linux_error(sock_error) << std::endl;
+				return ConnectionStatus::FAILED;
+			}
+
 			update_endpoint_if_needed();
 			return ConnectionStatus::SUCCESS;
 		}
@@ -457,7 +478,7 @@ ConnectionStatus LinuxReusableConnector::has_connected()
 
 		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
 
-		std::cerr << "Socket has error code: " << sock_error << std::endl;
+		std::cerr << LINE_CONTEXT << " [DataReuseNoB] Socket failed to connect with: " << linux_error(sock_error) << std::endl;
 
 		return ConnectionStatus::FAILED;
 	}

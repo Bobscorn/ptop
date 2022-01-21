@@ -74,7 +74,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
     std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
     std::this_thread::sleep_for(100ms);
 
-    std::unique_ptr<INonBlockingListener> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(port, kit.protocol);
+    std::string listen_port = old_privatename.as_readable().port;
+    std::unique_ptr<INonBlockingListener> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(listen_port, kit.protocol);
     listen_sock->listen();
     auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
     auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);

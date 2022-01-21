@@ -349,7 +349,7 @@ void WindowsPlatformAnalyser::process_socket_data()
             data_read += length;
             auto new_message = Message{ type, length, std::move(data) };
             _stored_messages.push(new_message);
-            std::cout << "Socket " << (*this).get_identifier_str() << "Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes" << std::endl;
+            std::cout << "Socket " << get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
         }
     }
     else

@@ -34,7 +34,7 @@ void throw_if_socket_error(int val, std::string error_message)
 	if (val == SOCKET_ERROR)
 	{
 		auto last_err = errno;
-		if (last_err != EAGAIN || last_err != EINPROGRESS)
+		if (last_err != EAGAIN && last_err != EINPROGRESS)
 		{
 			throw_new_exception(error_message, LINE_CONTEXT);
 		}
