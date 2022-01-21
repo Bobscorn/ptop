@@ -7,7 +7,7 @@
 #include "interfaces.h"
 
 #if defined(__linux__)
-const int SOCKET_ERROR = 1;
+const int SOCKET_ERROR = -1;
 #endif
 
 #ifdef WIN32
