@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 project(ptop)
 
-set(srcs "src/ptop_socket.cpp" "src/ip.cpp" "src/server.cpp" "src/client.cpp" "src/message.cpp" "src/protocol.cpp" "src/platform.cpp")
+set(srcs "src/ptop_socket.cpp" "src/ip.cpp" "src/server.cpp" "src/client.cpp" "src/message.cpp" "src/protocol.cpp" "src/platform.cpp" "src/error.cpp")
 
 if (WIN32)
 set(srcs ${srcs} "src/windows_socket.cpp" "src/windows_platform.cpp" "src/windows_internet.cpp")

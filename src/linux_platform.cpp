@@ -1,13 +1,15 @@
 #include "platform.h"
+#include "message.h"
+#include "loop.h"
+#include "error.h"
 
-#ifdef __linux__
+#if defined(__linux__)
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
 #include <unistd.h>
-
 #include <sys/types.h> 
 
 #include <exception>
@@ -18,9 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-
-#include "message.h"
-#include "loop.h"
 
 std::string linux_error()
 {

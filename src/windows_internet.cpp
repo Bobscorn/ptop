@@ -1,5 +1,6 @@
 #include "windows_internet.h"
 #include "message.h"
+#include "error.h"
 
 #include <iostream>
 

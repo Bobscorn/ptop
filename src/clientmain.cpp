@@ -1,7 +1,11 @@
-#include <iostream>
+#include "server.h"
+#include "client.h"
+#include "ip.h"
+#include "message.h"
+#include "protocol.h"
+#include "error.h"
 
 #if defined(WIN32) | defined(_WIN64)
-
 #ifndef WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -13,6 +17,7 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <mswsock.h>
+#include "windows_internet.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
@@ -29,16 +34,6 @@
 #include <mutex>
 #include <queue>
 #include <string.h>
-
-#include "server.h"
-#include "client.h"
-#include "ip.h"
-#include "message.h"
-#include "protocol.h"
-
-#if defined(WIN32) | defined(_WIN64)
-    #include "windows_internet.h"
-#endif
 
 using namespace std::chrono;
 

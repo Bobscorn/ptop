@@ -1,4 +1,8 @@
 #include "ptop_socket.h"
+#include "message.h"
+#include "loop.h"
+#include "platform.h"
+#include "error.h"
 
 #ifdef __linux__
 #include <exception>
@@ -16,10 +20,6 @@
 #include <netdb.h>
 #include <poll.h>
 #include <errno.h>
-
-#include "message.h"
-#include "loop.h"
-#include "platform.h"
 
 extern std::string linux_error();
 extern std::string linux_error(int err);
@@ -57,10 +57,16 @@ PtopSocket::~PtopSocket()
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)
 {
-	int flags = fcntl(_handle, F_GETFL);
-	throw_if_socket_error(flags, "Failed to retrieve socket flags");
-	int n = fcntl(_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
-	throw_if_socket_error(n, "Failed to set blocking value");
+	try {		
+		int flags = fcntl(_handle, F_GETFL);
+		throw_if_socket_error(flags, "Failed to retrieve socket flags");
+		int n = fcntl(_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
+		throw_if_socket_error(n, "Failed to set blocking value");
+	}
+
+	catch(...) {
+		
+	} 
 }
 
 #endif

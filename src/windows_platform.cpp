@@ -1,13 +1,14 @@
 #if defined(WIN32) | defined(_WIN64)
-#include <exception>
-#include <string>
-#include <array>
-#include <iostream>
-
 #include "message.h"
 #include "loop.h"
 #include "protocol.h"
 #include "platform.h"
+#include "error.h"
+
+#include <exception>
+#include <string>
+#include <array>
+#include <iostream>
 
 #define AF_FAM AF_INET
 
@@ -129,7 +130,7 @@ raw_name_data Platform::get_peername_raw() const
     socklen_t peer_size = sizeof(peer_name);
     int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
     if (n != 0) {
-        auto error = std::string("[Socket] Failed to getpeername with: ") + get_last_error();      
+        auto error = std::string("[Socket] Failed to getpeername: ") + get_last_error();      
         throw_new_exception(error, LINE_CONTEXT);
     }
 
@@ -146,7 +147,7 @@ raw_name_data Platform::get_myname_raw() const
     int n = getsockname(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
 
     if (n != 0) {
-        auto error = std::string("[Socket] Failed to getsockname with: ") + get_last_error();        
+        auto error = std::string("[Socket] Failed to getsockname: ") + get_last_error();        
         throw_new_exception(error, LINE_CONTEXT);
     }
 

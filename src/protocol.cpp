@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "error.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #include <winsock2.h>
@@ -13,7 +14,6 @@
 #include <stdexcept>
 
 using namespace std;
-
 
 protocol::protocol(string possible_protocol) {
     transform(possible_protocol.begin(), possible_protocol.end(), possible_protocol.begin(), ::tolower);

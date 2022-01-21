@@ -1,11 +1,12 @@
 #include "ptop_socket.h"
+#include "error.h"
 #include "message.h"
 #include "platform.h"
 
 #if defined(WIN32)
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
 	#include <windows.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
@@ -22,6 +23,7 @@
 #endif
 
 #include <iostream>
+
 
 PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
 {
@@ -90,18 +92,25 @@ void PtopSocket::listen(int max_conns)
 
 bool PtopSocket::has_connection() const
 {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
+	try
+	{
+		struct timeval timeout;
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 0;
 
-	fd_set poll_read_set;
-	FD_ZERO(&poll_read_set);
-	FD_SET(_handle, &poll_read_set);
+		fd_set poll_read_set;
+		FD_ZERO(&poll_read_set);
+		FD_SET(_handle, &poll_read_set);
 
-	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-	throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error());
+		int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
+		throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error());
 
-	return n > 0;
+		return n > 0;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 bool PtopSocket::poll_for(int poll_flag) const

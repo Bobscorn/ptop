@@ -1,13 +1,13 @@
 #include "client.h"
-
-#include <iostream>
-
 #include "loop.h"
 #include "message.h"
 #include "ptop_socket.h"
 #include "protocol.h"
 #include "platform.h"
 #include "ip.h"
+#include "error.h"
+
+#include <iostream>
 
 using namespace std::chrono;
 

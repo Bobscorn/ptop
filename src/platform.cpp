@@ -1,9 +1,11 @@
 #include "platform.h"
-#include <string>
+#include "error.h"
 
 #if defined(__linux__)
 #include <arpa/inet.h>
 #endif
+
+#include <string>
 
 std::string Platform::get_identifier_str() const { 
     if (_endpoint_assigned == false) 

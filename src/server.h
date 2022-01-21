@@ -1,15 +1,16 @@
 #pragma once 
 
+#include "loop.h"
+#include "ptop_socket.h"
+#include "platform.h"
+#include "error.h"
+
 #include <memory>
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <shared_mutex>
 #include <functional>
-
-#include "loop.h"
-#include "ptop_socket.h"
-#include "platform.h"
 
 class server_init_kit;
 

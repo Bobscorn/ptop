@@ -1,4 +1,9 @@
-#include <iostream>
+#include "server.h"
+#include "client.h"
+#include "ptop_socket.h"
+#include "ip.h"
+#include "message.h"
+#include "error.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -27,12 +32,6 @@
 #include <mutex>
 #include <queue>
 #include <string.h>
-
-#include "server.h"
-#include "client.h"
-#include "ptop_socket.h"
-#include "ip.h"
-#include "message.h"
 
 int main(int argc, char** argv) {
 
