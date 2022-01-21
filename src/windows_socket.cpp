@@ -1,4 +1,5 @@
 #include "ptop_socket.h"
+#include "message.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #ifndef WIN32_LEAN_AND_MEAN

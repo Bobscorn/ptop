@@ -10,9 +10,8 @@
 #include <ws2tcpip.h>
 #elif defined(__linux__)
 #include <netinet/in.h>
+#endif
 
-struct raw_name_data;
-extern readable_ip_info convert_to_readable(const raw_name_data& data);
 struct raw_name_data
 {
 	raw_name_data() = default;
@@ -35,7 +34,4 @@ struct raw_name_data
 	{
 		return !(*this == other);
 	}
-
-	inline readable_ip_info as_readable() const { return convert_to_readable(*this); }
 };
-#endif

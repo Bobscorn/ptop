@@ -1,4 +1,4 @@
-#include "linux_platform.h"
+#include "platform.h"
 
 #ifdef __linux__
 #include <sys/socket.h>
@@ -37,26 +37,7 @@ std::string linux_error(int err_code)
 	return error + ")";
 }
 
-readable_ip_info convert_to_readable(raw_name_data data)
-{
-	std::vector<char> buf{ 50, '0', std::allocator<char>() };
-	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
-
-	if (!str) {
-		throw_new_exception(std::string("Failed to convert sockaddr to string: ") + linux_error(), LINE_CONTEXT);
-	}
-		
-
-	std::string address = str;
-
-	std::string port = std::to_string(ntohs(data.ipv4_addr().sin_port));
-	readable_ip_info out;
-	out.ip_address = address;
-	out.port = port;
-	return out;
-}
-
-LinuxPlatform::LinuxPlatform(PtopSocket&& socket) 
+Platform::Platform(PtopSocket&& socket) 
 	: _socket(std::move(socket))
 { 
 	update_name_info();
@@ -67,14 +48,14 @@ LinuxPlatform::LinuxPlatform(PtopSocket&& socket)
 	}
 }
 
-void LinuxPlatform::update_name_info()
+void Platform::update_name_info()
 {
 	auto name = get_myname_readable();
 	_address = name.ip_address;
 	_port = name.port;
 }
 
-void LinuxPlatform::update_endpoint_info()
+void Platform::update_endpoint_info()
 {
 	try
 	{
@@ -89,7 +70,7 @@ void LinuxPlatform::update_endpoint_info()
 	}
 }
 
-void LinuxPlatform::update_endpoint_if_needed()
+void Platform::update_endpoint_if_needed()
 {
 	try
 	{
@@ -104,16 +85,7 @@ void LinuxPlatform::update_endpoint_if_needed()
 	}
 }
 
-LinuxPlatform::~LinuxPlatform()
-{
-	std::cout << (_socket.is_valid() ? "Closing socket: " : "Closing dead socket that had: ") << _endpoint_address << ":" << _endpoint_port << std::endl;
-}
-
-void LinuxPlatform::shutdown()
-{
-}
-
-readable_ip_info LinuxPlatform::get_peer_data() const
+readable_ip_info Platform::get_peer_data() const
 {
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
@@ -135,24 +107,14 @@ readable_ip_info LinuxPlatform::get_peer_data() const
 	return out;
 }
 
-raw_name_data LinuxPlatform::get_peername_raw() const
+raw_name_data Platform::get_peername_raw() const
 {
 	return _socket.get_peer_raw();
 }
 
-raw_name_data LinuxPlatform::get_myname_raw() const
+raw_name_data Platform::get_myname_raw() const
 {
 	return _socket.get_name_raw();
-}
-
-readable_ip_info LinuxPlatform::get_peername_readable() const 
-{
-	return convert_to_readable(get_peername_raw());
-}
-
-readable_ip_info LinuxPlatform::get_myname_readable() const
-{
-	return convert_to_readable(get_myname_raw());
 }
 
 PtopSocket listen_construct(std::string port, protocol input_proto)
@@ -180,26 +142,26 @@ PtopSocket listen_construct(std::string port, protocol input_proto)
 	return listen_socket;
 }
 
-LinuxPlatformListener::LinuxPlatformListener(std::string port, protocol input_proto) : LinuxPlatform(listen_construct(port, input_proto))
+PlatformListener::PlatformListener(std::string port, protocol input_proto) : Platform(listen_construct(port, input_proto))
 {
 }
 
-void LinuxPlatformListener::listen()
+void PlatformListener::listen()
 {	
 	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	_socket.start_listening();
 }
 
-bool LinuxPlatformListener::has_connection()
+bool PlatformListener::has_connection()
 {
 	return _socket.poll_for(POLLRDNORM);
 }
 
-std::unique_ptr<IDataSocketWrapper> LinuxPlatformListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection()
 {
 	std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
 	auto tmp = _socket.accept_data_socket();
-	return std::make_unique<LinuxPlatformAnalyser>(std::move(tmp));
+	return std::make_unique<PlatformAnalyser>(std::move(tmp));
 }
 
 PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
@@ -207,7 +169,7 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 	try
 	{
 		std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-		LinuxReusableConnector& real_old = *dynamic_cast<LinuxReusableConnector*>(old.get());
+		ReusableConnector& real_old = *dynamic_cast<ReusableConnector*>(old.get());
 		PtopSocket sup = real_old.release_socket();
 		sup.set_non_blocking(false);
 		return sup;
@@ -218,7 +180,7 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 	}
 }
 
-void LinuxPlatformAnalyser::process_socket_data()
+void PlatformAnalyser::process_socket_data()
 {
 	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
 	std::vector<char> recv_data = _socket.recv_bytes();
@@ -267,8 +229,8 @@ void LinuxPlatformAnalyser::process_socket_data()
 	}
 }
 
-LinuxPlatformAnalyser::LinuxPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
-: LinuxPlatform(steal_construct(std::move(old)))
+PlatformAnalyser::PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
+: Platform(steal_construct(std::move(old)))
 {
 	try
 	{
@@ -280,7 +242,7 @@ LinuxPlatformAnalyser::LinuxPlatformAnalyser(std::unique_ptr<INonBlockingConnect
 	}
 }
 
-LinuxPlatformAnalyser::LinuxPlatformAnalyser(PtopSocket&& socket) : LinuxPlatform(std::move(socket))
+PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket) : Platform(std::move(socket))
 {
 	std::cout << "[Data] Copy Constructor Data socket" << std::endl;
 	update_endpoint_info();
@@ -313,13 +275,13 @@ PtopSocket data_connect_construct(std::string peer_address, std::string peer_por
 	return conn_socket;
 }
 
-LinuxPlatformAnalyser::LinuxPlatformAnalyser(std::string peer_address, std::string peer_port, protocol proto) 
-: LinuxPlatform(data_connect_construct(peer_address, peer_port, proto))
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, protocol proto) 
+: Platform(data_connect_construct(peer_address, peer_port, proto))
 {
 	update_endpoint_info();
 }
 
-Message LinuxPlatformAnalyser::receive_message()
+Message PlatformAnalyser::receive_message()
 {
 	process_socket_data();
 
@@ -333,12 +295,12 @@ Message LinuxPlatformAnalyser::receive_message()
 	throw_new_exception("Failed to parse incoming data", LINE_CONTEXT);
 }
 
-bool LinuxPlatformAnalyser::has_message()
+bool PlatformAnalyser::has_message()
 {
 	return _socket.has_message();
 }
 
-bool LinuxPlatformAnalyser::send_data(const Message& message)
+bool PlatformAnalyser::send_data(const Message& message)
 {
 	std::cout << "Socket " << (*this).get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
 	auto bytes = message.to_bytes();
@@ -350,7 +312,7 @@ bool LinuxPlatformAnalyser::send_data(const Message& message)
 	return false;
 }
 
-bool LinuxPlatformAnalyser::has_died()
+bool PlatformAnalyser::has_died()
 {
 	return _socket.has_died();
 }
@@ -373,29 +335,29 @@ PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
 	return listen_socket;
 }
 
-LinuxReusableListener::LinuxReusableListener(raw_name_data data, protocol proto) 
-: LinuxPlatform(reuse_listen_construct(data, proto))
+ReusableListener::ReusableListener(raw_name_data data, protocol proto) 
+: Platform(reuse_listen_construct(data, proto))
 {
 	
 }
 
-void LinuxReusableListener::listen()
+void ReusableListener::listen()
 {
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	_socket.listen(4);
 }
 
-bool LinuxReusableListener::has_connection()
+bool ReusableListener::has_connection()
 {
 	return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> LinuxReusableListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> ReusableListener::accept_connection()
 {
 	std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 
 	auto new_sock = _socket.accept_data_socket();
-	return std::make_unique<LinuxPlatformAnalyser>(std::move(new_sock));
+	return std::make_unique<PlatformAnalyser>(std::move(new_sock));
 }
 
 PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
@@ -416,8 +378,8 @@ PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
 	return conn_socket;
 }
 
-LinuxReusableConnector::LinuxReusableConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto) 
-: LinuxPlatform(reuse_connection_construct(data, proto))
+ReusableConnector::ReusableConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto) 
+: Platform(reuse_connection_construct(data, proto))
 {
 	// if tcp?
 	try
@@ -430,7 +392,7 @@ LinuxReusableConnector::LinuxReusableConnector(raw_name_data data, std::string i
 	}
 }
 
-void LinuxReusableConnector::connect(std::string ip_address, std::string port)
+void ReusableConnector::connect(std::string ip_address, std::string port)
 {
 	try
 	{
@@ -459,7 +421,7 @@ void LinuxReusableConnector::connect(std::string ip_address, std::string port)
 	}
 }
 
-ConnectionStatus LinuxReusableConnector::has_connected()
+ConnectionStatus ReusableConnector::has_connected()
 {
 	try
 	{
@@ -494,4 +456,23 @@ ConnectionStatus LinuxReusableConnector::has_connected()
 		throw_with_context(e, LINE_CONTEXT);
 	}
 }
+
+readable_ip_info convert_to_readable(raw_name_data data)
+{
+	std::vector<char> buf{ 50, '0', std::allocator<char>() };
+	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
+
+	if (!str) {
+		throw_new_exception("Failed to convert sockaddr to string: " + get_last_error(), LINE_CONTEXT);
+	}
+
+	std::string address = str;
+
+	std::string port = std::to_string(ntohs(data.ipv4_addr().sin_port));
+	readable_ip_info out;
+	out.ip_address = address;
+	out.port = port;
+	return out;
+}
+
 #endif

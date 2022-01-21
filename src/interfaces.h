@@ -3,16 +3,14 @@
 #include <string>
 
 #include "name_data.h"
+#include "message.h"
 
 class ISocketWrapper
 {
-public:
+	public:
 	virtual ~ISocketWrapper() {}
 
-	virtual void shutdown() = 0;
-
 	virtual readable_ip_info get_peer_data() const = 0;
-
 	virtual raw_name_data get_peername_raw() const = 0;
 	virtual raw_name_data get_myname_raw() const = 0;
 	virtual readable_ip_info get_peername_readable() const = 0;
@@ -22,16 +20,16 @@ public:
 	virtual std::string get_my_port() const = 0;
 	virtual std::string get_endpoint_ip() const = 0;
 	virtual std::string get_endpoint_port() const = 0;
-
 	virtual std::string get_identifier_str() const = 0;
 };
 
 class IDataSocketWrapper : virtual public ISocketWrapper
 {
-protected:
+	protected:
 	size_t _seen_data = 0;
 	size_t _sent_bytes = 0;
-public:
+
+	public:
 	virtual ~IDataSocketWrapper() {}
 
 

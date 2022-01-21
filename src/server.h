@@ -9,6 +9,7 @@
 
 #include "loop.h"
 #include "ptop_socket.h"
+#include "platform.h"
 
 class server_init_kit;
 
