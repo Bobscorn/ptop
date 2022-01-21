@@ -110,6 +110,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                     }
                 }
             }
+            if (unauthed_sockets.size())
+                continue;
 
             if (listen_sock->has_connection())
             {
@@ -130,6 +132,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 {
                     std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
                     unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
+                    peer_priv_connect = nullptr;
 
                     if (kit.is_leader)
                         unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));

@@ -428,28 +428,21 @@ windows_internet::~windows_internet()
     std::cout << "Winsock has been cleaned" << std::endl;
 }
 
-PtopSocket windows_reuse_nb_listen_construct(std::string port, protocol proto)
+PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto)
 {
     try
     {
-        std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
-
-        int portno = atoi(port.c_str());
-
-        struct sockaddr_in serv_addr;
-        memset(&serv_addr, 0, sizeof(serv_addr));
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_addr.s_addr = INADDR_ANY;
-        serv_addr.sin_port = htons(portno);
+        auto readable = data.as_readable();
+        std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on: " << readable.ip_address << ":" << readable.port << std::endl;
 
         PtopSocket listen_socket = PtopSocket(proto);
         if (listen_socket.is_invalid())
-            throw_new_exception("[ListenReuseNoB] (localhost:" + port + ") Failed to create reusable nonblocking listen socket: " + get_last_error(), LINE_CONTEXT);
+            throw_new_exception("[ListenReuseNoB] " + readable.ip_address + ":" + readable.port + " Failed to create reusable nonblocking listen socket: " + get_last_error(), LINE_CONTEXT);
 
         listen_socket.set_non_blocking(true);
         listen_socket.set_socket_reuse();
 
-        listen_socket.bind_socket(raw_name_data{ serv_addr });
+        listen_socket.bind_socket(data);
 
         return listen_socket;
     }
@@ -458,8 +451,8 @@ PtopSocket windows_reuse_nb_listen_construct(std::string port, protocol proto)
         throw_with_context(e, LINE_CONTEXT);
     }
 }
-WindowsReusableListener::WindowsReusableListener(std::string port, protocol input_protocol) : WindowsPlatform(
-    windows_reuse_nb_listen_construct(port, input_protocol))
+WindowsReusableListener::WindowsReusableListener(raw_name_data data, protocol input_protocol) : WindowsPlatform(
+    windows_reuse_nb_listen_construct(data, input_protocol))
 {}
 
 void WindowsReusableListener::listen()

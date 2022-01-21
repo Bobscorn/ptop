@@ -103,7 +103,7 @@ class WindowsPlatformAnalyser : public WindowsPlatform, public virtual IDataSock
 class WindowsReusableListener : public WindowsPlatform, public INonBlockingListener
 {
 public:
-	WindowsReusableListener(std::string port, protocol input_protocol);
+	WindowsReusableListener(raw_name_data data, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;

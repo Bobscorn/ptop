@@ -202,13 +202,20 @@ std::unique_ptr<IDataSocketWrapper> LinuxPlatformListener::accept_connection()
 	return std::make_unique<LinuxPlatformAnalyser>(std::move(tmp));
 }
 
-PtopSocket&& steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
+PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
-	std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-	LinuxReusableConnector& real_old = *dynamic_cast<LinuxReusableConnector*>(old.get());
-	PtopSocket sup = real_old.release_socket();
-	sup.set_non_blocking(false);
-	return std::move(sup);
+	try
+	{
+		std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
+		LinuxReusableConnector& real_old = *dynamic_cast<LinuxReusableConnector*>(old.get());
+		PtopSocket sup = real_old.release_socket();
+		sup.set_non_blocking(false);
+		return sup;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 void LinuxPlatformAnalyser::process_socket_data()
@@ -263,7 +270,14 @@ void LinuxPlatformAnalyser::process_socket_data()
 LinuxPlatformAnalyser::LinuxPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
 : LinuxPlatform(steal_construct(std::move(old)))
 {
-	update_endpoint_info();
+	try
+	{
+		//update_endpoint_info();
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 LinuxPlatformAnalyser::LinuxPlatformAnalyser(PtopSocket&& socket) : LinuxPlatform(std::move(socket))

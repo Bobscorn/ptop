@@ -59,7 +59,7 @@ std::unique_ptr<INonBlockingListener> Sockets::CreateReusableNonBlockingListenSo
 	try
 	{
 #if defined(WIN32) | defined(_WIN64)
-		return std::make_unique<WindowsReusableListener>(port, input_protocol);
+		return std::make_unique<WindowsReusableListener>(data, input_protocol);
 #elif __linux__
 		return std::make_unique<LinuxReusableListener>(data, input_protocol);
 #endif
