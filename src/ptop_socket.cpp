@@ -36,7 +36,7 @@ PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
 PtopSocket& PtopSocket::bind_socket(const raw_name_data& name, std::string error_message)
 {
 	int result = bind(_handle, &name.name, name.name_len);
-	throw_if_socket_error(result, error_message);
+	throw_if_socket_error(result, error_message, LINE_CONTEXT);
 	return *this;
 }
 
@@ -45,7 +45,7 @@ PtopSocket& PtopSocket::connect(sockaddr* addr, socklen_t len)
 	if (_protocol.is_tcp())
 	{
 		int n = ::connect(_handle, addr, len);
-		throw_if_socket_error(n, "Failed to connect " + get_last_error());
+		throw_if_socket_error(n, "Failed to connect " + get_last_error(), LINE_CONTEXT);
 	}
 	else if (_protocol.is_udp())
 	{
@@ -61,7 +61,7 @@ PtopSocket& PtopSocket::start_listening()
         return *this;
     }
 	int n = ::listen(_handle, 4);
-	throw_if_socket_error(n, "Failed to listen " + get_last_error());
+	throw_if_socket_error(n, "Failed to listen " + get_last_error(), LINE_CONTEXT);
 	return *this;
 }
 
@@ -87,7 +87,7 @@ bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)
 void PtopSocket::listen(int max_conns)
 {
 	auto n = ::listen(_handle, max_conns);
-	throw_if_socket_error(n, "Failed to listen on socket " + get_last_error());
+	throw_if_socket_error(n, "Failed to listen on socket " + get_last_error(), LINE_CONTEXT);
 }
 
 bool PtopSocket::has_connection() const
@@ -103,7 +103,7 @@ bool PtopSocket::has_connection() const
 		FD_SET(_handle, &poll_read_set);
 
 		int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-		throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error());
+		throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error(), LINE_CONTEXT);
 
 		return n > 0;
 	}
@@ -136,7 +136,7 @@ bool PtopSocket::poll_for(int poll_flag) const
 	if (num_polled > 0)
 		return poll_thing.revents | poll_flag;
 	
-	throw_if_socket_error(num_polled, std::string("Failed to poll linux socket readability ") + get_last_error());
+	throw_if_socket_error(num_polled, std::string("Failed to poll linux socket readability ") + get_last_error(), LINE_CONTEXT);
 	return false;
 }
 
@@ -163,7 +163,7 @@ bool PtopSocket::select_for(::select_for epic_for) const
 		n = select((int)_handle + 1, NULL, NULL, &set, &timeout);
 		break;
 	}
-	throw_if_socket_error(n, "Failed to select " + get_last_error());
+	throw_if_socket_error(n, "Failed to select " + get_last_error(), LINE_CONTEXT);
 	return FD_ISSET(_handle, &set);
 }
 
@@ -178,7 +178,7 @@ bool PtopSocket::has_message() const
 	FD_SET(_handle, &poll_read_set);
 
 	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error());
+	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error(), LINE_CONTEXT);
 
 	return n > 0;
 }
@@ -211,7 +211,7 @@ raw_name_data PtopSocket::get_peer_raw() const
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(_handle, (sockaddr*)&peer_name, &peer_size);
-	throw_if_socket_error(n, "Failed to getpeername " + get_last_error());
+	throw_if_socket_error(n, "Failed to getpeername " + get_last_error(), LINE_CONTEXT);
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;
@@ -224,7 +224,7 @@ raw_name_data PtopSocket::get_name_raw() const
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getsockname(_handle, (sockaddr*)&peer_name, &peer_size);
-	throw_if_socket_error(n, "Failed to getsockname " + get_last_error());
+	throw_if_socket_error(n, "Failed to getsockname " + get_last_error(), LINE_CONTEXT);
 
 	raw_name_data raw_data;
 	raw_data.name = *(sockaddr*)&peer_name;

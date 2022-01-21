@@ -1,5 +1,9 @@
 #pragma once
 
+#include "name_data.h"
+#include "protocol.h"
+#include "error.h"
+
 #ifdef WIN32
 #include <WinSock2.h>
 
@@ -8,13 +12,11 @@
 using SOCKET = int;
 #endif
 
+#include <string>
+
 constexpr SOCKET REALLY_INVALID_SOCKET = -1;
 
-#include <string>
-#include "name_data.h"
-#include "protocol.h"
-
-void throw_if_socket_error(int n, std::string message);
+void throw_if_socket_error(int n, std::string message, std::string line_context);
 std::string socket_error_to_string(int err);
 std::string get_last_error();
 
@@ -47,7 +49,7 @@ class PtopSocket
     PtopSocket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
     {
         int result = setsockopt(_handle, SOL_SOCKET, option_name, (char*)&optionVal, sizeof(OptT));
-        throw_if_socket_error(result, error_message);
+        throw_if_socket_error(result, error_message, LINE_CONTEXT);
         return *this;
     }
 
@@ -63,7 +65,7 @@ class PtopSocket
         OptT opt;
         socklen_t optSize = sizeof(OptT);
         int result = getsockopt(_handle, SOL_SOCKET, option_name, (char*)&opt, &optSize);
-        throw_if_socket_error(result, "Failed to get socket option");
+        throw_if_socket_error(result, "Failed to get socket option", LINE_CONTEXT);
         return opt;
     }
     

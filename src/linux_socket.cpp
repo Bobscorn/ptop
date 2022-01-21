@@ -24,14 +24,14 @@
 extern std::string linux_error();
 extern std::string linux_error(int err);
 
-void throw_if_socket_error(int val, std::string error_message)
+void throw_if_socket_error(int val, std::string error_message, std::string line_context)
 {
 	if (val == SOCKET_ERROR)
 	{
 		auto last_err = errno;
 		if (last_err != EAGAIN && last_err != EINPROGRESS)
 		{
-			throw_new_exception(error_message, LINE_CONTEXT);
+			throw_new_exception(error_message, line_context);
 		}
 	}
 }
@@ -59,9 +59,9 @@ PtopSocket& PtopSocket::set_non_blocking(bool value)
 {
 	try {		
 		int flags = fcntl(_handle, F_GETFL);
-		throw_if_socket_error(flags, "Failed to retrieve socket flags");
+		throw_if_socket_error(flags, "Failed to retrieve socket flags", LINE_CONTEXT);
 		int n = fcntl(_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
-		throw_if_socket_error(n, "Failed to set blocking value");
+		throw_if_socket_error(n, "Failed to set blocking value", LINE_CONTEXT);
 	}
 
 	catch(...) {
