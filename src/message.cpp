@@ -17,7 +17,7 @@ std::vector<char> Message::to_bytes() const
 }
 
 void throw_new_exception(std::string input, std::string line_context) {
-	auto together = (line_context + "\n" + input);
+	auto together = (line_context + " " + input);
 	std::cout << together << std::endl;
 	std::throw_with_nested(std::runtime_error(together));
 }

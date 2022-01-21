@@ -380,11 +380,11 @@ std::unique_ptr<IDataSocketWrapper> LinuxReusableListener::accept_connection()
 PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
 {
 	auto readable = convert_to_readable(data);
-	std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
+	std::cout << "[DataReuseNoB] Creating Connection socket bound to: " << readable.ip_address << ":" << readable.port << std::endl;
 	auto conn_socket = PtopSocket(proto);
 
 	if (conn_socket.is_invalid())
-		throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + linux_error());
+		throw_new_exception("[DataReuseNoB] Failed to create nonblocking socket: " + linux_error(), LINE_CONTEXT);
 
 	conn_socket.set_non_blocking(true);
 	conn_socket.set_socket_reuse();
@@ -399,50 +399,71 @@ LinuxReusableConnector::LinuxReusableConnector(raw_name_data data, std::string i
 : LinuxPlatform(reuse_connection_construct(data, proto))
 {
 	// if tcp?
-	this->connect(ip_address, port);
+	try
+	{
+		this->connect(ip_address, port);
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 void LinuxReusableConnector::connect(std::string ip_address, std::string port)
 {
-	std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
-	struct addrinfo* results, hints;
-	bzero(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	try
+	{
+		std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
+		struct addrinfo* results, hints;
+		bzero(&hints, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
 
-	int iResult = 0;
+		int iResult = 0;
 
-	iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
-	if (iResult != 0)
-		throw std::runtime_error((std::string("Failed to getaddrinfo, error: ") + std::to_string(iResult)).c_str());
+		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
+		if (iResult != 0)
+			throw_new_exception("Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
 
-	if (results == nullptr)
-		throw std::runtime_error((std::string("No possible sockets found for '") + ip_address + ":" + port + "'").c_str());
+		if (results == nullptr)
+			throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "'", LINE_CONTEXT);
 
-	_socket.connect(results->ai_addr, results->ai_addrlen);
-	std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+		_socket.connect(results->ai_addr, results->ai_addrlen);
+		std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 ConnectionStatus LinuxReusableConnector::has_connected()
 {
-	if (_socket.is_invalid())
-		return ConnectionStatus::FAILED;
-
-	if (_socket.poll_for(POLLWRNORM))
+	try
 	{
-		update_endpoint_if_needed();
-		return ConnectionStatus::SUCCESS;
+		if (_socket.is_invalid())
+			return ConnectionStatus::FAILED;
+
+		if (_socket.poll_for(POLLWRNORM))
+		{
+			update_endpoint_if_needed();
+			return ConnectionStatus::SUCCESS;
+		}
+
+
+		if (!_socket.select_for(select_for::EXCEPT))
+			return ConnectionStatus::PENDING;
+
+		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
+
+		std::cerr << "Socket has error code: " << sock_error << std::endl;
+
+		return ConnectionStatus::FAILED;
 	}
-
-
-	if (!_socket.select_for(select_for::EXCEPT))
-		return ConnectionStatus::PENDING;
-
-	auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
-
-	std::cerr << "Socket has error code: " << sock_error << std::endl;
-
-	return ConnectionStatus::FAILED;
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 #endif

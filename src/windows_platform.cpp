@@ -485,7 +485,7 @@ PtopSocket windows_reuse_nb_construct(raw_name_data name, protocol proto)
 {
 	try {
 		auto readable = convert_to_readable(name);
-		std::cout << "[DataReuseNoB] Creating Connection socket to: " << readable.ip_address << ":" << readable.port << std::endl;
+		std::cout << "[DataReuseNoB] Creating Connection socket bound to: " << readable.ip_address << ":" << readable.port << std::endl;
 		auto conn_socket = PtopSocket(proto);
 		if (conn_socket.is_invalid())
 			throw std::runtime_error(std::string("[DataReuseNoB] Failed to create nonblocking socket: ") + get_last_error());
