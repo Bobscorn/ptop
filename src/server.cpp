@@ -223,6 +223,7 @@ void server_loop()
 
     server_init_kit init_tcp{ protocol{"tcp"} };
     server_init_kit init_udp{ protocol{"udp"} };
+    std::cout << "Server is ready..." << std::endl;
 
     while (true)
     {
