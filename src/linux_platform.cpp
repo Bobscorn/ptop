@@ -25,9 +25,12 @@ std::string linux_error()
 {
 	int err_code = errno;
 	int copy = err_code;
+	int copy2 = err_code;
 	std::string error = "Err code: " + std::to_string(copy) + " (";
-	error += strerror(copy);
-	return error + ")";
+	char* err_str = strerror(copy2);
+	error += err_str;
+	std::string out = error + ")";
+	return out;
 }
 
 std::string linux_error(int err_code)
