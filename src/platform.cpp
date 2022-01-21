@@ -1,6 +1,10 @@
 #include "platform.h"
 #include <string>
 
+#if defined(__linux__)
+#include <arpa/inet.h>
+#endif
+
 std::string Platform::get_identifier_str() const { 
     if (_endpoint_assigned == false) 
         return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)";
