@@ -341,33 +341,26 @@ bool LinuxPlatformAnalyser::has_died()
 	return _socket.has_died();
 }
 
-PtopSocket reuse_listen_construct(std::string port, protocol proto)
+PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
 {
-	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on (localhost): " << port << std::endl;
-
-	int portno = atoi(port.c_str());
-
-	struct sockaddr_in serv_addr;
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(portno);
+	auto readable = data.as_readable();
+	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on: " << readable.ip_address << ":" << readable.port << std::endl;
 
 	auto listen_socket = PtopSocket(proto);
 
 	if (listen_socket.is_invalid())
-		throw std::runtime_error(std::string("[ListenReuseNoB] (localhost:") + port + ") Failed to create reusable nonblocking listen socket: " + linux_error());
+		throw std::runtime_error("[ListenReuseNoB] " + readable.ip_address + ":" + readable.port + " Failed to create reusable nonblocking listen socket: " + linux_error());
 
 	listen_socket.set_non_blocking(true);
 	listen_socket.set_socket_reuse();
 
-	listen_socket.bind_socket(raw_name_data{ serv_addr });
+	listen_socket.bind_socket(data);
 
 	return listen_socket;
 }
 
-LinuxReusableListener::LinuxReusableListener(std::string port, protocol proto) 
-: LinuxPlatform(reuse_listen_construct(port, proto))
+LinuxReusableListener::LinuxReusableListener(raw_name_data data, protocol proto) 
+: LinuxPlatform(reuse_listen_construct(data, proto))
 {
 	
 }

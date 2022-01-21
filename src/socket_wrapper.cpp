@@ -54,14 +54,14 @@ std::unique_ptr<IDataSocketWrapper> Sockets::CreateConnectionSocket(std::string 
 	}
 }
 
-std::unique_ptr<INonBlockingListener> Sockets::CreateReusableNonBlockingListenSocket(std::string port, protocol input_protocol)
+std::unique_ptr<INonBlockingListener> Sockets::CreateReusableNonBlockingListenSocket(raw_name_data data, protocol input_protocol)
 {
 	try
 	{
 #if defined(WIN32) | defined(_WIN64)
 		return std::make_unique<WindowsReusableListener>(port, input_protocol);
 #elif __linux__
-		return std::make_unique<LinuxReusableListener>(port, input_protocol);
+		return std::make_unique<LinuxReusableListener>(data, input_protocol);
 #endif
 	}
 	catch (const std::exception& e)

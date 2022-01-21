@@ -79,7 +79,7 @@ class LinuxPlatformAnalyser : public LinuxPlatform, public IDataSocketWrapper
 class LinuxReusableListener : public LinuxPlatform, public INonBlockingListener
 {
 public:
-	LinuxReusableListener(std::string port, protocol proto);
+	LinuxReusableListener(raw_name_data data, protocol proto);
 
 	void listen() override;
 	bool has_connection() override;

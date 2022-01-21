@@ -172,7 +172,7 @@ class Sockets
 
 	static std::unique_ptr<IListenSocketWrapper> CreateListenSocket(std::string port, protocol proto);
 	static std::unique_ptr<IDataSocketWrapper> CreateConnectionSocket(std::string peer_ip, std::string port, protocol proto);
-	static std::unique_ptr<INonBlockingListener> CreateReusableNonBlockingListenSocket(std::string port, protocol proto);
+	static std::unique_ptr<INonBlockingListener> CreateReusableNonBlockingListenSocket(raw_name_data data, protocol proto);
 	static std::unique_ptr<INonBlockingConnector> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
 	static std::unique_ptr<IDataSocketWrapper> ConvertToDataSocket(std::unique_ptr<INonBlockingConnector>&& old);
 };
