@@ -1,6 +1,6 @@
 #pragma once
 
-#include "socket_wrapper.h"
+#include "interfaces.h"
 #include "ptop_socket.h"
 
 #if defined(WIN32) | defined(_WIN64)

@@ -14,6 +14,13 @@ void throw_with_context(const std::exception& e, std::string context);
 
 void print_exception(const std::exception& e, int level = 0);
 
+enum class ConnectionStatus
+{
+	PENDING = 0,
+	SUCCESS = 1,
+	FAILED = 2,
+};
+
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
 // A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long

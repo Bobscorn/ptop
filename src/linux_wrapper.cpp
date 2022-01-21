@@ -19,18 +19,13 @@ readable_ip_info linux_name_data::as_readable() const { return convert_to_readab
 #endif
 
 const std::string Sockets::ServerListenPort = "27069";
-const std::string Sockets::ClientListenPort = "6969";
 
 
 std::unique_ptr<IListenSocketWrapper> Sockets::CreateListenSocket(std::string port, protocol input_protocol)
 {
 	try
 	{
-#if defined(WIN32) | defined(_WIN64)
-		return std::make_unique<WindowsPlatformListener>(port, input_protocol);
-#elif __linux__
 		return std::make_unique<LinuxPlatformListener>(port, input_protocol);
-#endif
 	}
 	catch (const std::exception& e)
 	{
@@ -42,11 +37,7 @@ std::unique_ptr<IDataSocketWrapper> Sockets::CreateConnectionSocket(std::string 
 {
 	try
 	{
-#if defined(WIN32) | defined(_WIN64)
-		return std::make_unique<WindowsPlatformAnalyser>(peer_ip, port, input_protocol);
-#elif __linux__
 		return std::make_unique<LinuxPlatformAnalyser>(peer_ip, port, input_protocol);
-#endif
 	}
 	catch (const std::exception& e)
 	{
@@ -58,11 +49,7 @@ std::unique_ptr<INonBlockingListener> Sockets::CreateReusableNonBlockingListenSo
 {
 	try
 	{
-#if defined(WIN32) | defined(_WIN64)
-		return std::make_unique<WindowsReusableListener>(data, input_protocol);
-#elif __linux__
 		return std::make_unique<LinuxReusableListener>(data, input_protocol);
-#endif
 	}
 	catch (const std::exception& e)
 	{
