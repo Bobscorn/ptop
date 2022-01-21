@@ -312,14 +312,9 @@ bool PlatformAnalyser::send_data(const Message& message)
 	return false;
 }
 
-bool PlatformAnalyser::has_died()
-{
-	return _socket.has_died();
-}
-
 PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
 {
-	auto readable = data.as_readable();
+	auto readable = convert_to_readable(data);
 	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on: " << readable.ip_address << ":" << readable.port << std::endl;
 
 	auto listen_socket = PtopSocket(proto);

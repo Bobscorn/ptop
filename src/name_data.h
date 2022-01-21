@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <string.h>
 
 #include "ip.h"
 
@@ -28,7 +28,7 @@ struct raw_name_data
 	{
 		if (name_len != other.name_len)
 			return false;
-		return !std::memcmp(&name, &other.name, name_len);
+		return !memcmp(&name, &other.name, name_len);
 	}
 	inline bool operator!=(const raw_name_data& other) const
 	{

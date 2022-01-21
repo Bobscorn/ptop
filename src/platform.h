@@ -6,6 +6,10 @@
 #include "ptop_socket.h"
 #include "interfaces.h"
 
+#if defined(__linux__)
+const int SOCKET_ERROR = 1;
+#endif
+
 readable_ip_info convert_to_readable(raw_name_data);
 
 class Platform : public virtual ISocketWrapper {    

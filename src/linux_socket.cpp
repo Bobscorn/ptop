@@ -19,15 +19,10 @@
 
 #include "message.h"
 #include "loop.h"
+#include "platform.h"
 
 extern std::string linux_error();
 extern std::string linux_error(int err);
-//
-//void throw_if_socket_error(int val, std::string error_message)
-//{
-//	if (val == SOCKET_ERROR)
-//		throw std::runtime_error(error_message + " with: " + linux_error());
-//}
 
 void throw_if_socket_error(int val, std::string error_message)
 {
