@@ -5,8 +5,8 @@
 #include <memory>
 
 #include "loop.h"
-#include "socket_wrapper.h"
 #include "protocol.h"
+#include "interfaces.h"
 
 void client_loop(std::string server_address_pair, protocol input_protocol);
 

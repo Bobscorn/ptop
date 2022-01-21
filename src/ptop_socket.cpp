@@ -1,5 +1,6 @@
 #include "ptop_socket.h"
-#include "socket_wrapper.h"
+#include "message.h"
+#include "platform.h"
 
 #if defined(WIN32)
 	#ifndef WIN32_LEAN_AND_MEAN
@@ -265,9 +266,10 @@ std::vector<char> PtopSocket::recv_bytes()
 			std::vector<char> data(500, (char)0, std::allocator<char>());
 			int result = ::recvfrom(_handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
 			raw_name_data incoming{ addr, addr_len };
+			
 			if (incoming != _endpoint)
 			{
-				auto readable = incoming.as_readable();
+				auto readable = convert_to_readable(incoming);
 				std::cout << "Receiving UDP data from an undesired endpoint (" << readable << ")" << std::endl;
 				continue;
 			}

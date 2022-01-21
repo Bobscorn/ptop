@@ -11,8 +11,7 @@ using SOCKET = int;
 constexpr SOCKET REALLY_INVALID_SOCKET = -1;
 
 #include <string>
-
-#include "socket_wrapper.h"
+#include "name_data.h"
 #include "protocol.h"
 
 void throw_if_socket_error(int n, std::string message);

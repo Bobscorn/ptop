@@ -6,11 +6,13 @@
 #include "message.h"
 #include "ptop_socket.h"
 #include "protocol.h"
+#include "platform.h"
+#include "ip.h"
 
 using namespace std::chrono;
 
 client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) : protocol(chosen_protocol) {
-    conn_socket = Sockets::CreateConnectionSocket(server_address_pair, Sockets::ServerListenPort, protocol);
+    conn_socket = std::make_unique<PlatformAnalyser>(server_address_pair, ServerListenPort, protocol);
     // Indicate to server we're ready for p2p
     last_send = std::chrono::system_clock::now();
     conn_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, conn_socket->get_myname_readable().to_bytes()));
@@ -57,7 +59,7 @@ EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocketWr
     }
 }
 
-EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_key_out, int i, MESSAGE_LENGTH_T data_len, std::string port) {
+EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_key_out, int i, MESSAGE_LENGTH_T data_len) {
     try
     {
         // Server giving us a peer to connect to
@@ -76,10 +78,10 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
         std::cout << "Target is: " << peer_private.ip_address << ":" << peer_private.port << "/" << peer_public.ip_address << ":" << peer_public.port << " priv/pub" << std::endl;
         std::this_thread::sleep_for(100ms);
 
-        std::unique_ptr<INonBlockingListener> listen_sock = Sockets::CreateReusableNonBlockingListenSocket(old_privatename, kit.protocol);
+        auto listen_sock = std::make_unique<ReusableListener>(old_privatename, kit.protocol);
         listen_sock->listen();
-        auto peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
-        auto peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
+        auto peer_pub_connect = std::make_unique<ReusableConnector>(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
+        auto peer_priv_connect = std::make_unique<ReusableConnector>(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
 
         std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};
 
@@ -131,7 +133,8 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 if (status == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
-                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_priv_connect)));
+                    auto analyser = std::make_unique<PlatformAnalyser>(std::move(peer_priv_connect));
+                    unauthed_sockets.emplace_back(std::move(analyser));
                     peer_priv_connect = nullptr;
 
                     if (kit.is_leader)
@@ -143,7 +146,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 else if (status == ConnectionStatus::FAILED)
                 {
                     std::cout << "Private Connection attempt failed, retrying..." << std::endl;
-                    peer_priv_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
+                    peer_priv_connect = std::make_unique<ReusableConnector>(old_privatename, peer_private.ip_address, peer_private.port, kit.protocol);
                 }
             }
 
@@ -153,7 +156,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 if (status == ConnectionStatus::SUCCESS)
                 {
                     std::cout << "Public Connection has connected, now authenticating" << std::endl;
-                    unauthed_sockets.emplace_back(Sockets::ConvertToDataSocket(std::move(peer_pub_connect)));
+                    unauthed_sockets.emplace_back(std::make_unique<PlatformAnalyser>(std::move(peer_pub_connect)));
 
                     if (kit.is_leader)
                         unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
@@ -164,7 +167,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
                 else if (status == ConnectionStatus::FAILED)
                 {
                     std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
-                    peer_pub_connect = Sockets::CreateReusableConnectSocket(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
+                    peer_pub_connect = std::make_unique<ReusableConnector>(old_privatename, peer_public.ip_address, peer_public.port, kit.protocol);
                 }
             }
 
@@ -180,7 +183,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& kit, const char* data, int& auth_ke
     }
 }
 
-EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& message, std::string port)
+EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& message)
 {
     try
     {
@@ -212,13 +215,13 @@ EXECUTION_STATUS process_server_data(client_init_kit& kit, const Message& messag
         }
         case MESSAGE_TYPE::CONNECT_PEER:
         {
-            return hole_punch(kit, data, kit.auth_key, i, data_len, port);
+            return hole_punch(kit, data, kit.auth_key, i, data_len);
         }
 
         case MESSAGE_TYPE::CONNECT_PEER_AS_LEADER:
         {
             kit.is_leader = true;
-            return hole_punch(kit, data, kit.auth_key, i, data_len, port);
+            return hole_punch(kit, data, kit.auth_key, i, data_len);
         }
 
         case MESSAGE_TYPE::NONE:
@@ -301,7 +304,7 @@ void client_loop(std::string server_address_pair, protocol input_protocol)
         if (kit.conn_socket->has_message())
         {
             auto message = kit.conn_socket->receive_message();
-            kit.status = process_server_data(kit, message, Sockets::ClientListenPort);
+            kit.status = process_server_data(kit, message);
         }
 
         std::this_thread::sleep_for(100ms);

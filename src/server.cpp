@@ -9,15 +9,16 @@
 #include "loop.h"
 #include "message.h"
 #include "ptop_socket.h"
+#include "ip.h"
 
 using namespace std::chrono;
 
 server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
-    clientA = std::unique_ptr<IDataSocketWrapper>();
-    clientB = std::unique_ptr<IDataSocketWrapper>();
+    clientA = nullptr;
+    clientB = nullptr;
     cA = nullptr;
     cB = nullptr;
-    server_socket = Sockets::CreateListenSocket(Sockets::ServerListenPort, ip_proto);
+    server_socket = std::make_unique<PlatformListener>(ServerListenPort, ip_proto);
     server_socket->listen();
     recv_data = std::vector<char>();
     //dont need to initialize structs. it will default its params by itself
@@ -259,7 +260,7 @@ void process_server_protocol(server_init_kit& protocol_kit)
     if (protocol_kit.clientA && protocol_kit.clientA->has_message())
     {
         auto msg = protocol_kit.clientA->receive_message();
-        protocol_kit.status = process_data_server(msg, protocol_kit.clientA, Sockets::ServerListenPort, protocol_kit.cA, protocol_kit.cB, protocol_kit.privA, protocol_kit.privB);
+        protocol_kit.status = process_data_server(msg, protocol_kit.clientA, ServerListenPort, protocol_kit.cA, protocol_kit.cB, protocol_kit.privA, protocol_kit.privB);
         if (protocol_kit.status == EXECUTION_STATUS::COMPLETE)
         {
             std::cout << "Resetting server" << std::endl;
@@ -272,7 +273,7 @@ void process_server_protocol(server_init_kit& protocol_kit)
     if (protocol_kit.clientB && protocol_kit.clientB->has_message())
     {
         auto msg = protocol_kit.clientB->receive_message();
-        protocol_kit.status = process_data_server(msg, protocol_kit.clientB, Sockets::ServerListenPort, protocol_kit.cA, protocol_kit.cB, protocol_kit.privA, protocol_kit.privB);
+        protocol_kit.status = process_data_server(msg, protocol_kit.clientB, ServerListenPort, protocol_kit.cA, protocol_kit.cB, protocol_kit.privA, protocol_kit.privB);
         if (protocol_kit.status == EXECUTION_STATUS::COMPLETE)
         {
             std::cout << "Resetting server" << std::endl;

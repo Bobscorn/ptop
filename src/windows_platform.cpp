@@ -1,5 +1,3 @@
-#include "ptop_socket.h"
-
 #if defined(WIN32) | defined(_WIN64)
 #include <exception>
 #include <string>
@@ -9,11 +7,11 @@
 #include "message.h"
 #include "loop.h"
 #include "protocol.h"
-#include "windows_platform.h"
+#include "platform.h"
 
 #define AF_FAM AF_INET
 
-WindowsPlatform::WindowsPlatform(PtopSocket&& socket) 
+Platform::Platform(PtopSocket&& socket) 
     : _socket(std::move(socket))
 { 
     update_name_info();
@@ -68,32 +66,14 @@ std::string get_win_error(DWORD word)
     return message;
 }
 
-
-readable_ip_info convert_to_readable(raw_name_data name)
-{
-    std::vector<char> name_buf(100, '0');
-    const char* str = inet_ntop(AF_INET, &name.ipv4_addr().sin_addr, name_buf.data(), name_buf.size());
-
-    if (!str) {
-        auto error = std::string("Failed to convert sockaddr info to human readable address: ") + get_last_error();        
-        throw_new_exception(error, LINE_CONTEXT);
-    }
-    std::string port_str = std::to_string(htons(name.ipv4_addr().sin_port));
-
-    readable_ip_info out_data;
-    out_data.ip_address = std::string(str);
-    out_data.port = std::move(port_str);
-    return out_data;
-}
-
-void WindowsPlatform::update_name_info()
+void Platform::update_name_info()
 {
     auto name = get_myname_readable();
     _address = name.ip_address;
     _port = name.port;
 }
 
-void WindowsPlatform::update_endpoint_info()
+void Platform::update_endpoint_info()
 {
     try
 	{
@@ -108,7 +88,7 @@ void WindowsPlatform::update_endpoint_info()
 	}
 }
 
-void WindowsPlatform::update_endpoint_if_needed()
+void Platform::update_endpoint_if_needed()
 {
 	try
 	{
@@ -123,7 +103,7 @@ void WindowsPlatform::update_endpoint_if_needed()
 	}
 }
 
-readable_ip_info WindowsPlatform::get_peer_data() const
+readable_ip_info Platform::get_peer_data() const
 {
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
@@ -143,7 +123,7 @@ readable_ip_info WindowsPlatform::get_peer_data() const
     return out;
 }
 
-raw_name_data WindowsPlatform::get_peername_raw() const
+raw_name_data Platform::get_peername_raw() const
 {
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
@@ -159,7 +139,7 @@ raw_name_data WindowsPlatform::get_peername_raw() const
     return raw_data;
 }
 
-raw_name_data WindowsPlatform::get_myname_raw() const
+raw_name_data Platform::get_myname_raw() const
 {
     sockaddr_in peer_name;
     socklen_t peer_size = sizeof(peer_name);
@@ -174,23 +154,6 @@ raw_name_data WindowsPlatform::get_myname_raw() const
     raw_data.name = *(sockaddr*)&peer_name;
     raw_data.name_len = peer_size;
     return raw_data;
-}
-
-readable_ip_info WindowsPlatform::get_peername_readable() const
-{
-    try
-    {
-        return convert_to_readable(get_peername_raw());
-    }
-    catch (const std::exception& e)
-    {
-        throw_with_context(e, LINE_CONTEXT);
-    }
-}
-
-readable_ip_info WindowsPlatform::get_myname_readable() const
-{
-    return convert_to_readable(get_myname_raw());
 }
 
 PtopSocket construct_windowslistensocket(std::string port, protocol input_protocol) {
@@ -230,25 +193,25 @@ PtopSocket construct_windowslistensocket(std::string port, protocol input_protoc
     }
 }
 
-WindowsPlatformListener::WindowsPlatformListener(std::string port, protocol input_protocol) : WindowsPlatform(construct_windowslistensocket(port, input_protocol)) 
+PlatformListener::PlatformListener(std::string port, protocol input_protocol) : Platform(construct_windowslistensocket(port, input_protocol)) 
 {
     std::cout << "[Listen] Post Bind Check: Bound to: " << get_my_ip() << ":" << get_my_port() << std::endl;
 }
 
-void WindowsPlatformListener::listen()
+void PlatformListener::listen()
 {
     _socket.listen(4);
 }
 
-bool WindowsPlatformListener::has_connection()
+bool PlatformListener::has_connection()
 {
     return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> WindowsPlatformListener::accept_connection() {
+std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection() {
     std::cout << "[Listen] " << get_identifier_str() << " Socket Attempting to accept a connection" << std::endl;
     auto tmp = _socket.accept_data_socket();
-    return std::make_unique<WindowsPlatformAnalyser>(std::move(tmp));
+    return std::make_unique<PlatformAnalyser>(std::move(tmp));
 }
 
 PtopSocket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol) {
@@ -277,7 +240,7 @@ PtopSocket construct_windows_data_socket(std::string peer_address, std::string p
     return conn_socket;
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol) : WindowsPlatform(construct_windows_data_socket(peer_address, peer_port, input_protocol)) 
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol) : Platform(construct_windows_data_socket(peer_address, peer_port, input_protocol)) 
 {
     try
     {
@@ -289,9 +252,9 @@ WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::string peer_address, std::
     }
 }
 
-bool WindowsPlatformAnalyser::send_data(const Message& message)
+bool PlatformAnalyser::send_data(const Message& message)
 {
-    std::cout << "Socket " << (*this).get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
+    std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
     auto bytes = message.to_bytes();
     if (_socket.send_bytes(bytes))
     {
@@ -304,15 +267,15 @@ bool WindowsPlatformAnalyser::send_data(const Message& message)
 PtopSocket windows_data_socket_steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
     std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-    WindowsReusableConnector& real_old = *dynamic_cast<WindowsReusableConnector*>(old.get());
+    ReusableConnector& real_old = *dynamic_cast<ReusableConnector*>(old.get());
     PtopSocket epic = real_old.release_socket();
     epic.set_non_blocking(false);
     return epic;
 }
 
-void WindowsPlatformAnalyser::process_socket_data()
+void PlatformAnalyser::process_socket_data()
 {
-    std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
+    std::cout << "[Data] Trying to receive new data from Socket: " << Platform::get_identifier_str() << std::endl;
     std::vector<char> recv_data = _socket.recv_bytes();
     if (recv_data.size() > 0)
     {
@@ -329,19 +292,19 @@ void WindowsPlatformAnalyser::process_socket_data()
 
             if (!try_read_data(recv_data.data(), data_read, recv_data.size(), type))
             {
-                std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+                std::cerr << "Socket " << Platform::get_identifier_str() << " Failed to process socket data into a message" << std::endl;
                 recv_data.clear();
                 return;
             }
             if (!try_read_data(recv_data.data(), data_read, recv_data.size(), length))
             {
-                std::cerr << "Socket " << get_identifier_str() << " Failed to process socket data into a message" << std::endl;
+                std::cerr << "Socket " << Platform::get_identifier_str() << " Failed to process socket data into a message" << std::endl;
                 recv_data.clear();
                 return;
             }
             if ((size_t)data_read + length > recv_data.size())
             {
-                std::cerr << "Socket " << get_identifier_str() << " Read an invalid Length for a message" << std::endl;
+                std::cerr << "Socket " << Platform::get_identifier_str() << " Read an invalid Length for a message" << std::endl;
                 recv_data.clear();
                 return;
             }
@@ -349,18 +312,18 @@ void WindowsPlatformAnalyser::process_socket_data()
             data_read += length;
             auto new_message = Message{ type, length, std::move(data) };
             _stored_messages.push(new_message);
-            std::cout << "Socket " << get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
+            std::cout << "Socket " << Platform::get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
         }
     }
     else
     {
-        std::cout << "Received empty data from: " << get_identifier_str() << std::endl;
+        std::cout << "Received empty data from: " << Platform::get_identifier_str() << std::endl;
         recv_data.clear();
     }
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
-: WindowsPlatform(windows_data_socket_steal_construct(std::move(old)))
+PlatformAnalyser::PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old) 
+: Platform(windows_data_socket_steal_construct(std::move(old)))
 {
     try
     {
@@ -372,8 +335,8 @@ WindowsPlatformAnalyser::WindowsPlatformAnalyser(std::unique_ptr<INonBlockingCon
     }
 }
 
-WindowsPlatformAnalyser::WindowsPlatformAnalyser(PtopSocket&& socket) 
-: WindowsPlatform(std::move(socket))
+PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket) 
+: Platform(std::move(socket))
 {
 	try
 	{
@@ -389,7 +352,7 @@ WindowsPlatformAnalyser::WindowsPlatformAnalyser(PtopSocket&& socket)
 	}
 }
 
-Message WindowsPlatformAnalyser::receive_message() {
+Message PlatformAnalyser::receive_message() {
     process_socket_data();
 
     if (_stored_messages.size() > 0)
@@ -402,37 +365,16 @@ Message WindowsPlatformAnalyser::receive_message() {
     return Message::null_message;
 }
 
-bool WindowsPlatformAnalyser::has_message()
+bool PlatformAnalyser::has_message()
 {
     return _socket.has_message();
-}
-
-void WindowsPlatform::shutdown()
-{
-}
-
-windows_internet::windows_internet(WORD versionRequested)
-{
-    int iResult = WSAStartup(versionRequested, &_data);
-    
-    if (iResult != 0) {
-        auto error = "Winsock API initialization failed: " + std::to_string(iResult);        
-        throw_new_exception(error, LINE_CONTEXT);
-    }
-    std::cout << "Winsock has been started" << std::endl;
-}
-
-windows_internet::~windows_internet()
-{
-    WSACleanup();
-    std::cout << "Winsock has been cleaned" << std::endl;
 }
 
 PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto)
 {
     try
     {
-        auto readable = data.as_readable();
+        auto readable = convert_to_readable(data);
         std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on: " << readable.ip_address << ":" << readable.port << std::endl;
 
         PtopSocket listen_socket = PtopSocket(proto);
@@ -451,27 +393,28 @@ PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto)
         throw_with_context(e, LINE_CONTEXT);
     }
 }
-WindowsReusableListener::WindowsReusableListener(raw_name_data data, protocol input_protocol) : WindowsPlatform(
+
+ReusableListener::ReusableListener(raw_name_data data, protocol input_protocol) : Platform(
     windows_reuse_nb_listen_construct(data, input_protocol))
 {}
 
-void WindowsReusableListener::listen()
+void ReusableListener::listen()
 {
-    std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
+    std::cout << "[ListenReuseNoB] Now Listening on: " << Platform::get_my_ip() << ":" << Platform::get_my_port() << std::endl;
     _socket.listen(4);
 }
 
-bool WindowsReusableListener::has_connection()
+bool ReusableListener::has_connection()
 {
     return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> WindowsReusableListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> ReusableListener::accept_connection()
 {
     std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 
     auto new_sock = _socket.accept_data_socket();
-    return std::make_unique<WindowsPlatformAnalyser>(std::move(new_sock));
+    return std::make_unique<PlatformAnalyser>(std::move(new_sock));
 }
 
 PtopSocket windows_reuse_nb_construct(raw_name_data name, protocol proto)
@@ -497,14 +440,14 @@ PtopSocket windows_reuse_nb_construct(raw_name_data name, protocol proto)
 	}
 }
 
-WindowsReusableConnector::WindowsReusableConnector(
-    raw_name_data name, std::string ip_address, std::string port, protocol input_protocol) : WindowsPlatform(
+ReusableConnector::ReusableConnector(
+    raw_name_data name, std::string ip_address, std::string port, protocol input_protocol) : Platform(
     windows_reuse_nb_construct(name, input_protocol))
 {
     connect(ip_address, port);
 }
 
-void WindowsReusableConnector::connect(std::string ip_address, std::string port)
+void ReusableConnector::connect(std::string ip_address, std::string port)
 {
 	try
 	{
@@ -533,7 +476,7 @@ void WindowsReusableConnector::connect(std::string ip_address, std::string port)
 	}
 }
 
-ConnectionStatus WindowsReusableConnector::has_connected()
+ConnectionStatus ReusableConnector::has_connected()
 {
 	try
 	{
@@ -542,7 +485,6 @@ ConnectionStatus WindowsReusableConnector::has_connected()
 
 		if (_socket.poll_for(POLLWRNORM))
 		{
-			//update_endpoint_if_needed();
 			return ConnectionStatus::SUCCESS;
 		}
 
@@ -561,4 +503,24 @@ ConnectionStatus WindowsReusableConnector::has_connected()
 		throw_with_context(e, LINE_CONTEXT);
 	}
 }
+
+readable_ip_info convert_to_readable(raw_name_data data)
+{
+	std::vector<char> buf{ 50, '0', std::allocator<char>() };
+	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
+
+	if (!str) {
+		throw_new_exception("Failed to convert sockaddr to string: " + get_last_error(), LINE_CONTEXT);
+	}
+
+	std::string address = str;
+
+	std::string port = std::to_string(ntohs(data.ipv4_addr().sin_port));
+	readable_ip_info out;
+	out.ip_address = address;
+	out.port = port;
+	return out;
+}
+
+
 #endif

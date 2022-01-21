@@ -32,11 +32,13 @@
 
 #include "server.h"
 #include "client.h"
-#include "socket_wrapper.h"
 #include "ip.h"
 #include "message.h"
 #include "protocol.h"
-#include "windows_platform.h"
+
+#if defined(WIN32) | defined(_WIN64)
+    #include "windows_internet.h"
+#endif
 
 using namespace std::chrono;
 
