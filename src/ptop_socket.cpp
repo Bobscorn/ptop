@@ -68,14 +68,20 @@ PtopSocket& PtopSocket::start_listening()
 ///returns a data socket using the listen socket
 PtopSocket PtopSocket::accept_data_socket()
 {
-	sockaddr_in client_addr;
-	socklen_t client_len = sizeof(client_addr);
-	SOCKET new_socket = accept(_handle, (struct sockaddr*)&client_addr, &client_len);
-	if (new_socket == REALLY_INVALID_SOCKET)
-	{
-		throw_new_exception("Failed to accept incoming connection: " + get_last_error(), LINE_CONTEXT);
+	try {
+		sockaddr_in client_addr;
+		socklen_t client_len = sizeof(client_addr);
+		SOCKET new_socket = accept(_handle, (struct sockaddr*)&client_addr, &client_len);
+		if (new_socket == REALLY_INVALID_SOCKET)
+		{
+			throw_new_exception("Failed to accept incoming connection: " + get_last_error(), LINE_CONTEXT);
+		}
+		return PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
 	}
-	return PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+
+	catch(std::exception& e) {
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)

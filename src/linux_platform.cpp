@@ -159,8 +159,16 @@ bool PlatformListener::has_connection()
 std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection()
 {
 	std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
-	auto tmp = _socket.accept_data_socket();
-	return std::make_unique<PlatformAnalyser>(std::move(tmp));
+
+	try {
+		auto tmp = _socket.accept_data_socket();
+		auto whatever = std::make_unique<PlatformAnalyser>(std::move(tmp));	
+		return whatever;
+	}
+
+	catch(std::exception& e) {
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
