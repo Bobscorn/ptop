@@ -3,7 +3,7 @@
 #include <string>
 
 #ifndef LINE_CONTEXT
-#define LINE_CONTEXT std::string("(" + std::to_string(__LINE__) + ", " + __func__ + ")")
+#define LINE_CONTEXT (std::string("(") +  __func__ + ", " + std::to_string(__LINE__) + ")")
 #endif
 
 void throw_new_exception(std::string input, std::string line_context);

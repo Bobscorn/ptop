@@ -87,7 +87,7 @@ bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)
 void PtopSocket::listen(int max_conns)
 {
 	auto n = ::listen(_handle, max_conns);
-	throw_if_socket_error(n, "Failed to listen on socket " + get_last_error(), LINE_CONTEXT);
+	throw_if_socket_error(n, "Failed to listen on socket. " + get_last_error(), LINE_CONTEXT);
 }
 
 bool PtopSocket::has_connection() const
@@ -103,7 +103,7 @@ bool PtopSocket::has_connection() const
 		FD_SET(_handle, &poll_read_set);
 
 		int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-		throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error(), LINE_CONTEXT);
+		throw_if_socket_error(n, "Failed to poll socket readability. " + get_last_error(), LINE_CONTEXT);
 
 		return n > 0;
 	}
