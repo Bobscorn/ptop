@@ -235,7 +235,7 @@ PtopSocket construct_windows_data_socket(std::string peer_address, std::string p
 
     PtopSocket conn_socket = PtopSocket(input_protocol);
 
-    conn_socket.connect(result->ai_addr, result->ai_addrlen);
+    conn_socket.connect(result->ai_addr, (socklen_t)result->ai_addrlen);
 
     return conn_socket;
 }
@@ -467,7 +467,7 @@ void ReusableConnector::connect(std::string ip_address, std::string port)
 		if (results == nullptr)
 			throw std::exception((std::string("Could not resolve '") + ip_address + ":" + port + "'").c_str());
 
-		_socket.connect(results->ai_addr, results->ai_addrlen);
+		_socket.connect(results->ai_addr, (socklen_t)results->ai_addrlen);
 		std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
 	}
 	catch (const std::exception& e)

@@ -98,7 +98,7 @@ bool PtopSocket::has_connection() const
 	FD_ZERO(&poll_read_set);
 	FD_SET(_handle, &poll_read_set);
 
-	int n = select(_handle + 1, &poll_read_set, 0, 0, &timeout);
+	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
 	throw_if_socket_error(n, "Failed to poll socket readability " + get_last_error());
 
 	return n > 0;
@@ -145,13 +145,13 @@ bool PtopSocket::select_for(::select_for epic_for) const
 	{
 	default:
 	case select_for::READ:
-		n = select(_handle + 1, &set, NULL, NULL, &timeout);
+		n = select((int)_handle + 1, &set, NULL, NULL, &timeout);
 		break;
 	case select_for::WRITE:
-		n = select(_handle + 1, NULL, &set, NULL, &timeout);
+		n = select((int)_handle + 1, NULL, &set, NULL, &timeout);
 		break;
 	case select_for::EXCEPT:
-		n = select(_handle + 1, NULL, NULL, &set, &timeout);
+		n = select((int)_handle + 1, NULL, NULL, &set, &timeout);
 		break;
 	}
 	throw_if_socket_error(n, "Failed to select " + get_last_error());
@@ -168,7 +168,7 @@ bool PtopSocket::has_message() const
 	FD_ZERO(&poll_read_set);
 	FD_SET(_handle, &poll_read_set);
 
-	int n = select(_handle + 1, &poll_read_set, 0, 0, &timeout);
+	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
 	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error());
 
 	return n > 0;
@@ -181,7 +181,7 @@ bool PtopSocket::has_died() const
 		if (has_message())
 		{
 			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
-			int n = recv(_handle, recv_data.data(), recv_data.size(), MSG_PEEK);
+			int n = recv(_handle, recv_data.data(), (int)recv_data.size(), MSG_PEEK);
 			if (n == SOCKET_ERROR)
 			{
 				std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << get_last_error() << std::endl;
@@ -189,10 +189,12 @@ bool PtopSocket::has_died() const
 			}
 			return n == 0;
 		}
+		return false;
 	}
 	if (is_udp())
 		return false;
 	throw_new_exception("Invalid protocol", LINE_CONTEXT);
+	return true;
 }
 
 raw_name_data PtopSocket::get_peer_raw() const
@@ -225,14 +227,14 @@ bool PtopSocket::send_bytes(std::vector<char> bytes)
 {
 	if (is_tcp())
 	{
-		int result = send(_handle, bytes.data(), bytes.size(), 0);
+		int result = send(_handle, bytes.data(), (int)bytes.size(), 0);
 		if (result == SOCKET_ERROR)
 			return false;
 		return true;
 	}
 	else if (is_udp())
 	{
-		int result = sendto(_handle, bytes.data(), bytes.size(), 0, &_endpoint.name, _endpoint.name_len);
+		int result = sendto(_handle, bytes.data(), (int)bytes.size(), 0, &_endpoint.name, _endpoint.name_len);
 		if (result == SOCKET_ERROR)
 			return false;
 		return true;

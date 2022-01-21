@@ -62,7 +62,7 @@ std::string read_string(const char* data, int& index, size_t data_len)
     if (index + len * sizeof(char) > data_len)
         throw std::runtime_error("Not enough data to read string characters");
 
-    index += len;
+    index += (int)len;
     return std::string(data + index - len, data + index);
 }
 

@@ -10,6 +10,11 @@
 const int SOCKET_ERROR = 1;
 #endif
 
+#ifdef WIN32
+#pragma warning(push)
+#pragma warning(disable : 4250)
+#endif
+
 readable_ip_info convert_to_readable(raw_name_data);
 
 class Platform : public virtual ISocketWrapper {    
@@ -27,12 +32,6 @@ class Platform : public virtual ISocketWrapper {
 
 	public:
     Platform(PtopSocket&& socket);
-
-	static std::unique_ptr<IListenSocketWrapper> CreateListenSocket(std::string port, protocol proto);
-	static std::unique_ptr<IDataSocketWrapper> CreateConnectionSocket(std::string peer_ip, std::string port, protocol proto);
-	static std::unique_ptr<INonBlockingListener> CreateReusableNonBlockingListenSocket(raw_name_data data, protocol proto);
-	static std::unique_ptr<INonBlockingConnector> CreateReusableConnectSocket(raw_name_data name, std::string ip_address, std::string port, protocol proto);
-	static std::unique_ptr<IDataSocketWrapper> ConvertToDataSocket(std::unique_ptr<INonBlockingConnector>&& old);
 
 	readable_ip_info get_peer_data() const override;
 	raw_name_data get_peername_raw() const override;
@@ -89,3 +88,7 @@ class ReusableConnector : public Platform, public virtual INonBlockingConnector 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;
 };
+
+#ifdef WIN32
+#pragma warning(pop)
+#endif

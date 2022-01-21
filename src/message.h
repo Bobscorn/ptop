@@ -111,7 +111,7 @@ inline Message create_message(MESSAGE_TYPE type, std::vector<char> data)
 {
 	Message mess;
 	mess.Type = type;
-	mess.Length = data.size();
+	mess.Length = (MESSAGE_LENGTH_T)data.size();
 	mess.Data = std::move(data);
 	return mess;
 }
@@ -171,7 +171,7 @@ inline Message create_message(MESSAGE_TYPE type, Types... args)
 	mess.Type = type;
 	mess.Data = std::vector<char>{};
 	copy_to_message_struct::copy_to_message(mess.Data, args...);
-	mess.Length = mess.Data.size();
+	mess.Length = (MESSAGE_LENGTH_T)mess.Data.size();
 	return mess;
 }
 
@@ -184,6 +184,6 @@ inline Message create_message(MESSAGE_TYPE type, std::string data)
 	std::memcpy(mess.Data.data(), &len, sizeof(len));
 	mess.Data.reserve(sizeof(type) + sizeof(len) + data.length());
 	mess.Data.insert(mess.Data.end(), data.begin(), data.end());
-	mess.Length = mess.Data.size();
+	mess.Length = (MESSAGE_LENGTH_T)mess.Data.size();
 	return mess;
 }
