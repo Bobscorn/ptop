@@ -9,6 +9,7 @@
 
 #include <iostream>
 
+
 using namespace std::chrono;
 
 client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) : protocol(chosen_protocol) {
@@ -145,7 +146,6 @@ bool check_for_auth_connection(client_init_kit& init_kit, client_auth_kit& auth_
             auth_kit.public_connector = std::make_unique<ReusableConnector>(auth_kit.old_privatename, auth_kit.peer_public.ip_address, auth_kit.peer_public.port, init_kit.protocol);
         }
     }
-
 }
 
 EXECUTION_STATUS respond_to_auth(client_init_kit& init_kit, client_auth_kit& auth_kit) {
