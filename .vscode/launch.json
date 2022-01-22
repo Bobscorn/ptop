@@ -8,7 +8,7 @@
             "name": "(Linux) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ptop",
+            "program": "${workspaceFolder}/build/ptop_rendezvous",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -21,7 +21,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
         },
         {
             "name": "(Windows) Launch",
