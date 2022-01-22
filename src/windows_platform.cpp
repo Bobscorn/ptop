@@ -17,6 +17,7 @@ Platform::Platform(PtopSocket&& socket)
 { 
     try_update_name_info();
     try_update_endpoint_info();
+    // big chungus
 
     if (_address == "Unassigned" || _address.empty() ||
         _port == "Unassigned" || _port.empty()) {
