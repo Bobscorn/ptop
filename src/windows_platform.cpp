@@ -15,7 +15,8 @@
 Platform::Platform(PtopSocket&& socket) 
     : _socket(std::move(socket))
 { 
-    update_name_info();
+    try_update_name_info();
+    try_update_endpoint_info();
 
     if (_address == "Unassigned" || _address.empty() ||
         _port == "Unassigned" || _port.empty()) {
@@ -72,6 +73,17 @@ void Platform::try_update_name_info()
     try
     {
         update_name_info();
+    }
+    catch (const std::exception& e)
+    {
+    }
+}
+
+void Platform::try_update_endpoint_info()
+{
+    try
+    {
+        update_endpoint_info();
     }
     catch (const std::exception& e)
     {
@@ -339,7 +351,7 @@ PlatformAnalyser::PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old)
 {
     try
     {
-        //update_endpoint_info();
+        try_update_endpoint_info();
     }
     catch (const std::exception& e)
     {
