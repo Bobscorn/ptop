@@ -67,6 +67,17 @@ std::string get_win_error(DWORD word)
     return message;
 }
 
+void Platform::try_update_name_info()
+{
+    try
+    {
+        update_name_info();
+    }
+    catch (const std::exception& e)
+    {
+    }
+}
+
 void Platform::update_name_info()
 {
     auto name = get_myname_readable();

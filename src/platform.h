@@ -26,6 +26,7 @@ class Platform : public virtual ISocketWrapper {
 	std::string _endpoint_port;
 	bool _endpoint_assigned = false;
 
+	void try_update_name_info();
 	void update_name_info();
 	void update_endpoint_info();
 	void update_endpoint_if_needed();
