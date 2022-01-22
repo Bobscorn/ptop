@@ -28,7 +28,7 @@ void throw_if_socket_error(int val, std::string error_message, std::string line_
 {
 	if (val == SOCKET_ERROR)
 	{
-		auto last_err = errno;
+		auto last_err = 0;// errno;
 		if (last_err != EAGAIN && last_err != EINPROGRESS)
 		{
 			throw_new_exception(error_message, line_context);
