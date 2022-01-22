@@ -34,5 +34,8 @@ readable_ip_info convert_to_readable(raw_name_data data)
 
 Platform::~Platform()
 {
-	std::cout << (_socket.is_valid() ? "Closing socket: " : "Closing dead socket that had: ") << _endpoint_address << ":" << _endpoint_port << std::endl;
+	if (_socket.is_valid())
+		std::cout << "Closing socket: " << get_identifier_str() << std::endl;
+	else
+		std::cout << "Closing Dead socket" << std::endl;
 }
