@@ -36,7 +36,7 @@ class Platform : public virtual ISocketWrapper {
 	readable_ip_info get_peer_data() const override;
 	raw_name_data get_peername_raw() const override;
 	raw_name_data get_myname_raw() const override;
-	readable_ip_info get_peername_readable() const override { return convert_to_readable(get_peername_raw()); }
+	inline readable_ip_info get_peername_readable() const override { return convert_to_readable(get_peername_raw()); }
 	inline readable_ip_info get_myname_readable() const override { return convert_to_readable(get_myname_raw()); };
 
 	inline std::string get_my_ip() const override { return _address; }

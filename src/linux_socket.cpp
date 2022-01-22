@@ -28,7 +28,7 @@ void throw_if_socket_error(int val, std::string error_message, std::string line_
 {
 	if (val == SOCKET_ERROR)
 	{
-		auto last_err = 0;// errno;
+		auto last_err = errno;
 		if (last_err != EAGAIN && last_err != EINPROGRESS)
 		{
 			throw_new_exception(error_message, line_context);
@@ -50,9 +50,12 @@ PtopSocket::~PtopSocket()
 {
 	if (_handle != REALLY_INVALID_SOCKET)
 	{
+		std::cout << "Closing socket" << std::endl;
 		close(_handle);
 		_handle = REALLY_INVALID_SOCKET;
 	}
+	else
+		std::cout << "Dead socket" << std::endl;
 }
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)

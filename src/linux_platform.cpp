@@ -23,12 +23,10 @@
 
 std::string linux_error()
 {
-	//auto err_code = errno;
-	std::vector<char> random = std::vector<char>(600, ' ');
-	//std::string error = "Err code: " + std::to_string(err_code) + " (";
-	//error += strerror(err_code);
-	//return error + ")";
-	return "lmao";
+	auto err_code = errno;
+	std::string error = "Err code: " + std::to_string(err_code) + " (";
+	error += strerror(err_code);
+	return error + ")";
 }
 
 std::string linux_error(int err_code)

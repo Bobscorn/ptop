@@ -37,9 +37,12 @@ PtopSocket::~PtopSocket()
 {
 	if (_handle != REALLY_INVALID_SOCKET)
 	{
+		std::cout << "Closing socket" << std::endl;
 		closesocket(_handle);
 		_handle = REALLY_INVALID_SOCKET;
 	}
+	else
+		std::cout << "Dead socket" << std::endl;
 }
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)
