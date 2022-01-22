@@ -54,6 +54,9 @@ client_auth_kit::client_auth_kit(client_init_kit& init_kit, const char* data, in
 
 EXECUTION_STATUS process_auth(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket, int my_auth)
 {
+    if (mess == Message::null_message)
+        return EXECUTION_STATUS::FAILED;
+
     const char* data = mess.Data.data();
     size_t data_len = mess.Length;
     int i = 0;
@@ -132,7 +135,7 @@ bool check_for_auth_connection(client_init_kit& init_kit, client_auth_kit& auth_
         if (status == ConnectionStatus::SUCCESS)
         {
             std::cout << "Public Connection has connected, now authenticating" << std::endl;
-            auth_kit.unauthed_sockets.emplace_back(std::make_unique<PlatformAnalyser>(std::move(auth_kit.public_connector)));
+            auth_kit.unauthed_sockets.emplace_back(std::make_unique<PlatformAnalyser>(std::move(auth_kit.public_connector))); //add to the list of connected sockets ready to complete authentication
 
             if (init_kit.is_leader)
                 auth_kit.unauthed_sockets.back()->send_data(create_message(MESSAGE_TYPE::AUTH_PLS));
