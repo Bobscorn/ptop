@@ -9,6 +9,7 @@
 #include "interfaces.h"
 #include "platform.h"
 
+
 void client_loop(std::string server_address_pair, protocol input_protocol);
 
 class client_init_kit {
