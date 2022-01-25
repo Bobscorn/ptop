@@ -8,7 +8,7 @@
             "name": "(Linux) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ptop_rendezvous",
+            "program": "${workspaceFolder}/build/ptop",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
