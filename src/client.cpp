@@ -22,7 +22,7 @@ client_init_kit::client_init_kit(std::string server_address_pair, ::protocol cho
 }
 
 std::unique_ptr<IDataSocketWrapper>& client_init_kit::get_server_socket() {
-    return _server_socket; //yay bug
+    return _server_socket;
 }
 
 void client_init_kit::set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input) {
@@ -42,10 +42,10 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
     std::cout << "Target is: " << private_info.ip_address << ":" << private_info.port << "/" << public_info.ip_address << ":" << public_info.port << " priv/pub" << std::endl;
 
     old_privatename = init_kit.get_server_socket()->get_myname_raw();    
-    public_connector = std::make_unique<ReusableConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol);
-    private_connector = std::make_unique<ReusableConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
+    public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol);
+    private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
         
-    listen_sock = std::make_unique<ReusableListener>(old_privatename, init_kit.protocol);
+    listen_sock = std::make_unique<NonBlockListener>(old_privatename, init_kit.protocol);
     listen_sock->listen();
 
     std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};
@@ -62,7 +62,7 @@ EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
     std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
-    peer_kit.public_connector = std::make_unique<ReusableConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol);
+    peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol);
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
 
@@ -77,7 +77,7 @@ EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& pee
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
     std::cout << "Private Connection attempt failed, retrying..." << std::endl;
-    peer_kit.private_connector = std::make_unique<ReusableConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol);
+    peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol);
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
 

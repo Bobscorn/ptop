@@ -74,18 +74,18 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	bool send_data(const Message& message) override;
 };
 
-class ReusableListener : public Platform, public virtual INonBlockingListener {
+class NonBlockListener : public Platform, public virtual INonBlockingListener {
 	public:
-	ReusableListener(raw_name_data data, protocol input_protocol);
+	NonBlockListener(raw_name_data data, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class ReusableConnector : public Platform, public virtual INonBlockingConnector {
+class NonBlockingConnector : public Platform, public virtual INonBlockingConnector {
 	public:
-	ReusableConnector(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol);
+	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol);
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;

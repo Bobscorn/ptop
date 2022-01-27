@@ -30,9 +30,9 @@ class client_peer_kit {
     client_peer_kit();
     void set_peer_data(client_init_kit& init_kit, const char* data, int message_data_index, MESSAGE_LENGTH_T data_len);
 
-    std::unique_ptr<ReusableConnector> public_connector;
-    std::unique_ptr<ReusableConnector> private_connector;
-    std::unique_ptr<ReusableListener> listen_sock;
+    std::unique_ptr<NonBlockingConnector> public_connector;
+    std::unique_ptr<NonBlockingConnector> private_connector;
+    std::unique_ptr<NonBlockListener> listen_sock;
     readable_ip_info public_info;
     readable_ip_info private_info;
     raw_name_data old_privatename;
