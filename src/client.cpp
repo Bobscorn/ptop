@@ -100,11 +100,13 @@ EXECUTION_STATUS connect_peer(client_init_kit& init_kit, client_peer_kit& peer_k
 
     auto status = connect_public(init_kit, peer_kit);
     
-    if(status == EXECUTION_STATUS::PEER_CONNECTED)
+    if(status != EXECUTION_STATUS::PEER_CONNECTED)
         status = connect_private(init_kit, peer_kit);
 
-    if(status == EXECUTION_STATUS::PEER_CONNECTED)
-        return connect_listener(peer_kit);
+    if(status != EXECUTION_STATUS::PEER_CONNECTED)
+        status = connect_listener(peer_kit);
+
+    return status;
 }
 
 EXECUTION_STATUS hole_punch(client_init_kit& init_kit, client_peer_kit& peer_kit) {    
