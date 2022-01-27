@@ -118,7 +118,7 @@ EXECUTION_STATUS hole_punch(client_init_kit& init_kit, client_peer_kit& peer_kit
 
         auto current_time = std::chrono::system_clock::now();
 
-        if(current_time - peer_kit.peer_connect_start_time < 15s) {
+        if(current_time - peer_kit.peer_connect_start_time > 15s) {
             std::cerr << "Time out trying to hole punch reached" << std::endl;
             return EXECUTION_STATUS::FAILED;
         }
