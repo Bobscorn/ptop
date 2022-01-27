@@ -186,7 +186,7 @@ bool PtopSocket::has_message() const
 	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
 	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error(), LINE_CONTEXT);
 
-	return n > 0;
+	return n > 0; //returns number of sockets ready, 0 if timed out, -1 if socket error
 }
 
 bool PtopSocket::has_died() const

@@ -21,11 +21,11 @@ class client_init_kit {
     ::protocol protocol;
     bool is_leader;
 
-    std::unique_ptr<IDataSocketWrapper>& get_conn_socket();
-    void set_conn_socket(std::unique_ptr<IDataSocketWrapper>&& input);
+    std::unique_ptr<IDataSocketWrapper>& get_server_socket();
+    void set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input);
 
     protected:
-    std::unique_ptr<IDataSocketWrapper> _conn_socket;
+    std::unique_ptr<IDataSocketWrapper> _server_socket;
 };
 
 class client_auth_kit {
