@@ -152,7 +152,8 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
         switch (msg_type)
         {
         case MESSAGE_TYPE::CONNECT_TO_PEER:
-        {            
+        {
+            init_kit.set_server_socket(nullptr);
             peer_kit.set_peer_data(init_kit, data, message_data_index, data_len);
             return EXECUTION_STATUS::HOLE_PUNCH;
         }
