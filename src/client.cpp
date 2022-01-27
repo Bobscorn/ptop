@@ -49,15 +49,13 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
     listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol);
     listen_sock->listen();
 
-    std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};
-
     peer_connect_start_time = std::chrono::system_clock::now();
 }
 
 EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer_kit) {
     if (peer_kit.public_connector->has_connected() == ConnectionStatus::SUCCESS)
     {
-        std::cout << "Public Connection has connected, now authenticating" << std::endl;
+        std::cout << "Public Connection has connected" << std::endl;
         peer_kit.peer_socket = std::make_unique<PlatformAnalyser>(std::move(peer_kit.public_connector));
         
         return EXECUTION_STATUS::PEER_CONNECTED;
@@ -70,7 +68,7 @@ EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer
 EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& peer_kit) {
     if (peer_kit.private_connector->has_connected() == ConnectionStatus::SUCCESS)
     {
-        std::cout << "Private Connection has connected, now attempting to authenticate" << std::endl;
+        std::cout << "Private Connection has connected" << std::endl;
         auto analyser = std::make_unique<PlatformAnalyser>(std::move(peer_kit.private_connector));
         peer_kit.peer_socket = std::move(analyser);
         peer_kit.private_connector = nullptr;
@@ -85,7 +83,7 @@ EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& pee
 EXECUTION_STATUS connect_listener(client_peer_kit& peer_kit) {
     if (peer_kit.listen_sock->has_connection())
     {
-        std::cout << "Successfully accepted peer connection, now authenticating them" << std::endl;
+        std::cout << "Successfully accepted peer connection" << std::endl;
         peer_kit.peer_socket = peer_kit.listen_sock->accept_connection();
 
         return EXECUTION_STATUS::PEER_CONNECTED;
