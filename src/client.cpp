@@ -33,7 +33,7 @@ void client_init_kit::set_server_socket(std::unique_ptr<IDataSocketWrapper>&& in
 }
 
 client_peer_kit::client_peer_kit() {
-
+        
 }
 
 void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data, int next_data_index, MESSAGE_LENGTH_T data_len) {
@@ -45,7 +45,7 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
     public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol);
     private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
         
-    listen_sock = std::make_unique<NonBlockListener>(old_privatename, init_kit.protocol);
+    listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol);
     listen_sock->listen();
 
     std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets{};

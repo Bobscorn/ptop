@@ -420,22 +420,22 @@ PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto)
     }
 }
 
-NonBlockListener::NonBlockListener(raw_name_data data, protocol input_protocol) : Platform(
+NonBlockingListener::NonBlockingListener(raw_name_data data, protocol input_protocol) : Platform(
     windows_reuse_nb_listen_construct(data, input_protocol))
 {}
 
-void NonBlockListener::listen()
+void NonBlockingListener::listen()
 {
     std::cout << "[ListenReuseNoB] Now Listening on: " << Platform::get_my_ip() << ":" << Platform::get_my_port() << std::endl;
     _socket.listen(4);
 }
 
-bool NonBlockListener::has_connection()
+bool NonBlockingListener::has_connection()
 {
     return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> NonBlockListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 {
     std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 

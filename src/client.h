@@ -32,7 +32,7 @@ class client_peer_kit {
 
     std::unique_ptr<NonBlockingConnector> public_connector;
     std::unique_ptr<NonBlockingConnector> private_connector;
-    std::unique_ptr<NonBlockListener> listen_sock;
+    std::unique_ptr<NonBlockingListener> listen_sock;
     readable_ip_info public_info;
     readable_ip_info private_info;
     raw_name_data old_privatename;

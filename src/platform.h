@@ -74,9 +74,9 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	bool send_data(const Message& message) override;
 };
 
-class NonBlockListener : public Platform, public virtual INonBlockingListener {
+class NonBlockingListener : public Platform, public virtual INonBlockingListener {
 	public:
-	NonBlockListener(raw_name_data data, protocol input_protocol);
+	NonBlockingListener(raw_name_data data, protocol input_protocol);
 
 	void listen() override;
 	bool has_connection() override;
