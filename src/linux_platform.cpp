@@ -176,7 +176,7 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 	try
 	{
 		std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-		ReusableConnector& real_old = *dynamic_cast<ReusableConnector*>(old.get());
+		NonBlockingConnector& real_old = *dynamic_cast<NonBlockingConnector*>(old.get());
 		PtopSocket sup = real_old.release_socket();
 		sup.set_non_blocking(false);
 		return sup;
@@ -337,24 +337,24 @@ PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
 	return listen_socket;
 }
 
-ReusableListener::ReusableListener(raw_name_data data, protocol proto) 
+NonBlockingListener::NonBlockingListener(raw_name_data data, protocol proto) 
 : Platform(reuse_listen_construct(data, proto))
 {
 	
 }
 
-void ReusableListener::listen()
+void NonBlockingListener::listen()
 {
 	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
 	_socket.listen(4);
 }
 
-bool ReusableListener::has_connection()
+bool NonBlockingListener::has_connection()
 {
 	return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> ReusableListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 {
 	std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
 
@@ -380,7 +380,7 @@ PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
 	return conn_socket;
 }
 
-ReusableConnector::ReusableConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto) 
+NonBlockingConnector::NonBlockingConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto) 
 : Platform(reuse_connection_construct(data, proto))
 {
 	// if tcp?
@@ -394,7 +394,7 @@ ReusableConnector::ReusableConnector(raw_name_data data, std::string ip_address,
 	}
 }
 
-void ReusableConnector::connect(std::string ip_address, std::string port)
+void NonBlockingConnector::connect(std::string ip_address, std::string port)
 {
 	try
 	{
@@ -423,7 +423,7 @@ void ReusableConnector::connect(std::string ip_address, std::string port)
 	}
 }
 
-ConnectionStatus ReusableConnector::has_connected()
+ConnectionStatus NonBlockingConnector::has_connected()
 {
 	try
 	{
