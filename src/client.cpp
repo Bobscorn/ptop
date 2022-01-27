@@ -41,6 +41,7 @@ client_auth_kit::client_auth_kit(client_init_kit& init_kit, const char* data, in
 
     auth_key_out = read_data<int>(data, i, data_len);
     old_privatename = init_kit.get_server_socket()->get_myname_raw();
+    init_kit.set_conn_socket(nullptr);
         
     listen_sock = std::make_unique<ReusableListener>(old_privatename, init_kit.protocol);
     listen_sock->listen();
