@@ -9,10 +9,14 @@
 
 enum class EXECUTION_STATUS
 {
-    CONTINUE = 0,
-    CONNECTED,
+    NONE = 0,
+    CONTINUE,
+    SERVER_CONNECTED,
     COMPLETE,
     FAILED,
+    RENDEZVOUS,
+    HOLE_PUNCH,
+    PEER_CONNECTED,
 };
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> // Only allow Plain-old-data to use this method

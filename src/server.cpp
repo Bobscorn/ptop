@@ -36,8 +36,8 @@ void hole_punch_clients(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clien
 
     std::cout << "Hole punching clients: A(" << dataA.ip_address << ":" << dataA.port << "), B(" << dataB.ip_address << ":" << dataB.port << ")" << std::endl;
 
-    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER_AS_LEADER, dataB.to_bytes(), privB.to_bytes(), 69));
-    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataA.to_bytes(), privA.to_bytes(), 69));
+    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_TO_PEER, dataB.to_bytes(), privB.to_bytes()));
+    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_TO_PEER, dataA.to_bytes(), privA.to_bytes()));
 
     clientA = nullptr;
     clientB = nullptr;

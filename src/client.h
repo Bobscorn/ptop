@@ -9,17 +9,14 @@
 #include "interfaces.h"
 #include "platform.h"
 
-
 void client_loop(std::string server_address_pair, protocol input_protocol);
 
 class client_init_kit {
     public:
     client_init_kit(std::string server_address_pair, ::protocol input_protocol);
-    std::chrono::system_clock::time_point last_send;
-    int auth_key;
+    std::chrono::system_clock::time_point server_last_send;
     EXECUTION_STATUS status;
     ::protocol protocol;
-    bool is_leader;
 
     std::unique_ptr<IDataSocketWrapper>& get_server_socket();
     void set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input);
@@ -28,15 +25,18 @@ class client_init_kit {
     std::unique_ptr<IDataSocketWrapper> _server_socket;
 };
 
-class client_auth_kit {
+class client_peer_kit {
     public:
-    client_auth_kit(client_init_kit& init_kit, const char* data, int i, MESSAGE_LENGTH_T data_len);
-    std::vector<std::unique_ptr<IDataSocketWrapper>> unauthed_sockets;
-    std::unique_ptr<ReusableListener> listen_sock;
-    int auth_key_out;
+    client_peer_kit();
+    void set_peer_data(client_init_kit& init_kit, const char* data, int message_data_index, MESSAGE_LENGTH_T data_len);
+
     std::unique_ptr<ReusableConnector> public_connector;
     std::unique_ptr<ReusableConnector> private_connector;
-    readable_ip_info peer_public;
-    readable_ip_info peer_private;
+    std::unique_ptr<ReusableListener> listen_sock;
+    readable_ip_info public_info;
+    readable_ip_info private_info;
     raw_name_data old_privatename;
+
+    std::chrono::system_clock::time_point peer_connect_start_time;
+    std::unique_ptr<IDataSocketWrapper> peer_socket;
 };

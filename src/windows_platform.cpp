@@ -378,7 +378,7 @@ PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket)
 }
 
 Message PlatformAnalyser::receive_message() {
-    process_socket_data();
+    process_socket_data(); // Will block until it receives data
 
     if (_stored_messages.size() > 0)
     {
@@ -387,6 +387,7 @@ Message PlatformAnalyser::receive_message() {
         return tmp;
     }
 
+    // Only way we have no messages is if connection closed
     return Message::null_message;
 }
 
