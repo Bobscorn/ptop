@@ -41,7 +41,8 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
     private_info = read_peer_data(data, next_data_index, data_len);
     std::cout << "Target is: " << private_info.ip_address << ":" << private_info.port << "/" << public_info.ip_address << ":" << public_info.port << " priv/pub" << std::endl;
 
-    old_privatename = init_kit.get_server_socket()->get_myname_raw();    
+    old_privatename = init_kit.get_server_socket()->get_myname_raw();
+    init_kit.set_server_socket(nullptr); //need to close the server socket HERE to maintain the same session in the peer sockets
     public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol);
     private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
         
@@ -153,7 +154,6 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
         {
         case MESSAGE_TYPE::CONNECT_TO_PEER:
         {
-            init_kit.set_server_socket(nullptr);
             peer_kit.set_peer_data(init_kit, data, message_data_index, data_len);
             return EXECUTION_STATUS::HOLE_PUNCH;
         }
