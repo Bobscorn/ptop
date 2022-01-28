@@ -53,30 +53,36 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
 }
 
 EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer_kit) {
-    if (peer_kit.public_connector->has_connected() == ConnectionStatus::SUCCESS)
+    auto status = peer_kit.public_connector->has_connected();
+    if (status == ConnectionStatus::SUCCESS)
     {
         std::cout << "Public Connection has connected" << std::endl;
         peer_kit.peer_socket = std::make_unique<PlatformAnalyser>(std::move(peer_kit.public_connector));
         
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
-    std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
-    peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol);
+    else if (status == ConnectionStatus::FAILED)
+    {
+        std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
+        peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol);
+    }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
 
 EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& peer_kit) {
-    if (peer_kit.private_connector->has_connected() == ConnectionStatus::SUCCESS)
+    auto status = peer_kit.private_connector->has_connected();
+    if (status == ConnectionStatus::SUCCESS)
     {
         std::cout << "Private Connection has connected" << std::endl;
-        auto analyser = std::make_unique<PlatformAnalyser>(std::move(peer_kit.private_connector));
-        peer_kit.peer_socket = std::move(analyser);
-        peer_kit.private_connector = nullptr;
+        peer_kit.peer_socket = std::make_unique<PlatformAnalyser>(std::move(peer_kit.private_connector));
 
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
-    std::cout << "Private Connection attempt failed, retrying..." << std::endl;
-    peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol);
+    else if (status == ConnectionStatus::FAILED)
+    {
+        std::cout << "Private Connection attempt failed, retrying..." << std::endl;
+        peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol);
+    }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
 
@@ -111,7 +117,6 @@ EXECUTION_STATUS hole_punch(client_init_kit& init_kit, client_peer_kit& peer_kit
     try
     {    
         EXECUTION_STATUS status = EXECUTION_STATUS::HOLE_PUNCH;
-        std::cout << "Attempting to Hole Punch" << std::endl;        
 
         if(init_kit.status != EXECUTION_STATUS::PEER_CONNECTED)
             status = connect_peer(init_kit, peer_kit);
@@ -122,9 +127,6 @@ EXECUTION_STATUS hole_punch(client_init_kit& init_kit, client_peer_kit& peer_kit
             std::cerr << "Time out trying to hole punch reached" << std::endl;
             return EXECUTION_STATUS::FAILED;
         }
-
-        else
-            std::this_thread::sleep_for(100ms);
         
         return status;
     }
@@ -234,11 +236,14 @@ void print_help()
     std::cout << space << space << "sends plain text message of [text] (without braces) to your peer" << std::endl;
     std::cout << space << space << "example: \"msg: banana\" will send 'banana' to your peer" << std::endl;
     std::cout << std::endl;
+    std::cout << space << "quit" << std::endl;
+    std::cout << space << space << "closes the program" << std::endl;
+    std::cout << std::endl;
     std::cout << space << "debug" << std::endl;
     std::cout << space << space << "outputs current status and relevant information" << std::endl;
 }
 
-void do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mutex>& take_message_lock, std::unique_ptr<IDataSocketWrapper>& peer_socket)
+bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mutex>& take_message_lock, std::unique_ptr<IDataSocketWrapper>& peer_socket, client_init_kit& i_kit, client_peer_kit& peer_kit)
 {
     if (take_message_lock.try_lock())
     {
@@ -262,14 +267,73 @@ void do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
             {
                 std::cout << "file sending not implemented" << std::endl;
             }
-            if (input_message.substr(0, 4) == "help")
+            else if (input_message.substr(0, 4) == "quit")
+            {
+                std::cout << "Quitting..." << std::endl;
+                take_message_lock.unlock();
+                return true;
+            }
+            else if (input_message.substr(0, 5) == "debug")
+            {
+                std::cout << "Deburger:" << std::endl;
+                std::cout << "Protocol: " << (i_kit.protocol.is_tcp() ? "TCP" : (i_kit.protocol.is_udp() ? "UDP" : "Unknown...")) << std::endl;
+                std::cout << "Current State: ";
+                switch (i_kit.status)
+                {
+                default:
+                    std::cout << es_to_string(i_kit.status) << " Client should not be in this state, potentially a bug" << std::endl;
+                    break;
+                case EXECUTION_STATUS::RENDEZVOUS:
+                {
+                    std::cout << "Rendezvousing with server" << std::endl;
+                    auto& server_conn = i_kit.get_server_socket();
+                    if (!server_conn)
+                        std::cout << "Connection to server appears to be null" << std::endl;
+                    else
+                    {
+                        std::cout << "Connected to server at: " << server_conn->get_identifier_str() << std::endl;
+                    }
+                }
+                    break;
+                case EXECUTION_STATUS::HOLE_PUNCH:
+                    std::cout << "Hole punching to peer" << std::endl;
+                    if (!peer_kit.public_connector)
+                        std::cout << "Public connector is null" << std::endl;
+                    else
+                        std::cout << "Public connector: " << peer_kit.public_connector->get_identifier_str() << std::endl;
+                    if (!peer_kit.private_connector)
+                        std::cout << "Private connector is null" << std::endl;
+                    else
+                        std::cout << "Private connector: " << peer_kit.private_connector->get_identifier_str() << std::endl;
+                    if (!peer_kit.listen_sock)
+                        std::cout << "Listen socket is null" << std::endl;
+                    else
+                        std::cout << "Listen socket: " << peer_kit.listen_sock->get_identifier_str() << std::endl;
+
+                    break;
+                case EXECUTION_STATUS::PEER_CONNECTED:
+                    std::cout << "Connected to peer" << std::endl;
+                    if (!peer_kit.peer_socket)
+                        std::cout << "Peer socket is null (a bug)" << std::endl;
+                    else
+                        std::cout << "Peer socket is: " << peer_kit.peer_socket->get_identifier_str() << std::endl;
+                    break;
+                }
+            }
+            else if (input_message.substr(0, 4) == "help")
             {
                 print_help();
+            }
+            else
+            {
+                std::cout << "Unknown command: " << input_message << std::endl;
+                std::cout << "Type 'help' to see available commands" << std::endl;
             }
             
         }
         take_message_lock.unlock();
     }
+    return false;
 }
 
 void client_loop(std::string server_address_pair, protocol input_protocol)
@@ -320,13 +384,14 @@ void client_loop(std::string server_address_pair, protocol input_protocol)
                 if (peer_kit.peer_socket->has_message())
                 {
                     auto message = peer_kit.peer_socket->receive_message();
-                    auto process_status = process_peer_data(message, peer_kit.peer_socket);    
+                    init_kit.status = process_peer_data(message, peer_kit.peer_socket);    
                 }
             }
                 break;
         }
         
-        do_user_input(message_queue, take_message_lock, peer_kit.peer_socket);
+        if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
+            init_kit.status = EXECUTION_STATUS::COMPLETE;
         
         std::this_thread::sleep_for(100ms);
     }
