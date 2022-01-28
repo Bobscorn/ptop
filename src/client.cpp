@@ -349,7 +349,7 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
             {
                 print_help();
             }
-            else
+            else if (input_message.size() && input_message.find_first_not_of(' ') != std::string::npos)
             {
                 std::cout << "Unknown command: " << input_message << std::endl;
                 std::cout << "Type 'help' to see available commands" << std::endl;
