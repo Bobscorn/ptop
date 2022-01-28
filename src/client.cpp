@@ -47,6 +47,7 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
     private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
         
     listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol);
+    listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
     listen_sock->listen();
 
     peer_connect_start_time = std::chrono::system_clock::now();
@@ -156,6 +157,11 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
         {
         case MESSAGE_TYPE::CONNECT_TO_PEER:
         {
+            if (init_kit.do_delay)
+            {
+                std::cout << "Delaying hole punching by 5s..." << std::endl;
+                std::this_thread::sleep_for(5s);
+            }
             peer_kit.set_peer_data(init_kit, data, message_data_index, data_len);
             return EXECUTION_STATUS::HOLE_PUNCH;
         }
@@ -236,6 +242,10 @@ void print_help()
     std::cout << space << space << "sends plain text message of [text] (without braces) to your peer" << std::endl;
     std::cout << space << space << "example: \"msg: banana\" will send 'banana' to your peer" << std::endl;
     std::cout << std::endl;
+    std::cout << space << "delay" << std::endl;
+    std::cout << space << space << "delays this peer's hole punch call by a set amount (changes and cbf updating this every time)" << std::endl;
+    std::cout << space << space << "this must be called before this peer tries to hole punch" << std::endl;
+    std::cout << std::endl;
     std::cout << space << "quit" << std::endl;
     std::cout << space << space << "closes the program" << std::endl;
     std::cout << std::endl;
@@ -243,6 +253,7 @@ void print_help()
     std::cout << space << space << "outputs current status and relevant information" << std::endl;
 }
 
+// Returns whether to quit or not
 bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mutex>& take_message_lock, std::unique_ptr<IDataSocketWrapper>& peer_socket, client_init_kit& i_kit, client_peer_kit& peer_kit)
 {
     if (take_message_lock.try_lock())
@@ -272,6 +283,18 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
                 std::cout << "Quitting..." << std::endl;
                 take_message_lock.unlock();
                 return true;
+            }
+            else if (input_message.substr(0, 5) == "delay")
+            {
+                if (i_kit.status == EXECUTION_STATUS::RENDEZVOUS)
+                {
+                    std::cout << "Delaying this peer's hole punch" << std::endl;
+                    i_kit.do_delay = true;
+                }
+                else
+                {
+                    std::cout << "Too late in execution to delay hole punching" << std::endl;
+                }
             }
             else if (input_message.substr(0, 5) == "debug")
             {
