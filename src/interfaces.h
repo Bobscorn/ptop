@@ -20,7 +20,7 @@ class ISocketWrapper
 	virtual std::string get_my_port() const = 0;
 	virtual std::string get_endpoint_ip() const = 0;
 	virtual std::string get_endpoint_port() const = 0;
-	virtual std::string get_identifier_str() const = 0;
+	virtual std::string get_identifier_str() = 0;
 };
 
 class IDataSocketWrapper : virtual public ISocketWrapper

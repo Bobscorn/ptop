@@ -45,7 +45,7 @@ class Platform : public virtual ISocketWrapper {
 	inline std::string get_my_port() const override { return _port; }
 	inline std::string get_endpoint_ip() const override { return _endpoint_address; }
 	inline std::string get_endpoint_port() const override { return _endpoint_port; }	
-	std::string get_identifier_str() const override;
+	std::string get_identifier_str() override;
 
 	inline PtopSocket&& release_socket() { return std::move(_socket); }
     virtual ~Platform();

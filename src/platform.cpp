@@ -7,8 +7,14 @@
 
 #include <string>
 
-std::string Platform::get_identifier_str() const { 
-    if (_endpoint_assigned == false) 
+std::string Platform::get_identifier_str() {
+	if (_socket.is_listen())
+		return std::string("(listen on: ") + _address + ":" + _port + ")";
+
+	if (_endpoint_assigned == false)
+		try_update_endpoint_info();
+
+	if (_endpoint_assigned == false)
         return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)";
     
     return std::string("(pub: ") + _address + ":" + _port + ")"; 
