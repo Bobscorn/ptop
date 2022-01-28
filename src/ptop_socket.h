@@ -69,10 +69,10 @@ class PtopSocket
         return opt;
     }
     
-#ifdef __linux__
+#ifdef SO_REUSEPORT
     inline PtopSocket& set_socket_reuse() { set_socket_option(SO_REUSEPORT, (int)1, "Failed to set socket (port) reusability"); return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
     inline PtopSocket& set_socket_no_reuse() { set_socket_option(SO_REUSEPORT, (int)0, "Failed to set socket (port) un-reusability"); return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
-#elif defined(WIN32)
+#else
     inline PtopSocket& set_socket_reuse() { return set_socket_option(SO_REUSEADDR, (int)1, "Failed to set socket reusability"); }
     inline PtopSocket& set_socket_no_reuse() { return set_socket_option(SO_REUSEADDR, (int)0, "Failed to set socket un-reusability"); }
 #endif
