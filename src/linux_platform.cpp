@@ -47,6 +47,28 @@ Platform::Platform(PtopSocket&& socket)
 	}
 }
 
+void Platform::try_update_name_info()
+{
+	try
+	{
+		update_name_info();
+	}
+	catch (const std::exception& e)
+	{
+	}
+}
+
+void Platform::try_update_endpoint_info()
+{
+	try
+	{
+		update_endpoint_info();
+	}
+	catch (const std::exception& e)
+	{
+	}
+}
+
 void Platform::update_name_info()
 {
 	auto name = get_myname_readable();
