@@ -16,7 +16,6 @@ Platform::Platform(PtopSocket&& socket)
     : _socket(std::move(socket))
 { 
     try_update_name_info();
-    try_update_endpoint_info();
     // big chungus
 
     if (_address == "Unassigned" || _address.empty() ||
@@ -102,6 +101,11 @@ void Platform::update_endpoint_info()
 {
     try
 	{
+        if (_socket.is_listen())
+        {
+            std::cout << "[Socket] Not updating endpoint as this socket " << get_identifier_str() << " is a listen socket" << std::endl;
+            return;
+        }
 		auto name = get_peername_readable();
 		_endpoint_address = name.ip_address;
 		_endpoint_port = name.port;
@@ -269,7 +273,7 @@ PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_po
 {
     try
     {
-        update_endpoint_info();
+        try_update_endpoint_info();
     }
     catch (const std::exception& e)
     {
@@ -291,10 +295,11 @@ bool PlatformAnalyser::send_data(const Message& message)
 
 PtopSocket windows_data_socket_steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
-    std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
+    std::cout << "[Data] Moving INonBlockingConnector " << old->get_identifier_str() << " to a PlatformAnalyzer" << std::endl;
     NonBlockingConnector& real_old = *dynamic_cast<NonBlockingConnector*>(old.get());
     PtopSocket epic = real_old.release_socket();
     epic.set_non_blocking(false);
+    epic.set_socket_no_reuse();
     return epic;
 }
 
@@ -495,6 +500,7 @@ void NonBlockingConnector::connect(std::string ip_address, std::string port)
 
 		_socket.connect(results->ai_addr, (socklen_t)results->ai_addrlen);
 		std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+        try_update_endpoint_info();
 	}
 	catch (const std::exception& e)
 	{
