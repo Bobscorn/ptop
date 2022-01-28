@@ -20,7 +20,7 @@ void throw_if_socket_error(int n, std::string message, std::string line_context)
 std::string socket_error_to_string(int err);
 std::string get_last_error();
 
-enum select_for
+enum class select_for
 {
     READ,
     WRITE,
@@ -60,7 +60,7 @@ class PtopSocket
     }
 
     template<class OptT>
-    OptT get_socket_option(int option_name)
+    OptT get_socket_option(int option_name) const
     {
         OptT opt;
         socklen_t optSize = sizeof(OptT);
@@ -104,6 +104,7 @@ class PtopSocket
     inline bool is_valid() const { return _handle != REALLY_INVALID_SOCKET; }
     inline bool is_tcp() const { return _protocol.is_tcp(); }
     inline bool is_udp() const { return _protocol.is_udp(); }
+    inline bool is_listen() const { return get_socket_option<int>(SO_ACCEPTCONN); }
 
     inline SOCKET get_handle() const { return _handle; }
     inline const protocol& get_protocol() const { return _protocol; }

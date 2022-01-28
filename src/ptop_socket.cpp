@@ -175,18 +175,7 @@ bool PtopSocket::select_for(::select_for epic_for) const
 
 bool PtopSocket::has_message() const
 {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-
-	fd_set poll_read_set;
-	FD_ZERO(&poll_read_set);
-	FD_SET(_handle, &poll_read_set);
-
-	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error(), LINE_CONTEXT);
-
-	return n > 0; //returns number of sockets ready, 0 if timed out, -1 if socket error
+	return select_for(select_for::READ);
 }
 
 bool PtopSocket::has_died() const
