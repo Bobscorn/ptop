@@ -44,6 +44,8 @@ PtopSocket& PtopSocket::connect(sockaddr* addr, socklen_t len)
 {
 	if (_protocol.is_tcp())
 	{
+		// cheeky little hack
+		set_socket_option(SO_KEEPALIVE, (int)1);
 		int n = ::connect(_handle, addr, len);
 		throw_if_socket_error(n, "Failed to connect " + get_last_error(), LINE_CONTEXT);
 	}
@@ -76,7 +78,9 @@ PtopSocket PtopSocket::accept_data_socket()
 		{
 			throw_new_exception("Failed to accept incoming connection: " + get_last_error(), LINE_CONTEXT);
 		}
-		return PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+		auto new_sock = PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+		new_sock.set_socket_option(SO_KEEPALIVE, (int)1);
+		return new_sock;
 	}
 
 	catch(std::exception& e) {
