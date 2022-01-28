@@ -33,17 +33,28 @@ class PtopSocket
     SOCKET _handle;
     protocol _protocol;
     raw_name_data _endpoint;
-    PtopSocket(SOCKET handle, protocol proto) : _handle(handle), _protocol(proto), _endpoint() {}
-    PtopSocket(SOCKET handle, protocol proto, raw_name_data endpoint) : _handle(handle), _protocol(proto), _endpoint(endpoint) {}
+    std::string _name;
+    PtopSocket(SOCKET handle, protocol proto, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(), _name(name) {}
+    PtopSocket(SOCKET handle, protocol proto, raw_name_data endpoint, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(endpoint), _name(name) {}
 
     public:
 
-    explicit PtopSocket(protocol proto);
+    explicit PtopSocket(protocol proto, std::string name = "");
 
-    PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol) { 
+    PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol), _name(std::move(other._name)) { 
         other._handle = REALLY_INVALID_SOCKET;
     };
     ~PtopSocket();
+
+    inline void set_name(std::string name)
+    {
+        _name = std::move(name);
+    }
+
+    inline const std::string& get_name() const
+    {
+        return _name;
+    }
 
     template<class OptT>
     PtopSocket& set_socket_option(int option_name, OptT optionVal, std::string error_message)

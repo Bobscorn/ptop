@@ -25,7 +25,7 @@
 #include <iostream>
 
 
-PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
+PtopSocket::PtopSocket(protocol proto, std::string name) : _protocol(proto), _name(std::move(name))
 {
 	int domain = _protocol.get_ai_family();
 	int type = _protocol.get_ai_socktype();
@@ -36,7 +36,7 @@ PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
 PtopSocket& PtopSocket::bind_socket(const raw_name_data& name, std::string error_message)
 {
 	int result = bind(_handle, &name.name, name.name_len);
-	throw_if_socket_error(result, error_message, LINE_CONTEXT);
+	throw_if_socket_error(result, error_message + " " + get_last_error(), LINE_CONTEXT);
 	return *this;
 }
 

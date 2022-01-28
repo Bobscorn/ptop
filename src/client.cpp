@@ -12,7 +12,7 @@
 using namespace std::chrono;
 
 client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) : protocol(chosen_protocol) {
-    _server_socket = std::make_unique<PlatformAnalyser>(server_address_pair, ServerListenPort, protocol);
+    _server_socket = std::make_unique<PlatformAnalyser>(server_address_pair, ServerListenPort, protocol, "Server-Conn");
     // Indicate to server we're ready for p2p
     server_last_send = std::chrono::system_clock::now();
     _server_socket->send_data(create_message(MESSAGE_TYPE::MY_DATA, _server_socket->get_myname_readable().to_bytes()));
@@ -43,10 +43,9 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
 
     old_privatename = init_kit.get_server_socket()->get_myname_raw();
     init_kit.set_server_socket(nullptr); //need to close the server socket HERE to maintain the same session in the peer sockets
-    public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol);
-    private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol);
+    public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol, "HolePunch-Public");
+    private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol, "HolePunch-Private");
         
-    listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol);
     listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
     listen_sock->listen();
 
@@ -59,13 +58,15 @@ EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer
     {
         std::cout << "Public Connection has connected" << std::endl;
         peer_kit.peer_socket = std::make_unique<PlatformAnalyser>(std::move(peer_kit.public_connector));
+        peer_kit.peer_socket->set_name("Public-Peer");
         
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
     else if (status == ConnectionStatus::FAILED)
     {
         std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
-        peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol);
+        peer_kit.public_connector = nullptr;
+        peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol, "HolePunch-Public");
     }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
@@ -76,13 +77,15 @@ EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& pee
     {
         std::cout << "Private Connection has connected" << std::endl;
         peer_kit.peer_socket = std::make_unique<PlatformAnalyser>(std::move(peer_kit.private_connector));
+        peer_kit.peer_socket->set_name("Private-Peer");
 
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
     else if (status == ConnectionStatus::FAILED)
     {
         std::cout << "Private Connection attempt failed, retrying..." << std::endl;
-        peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol);
+        peer_kit.private_connector = nullptr;
+        peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol, "HolePunch-Private");
     }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
@@ -95,7 +98,6 @@ EXECUTION_STATUS connect_listener(client_peer_kit& peer_kit) {
 
         return EXECUTION_STATUS::PEER_CONNECTED;
     }
-    std::cout << "Listen Connection attempt failed, retrying..." << std::endl;
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
 
@@ -103,13 +105,13 @@ EXECUTION_STATUS connect_peer(client_init_kit& init_kit, client_peer_kit& peer_k
     if(peer_kit.peer_socket)
         return EXECUTION_STATUS::PEER_CONNECTED;
 
-    auto status = connect_public(init_kit, peer_kit);
+    auto status = connect_listener(peer_kit);
     
     if(status != EXECUTION_STATUS::PEER_CONNECTED)
-        status = connect_private(init_kit, peer_kit);
+        status = connect_public(init_kit, peer_kit);
 
     if(status != EXECUTION_STATUS::PEER_CONNECTED)
-        status = connect_listener(peer_kit);
+        status = connect_private(init_kit, peer_kit);
 
     return status;
 }

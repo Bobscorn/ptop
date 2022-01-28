@@ -8,16 +8,19 @@
 #include <string>
 
 std::string Platform::get_identifier_str() {
+	std::string name_str = "Unnamed";
+	if (_socket.get_name().size())
+		name_str = _socket.get_name();
 	if (_socket.is_listen())
-		return std::string("(listen on: ") + _address + ":" + _port + ")";
+		return std::string("(") + name_str + " is a listen on: " + _address + ":" + _port + ")";
 
 	if (_endpoint_assigned == false)
 		try_update_endpoint_info();
 
 	if (_endpoint_assigned == false)
-        return std::string("(priv: ") + _address + ":" + _port + ", pub: N/A)";
+        return std::string("(") + name_str + " priv: " + _address + ":" + _port + ", pub : N / A)";
     
-    return std::string("(pub: ") + _address + ":" + _port + ")"; 
+    return std::string("(") + name_str + " pub: " + _address + ":" + _port + ")"; 
 }
 
 readable_ip_info convert_to_readable(raw_name_data data)

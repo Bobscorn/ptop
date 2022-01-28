@@ -17,6 +17,7 @@ class client_init_kit {
     std::chrono::system_clock::time_point server_last_send;
     EXECUTION_STATUS status;
     ::protocol protocol;
+    bool do_delay = false;
 
     std::unique_ptr<IDataSocketWrapper>& get_server_socket();
     void set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input);
