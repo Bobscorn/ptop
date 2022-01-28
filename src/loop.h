@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <exception>
 #include <stdexcept>
 #include <queue>
@@ -18,6 +19,30 @@ enum class EXECUTION_STATUS
     HOLE_PUNCH,
     PEER_CONNECTED,
 };
+
+inline std::string es_to_string(EXECUTION_STATUS status)
+{
+    switch (status)
+    {
+    default:
+    case EXECUTION_STATUS::NONE:
+        return "EXECUTION_STATUS::NONE: No Execution Status";
+    case EXECUTION_STATUS::CONTINUE:
+        return "EXECUTION_STATUS::CONTINUE: Continue Current Operation";
+    case EXECUTION_STATUS::SERVER_CONNECTED:
+        return "EXECUTION_STATUS::SERVER_CONNECTED: Connected to Server";
+    case EXECUTION_STATUS::COMPLETE:
+        return "EXECUTION_STATUS::COMPLETE: Program has completed";
+    case EXECUTION_STATUS::FAILED:
+        return "EXECUTION_STATUS::FAILED: Program has encountered an error";
+    case EXECUTION_STATUS::RENDEZVOUS:
+        return "EXECUTION_STATUS::RENDEZVOUS: Program is communicating with rendezvous server";
+    case EXECUTION_STATUS::HOLE_PUNCH:
+        return "EXECUTION_STATUS::HOLE_PUNCH: Program is attempting to hole punch to a peer";
+    case EXECUTION_STATUS::PEER_CONNECTED:
+        return "EXECUTION_STATUS::PEER_CONNECTED: Program has connected to the peer and is communicating with them";
+    }
+}
 
 template<class T, typename = std::enable_if_t<std::is_pod<T>::value>> // Only allow Plain-old-data to use this method
 T read_data(const char* data, int& index, size_t data_len)
