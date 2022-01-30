@@ -53,6 +53,8 @@ PtopSocket& PtopSocket::connect(sockaddr* addr, socklen_t len)
 	}
 	else if (_protocol.is_udp())
 	{
+		int n = ::connect(_handle, addr, len);
+		throw_if_socket_error(n, "Failed to connect " + get_last_error(), LINE_CONTEXT);
 		_endpoint = raw_name_data(*addr, len);
 	}
 	return *this;
