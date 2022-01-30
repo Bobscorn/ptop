@@ -106,7 +106,7 @@ void Platform::update_endpoint_info()
 {
     try
 	{
-        if (_socket.is_listen())
+        if (_socket.is_tcp() && _socket.is_listen())
         {
             std::cout << "[Socket] Not updating endpoint as this socket " << get_identifier_str() << " is a listen socket" << std::endl;
             return;

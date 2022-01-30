@@ -11,7 +11,7 @@ std::string Platform::get_identifier_str() {
 	std::string name_str = "Unnamed";
 	if (_socket.get_name().size())
 		name_str = _socket.get_name();
-	if (_socket.is_listen())
+	if (_socket.is_tcp() && _socket.is_listen())
 		return std::string("(") + name_str + " is a listen on: " + _address + ":" + _port + ")";
 
 	if (_endpoint_assigned == false)
