@@ -7,6 +7,7 @@
 #endif
 
 #include <string>
+#include <algorithm>
 
 std::string Platform::get_identifier_str() {
 	std::string name_str = "Unnamed";
