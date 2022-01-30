@@ -5,6 +5,16 @@
 #include "name_data.h"
 #include "message.h"
 
+// BEGIN UDP CRAP
+
+struct udp_Message
+{
+	Message message;
+	raw_name_data from;
+};
+
+// END UDP CRAP
+
 class ISocketWrapper
 {
 	public:

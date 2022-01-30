@@ -4,6 +4,7 @@
 #include "name_data.h"
 #include "protocol.h"
 #include "error.h"
+#include "message.h"
 
 #include <string>
 
@@ -19,6 +20,16 @@ enum class select_for
     WRITE,
     EXCEPT
 };
+
+// UDP CRAP
+
+struct udp_bytes
+{
+    std::vector<char> bytes;
+    raw_name_data endpoint;
+};
+
+// END UDP CRAP
 
 class PtopSocket
 {
@@ -115,4 +126,9 @@ class PtopSocket
 
     bool send_bytes(std::vector<char> bytes);
     std::vector<char> recv_bytes();
+
+    // BEGIN UDP CRAP
+    bool send_udp_bytes(udp_bytes bytes);
+    udp_bytes recv_udp_bytes();
+    // END UDP CRAP
 };

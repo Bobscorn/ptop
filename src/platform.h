@@ -2,6 +2,7 @@
 
 #include <string>
 #include <queue>
+#include <unordered_map>
 
 #include "ptop_socket.h"
 #include "interfaces.h"
@@ -89,6 +90,72 @@ class NonBlockingConnector : public Platform, public virtual INonBlockingConnect
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;
+};
+
+class UDPConnector : public virtual IDataSocketWrapper
+{
+
+};
+
+class UDPListener;
+
+class UDPAcceptedConnector : public virtual IDataSocketWrapper
+{
+	void throw_if_no_listener() const;
+
+	UDPListener* _listen;
+	raw_name_data _my_endpoint;
+
+	friend class UDPListener;
+
+	UDPAcceptedConnector(UDPListener* listen, raw_name_data endpoint);
+
+public:
+	~UDPAcceptedConnector();
+
+	Message receive_message() override;
+	bool has_message() override;
+
+	bool send_data(const Message& message) override;
+
+	// Inherited via IDataSocketWrapper
+	virtual readable_ip_info get_peer_data() const override;
+	virtual raw_name_data get_peername_raw() const override;
+	virtual raw_name_data get_myname_raw() const override;
+	virtual readable_ip_info get_peername_readable() const override;
+	virtual readable_ip_info get_myname_readable() const override;
+	virtual std::string get_my_ip() const override;
+	virtual std::string get_my_port() const override;
+	virtual std::string get_endpoint_ip() const override;
+	virtual std::string get_endpoint_port() const override;
+	virtual std::string get_identifier_str() override;
+	virtual const std::string& get_name() const override;
+	virtual void set_name(std::string name) override;
+};
+
+class UDPListener : public Platform, public virtual IListenSocketWrapper
+{
+	std::unordered_map<raw_name_data, std::queue<Message>> _messages;
+	std::unordered_map<raw_name_data, UDPAcceptedConnector*> _connectors;
+	std::vector<raw_name_data> _new_connections;
+
+	friend class UDPAcceptedConnector;
+
+	void process_data();
+
+	void remove_connector(raw_name_data endpoint, UDPAcceptedConnector* conn);
+
+	bool send_data(const Message& message, raw_name_data to);
+	bool has_message(raw_name_data from);
+	Message receive_message(raw_name_data from);
+
+	raw_name_data my_data();
+public:
+	UDPListener(std::string port, protocol proto, std::string name);
+
+	inline void listen() override {}
+	bool has_connection() override;
+	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
 #ifdef WIN32

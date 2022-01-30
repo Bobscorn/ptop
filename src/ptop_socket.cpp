@@ -100,14 +100,19 @@ bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)
 
 void PtopSocket::listen(int max_conns)
 {
-	auto n = ::listen(_handle, max_conns);
-	throw_if_socket_error(n, "Failed to listen on socket. " + get_last_error(), LINE_CONTEXT);
+	if (is_tcp())
+	{
+		auto n = ::listen(_handle, max_conns);
+		throw_if_socket_error(n, "Failed to listen on socket. " + get_last_error(), LINE_CONTEXT);
+	}
 }
 
 bool PtopSocket::has_connection() const
 {
 	try
 	{
+		if (is_udp())
+			return false;
 		struct timeval timeout;
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 0;
@@ -244,3 +249,27 @@ std::vector<char> PtopSocket::recv_bytes()
 {
 	return _protocol.receive_bytes(_handle, _endpoint);
 }
+
+
+bool PtopSocket::send_udp_bytes(udp_bytes bytes)
+{
+	int n = sendto(_handle, bytes.bytes.data(), bytes.bytes.size(), 0, &bytes.endpoint.name, bytes.endpoint.name_len);
+	throw_if_socket_error(n, "Failed to send UDP Bytes to " + convert_to_readable(bytes.endpoint).to_string() + " with: " + get_last_error(), LINE_CONTEXT);
+
+	return true;
+}
+
+// BEGIN UDP CRAP
+udp_bytes PtopSocket::recv_udp_bytes()
+{
+	udp_bytes bytes;
+	bytes.bytes = std::vector<char>(500, (char)0, std::allocator<char>());
+
+	int n = recvfrom(_handle, bytes.bytes.data(), (int)bytes.bytes.size(), 0, &bytes.endpoint.name, &bytes.endpoint.name_len);
+
+	throw_if_socket_error(n, "Failed to receive UDP bytes (" + _name + ") with: " + get_last_error(), LINE_CONTEXT);
+
+	bytes.bytes.resize(n);
+	return bytes;
+}
+// END UDP CRAP
