@@ -18,7 +18,10 @@ server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
     clientB = nullptr;
     cA = nullptr;
     cB = nullptr;
-    server_socket = std::make_unique<PlatformListener>(ServerListenPort, ip_proto, "Server-Listener");
+    if (ip_proto.is_udp())
+        server_socket = std::make_unique<UDPListener>(ServerListenPort, ip_proto, "Server-Listener");
+    else
+        server_socket = std::make_unique<PlatformListener>(ServerListenPort, ip_proto, "Server-Listener");
     server_socket->listen();
     recv_data = std::vector<char>();
     //dont need to initialize structs. it will default its params by itself
