@@ -6,9 +6,6 @@
 #include "ptop_socket.h"
 #include "interfaces.h"
 
-#if defined(__linux__)
-const int SOCKET_ERROR = -1;
-#endif
 
 #ifdef WIN32
 #pragma warning(push)

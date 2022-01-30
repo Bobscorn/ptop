@@ -23,7 +23,9 @@
 #endif
 
 #include <iostream>
+#include <chrono>
 
+using namespace std::chrono;
 
 PtopSocket::PtopSocket(protocol proto, std::string name) : _protocol(proto), _name(std::move(name))
 {
@@ -233,62 +235,10 @@ raw_name_data PtopSocket::get_name_raw() const
 
 bool PtopSocket::send_bytes(std::vector<char> bytes)
 {
-	if (is_tcp())
-	{
-		int result = send(_handle, bytes.data(), (int)bytes.size(), 0);
-		if (result == SOCKET_ERROR)
-			return false;
-		return true;
-	}
-	else if (is_udp())
-	{
-		int result = sendto(_handle, bytes.data(), (int)bytes.size(), 0, &_endpoint.name, _endpoint.name_len);
-		if (result == SOCKET_ERROR)
-			return false;
-		return true;
-	}
-	else
-	{
-		throw_new_exception("Can not send data with an invalid protocol", LINE_CONTEXT);
-	}
+	return _protocol.send_bytes(_handle, _endpoint, bytes);
 }
 
 std::vector<char> PtopSocket::recv_bytes()
 {
-	if (is_tcp())
-	{
-		std::vector<char> data(500, (char)0, std::allocator<char>());
-		int result = ::recv(_handle, data.data(), (int)data.size(), 0);
-		if (result == SOCKET_ERROR)
-		{
-			std::cout << "Receiving data failed" << std::endl;
-			return std::vector<char>();
-		}
-		data.resize(result);
-		return data;
-	}
-	if (is_udp())
-	{
-		while (true)
-		{
-			sockaddr addr;
-			socklen_t addr_len;
-			std::vector<char> data(500, (char)0, std::allocator<char>());
-			int result = ::recvfrom(_handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
-			raw_name_data incoming{ addr, addr_len };
-			
-			if (incoming != _endpoint)
-			{
-				auto readable = convert_to_readable(incoming);
-				std::cout << "Receiving UDP data from an undesired endpoint (" << readable << ")" << std::endl;
-				continue;
-			}
-			if (result == SOCKET_ERROR)
-			{
-				std::cerr << "Receiving (UDP) data failed: " << socket_error_to_string(result) << std::endl;
-				return std::vector<char>();
-			}
-		}
-	}
-	throw_new_exception("Invalid protocol", LINE_CONTEXT);
+	return _protocol.receive_bytes(_handle, _endpoint);
 }

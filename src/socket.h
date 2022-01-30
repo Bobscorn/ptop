@@ -6,4 +6,6 @@
 #elif defined(__linux__)
 #include <sys/types.h>
 using SOCKET = int;
+const int SOCKET_ERROR = -1;
 #endif
+
