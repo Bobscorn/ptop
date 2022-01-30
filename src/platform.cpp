@@ -22,7 +22,7 @@ std::string Platform::get_identifier_str() {
 	if (_endpoint_assigned == false)
         return std::string("(") + name_str + " priv: " + _address + ":" + _port + ", pub : N / A)";
     
-    return std::string("(") + name_str + " pub: " + _address + ":" + _port + ")"; 
+    return std::string("(") + name_str + " pub: " + _endpoint_address + ":" + _endpoint_port + ")"; 
 }
 
 readable_ip_info convert_to_readable(const raw_name_data& data)

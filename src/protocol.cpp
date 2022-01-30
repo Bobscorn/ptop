@@ -94,7 +94,7 @@ std::vector<char> protocol::receive_bytes(SOCKET handle, raw_name_data expected_
 		}
 		if (result == SOCKET_ERROR)
 		{
-			auto message = "Receiving (UDP) data failed: " + socket_error_to_string(result);
+			auto message = "Receiving (UDP) data failed: " + get_last_error();
 			throw_new_exception(message, LINE_CONTEXT);
 		}
 		data.resize(result);
