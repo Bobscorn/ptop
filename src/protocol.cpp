@@ -1,5 +1,7 @@
 #include "protocol.h"
 #include "error.h"
+#include "ptop_socket.h"
+#include "socket.h"
 
 #if defined(WIN32) | defined(_WIN64)
 #include <winsock2.h>

@@ -18,6 +18,11 @@ Platform::Platform(PtopSocket&& socket)
     try_update_name_info();
     // big chungus
 
+    if(_socket.is_udp()) {
+        std::cout << "Platform constructed for UDP" << std::endl;
+        return;
+    }
+
     if (_address == "Unassigned" || _address.empty() ||
         _port == "Unassigned" || _port.empty()) {
         auto message = "failed to update name info";        

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "socket.h"
 #include <string>
+#include "name_data.h"
 
 class protocol {
 public:

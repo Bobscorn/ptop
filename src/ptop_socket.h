@@ -1,16 +1,9 @@
 #pragma once
 
+#include "socket.h"
 #include "name_data.h"
 #include "protocol.h"
 #include "error.h"
-
-#ifdef WIN32
-#include <WinSock2.h>
-
-#elif defined(__linux__)
-#include <sys/types.h>
-using SOCKET = int;
-#endif
 
 #include <string>
 
