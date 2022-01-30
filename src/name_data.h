@@ -23,6 +23,7 @@ struct raw_name_data
 	socklen_t name_len;
 
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+	const sockaddr_in& ipv4_addr() const { return *(sockaddr_in*)&name; }
 
 	inline bool operator==(const raw_name_data& other) const
 	{

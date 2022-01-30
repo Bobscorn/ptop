@@ -263,6 +263,7 @@ bool PtopSocket::send_udp_bytes(udp_bytes bytes)
 udp_bytes PtopSocket::recv_udp_bytes()
 {
 	udp_bytes bytes;
+	bytes.endpoint.name_len = sizeof(bytes.endpoint);
 	bytes.bytes = std::vector<char>(500, (char)0, std::allocator<char>());
 
 	int n = recvfrom(_handle, bytes.bytes.data(), (int)bytes.bytes.size(), 0, &bytes.endpoint.name, &bytes.endpoint.name_len);

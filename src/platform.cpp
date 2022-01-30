@@ -24,7 +24,7 @@ std::string Platform::get_identifier_str() {
     return std::string("(") + name_str + " pub: " + _address + ":" + _port + ")"; 
 }
 
-readable_ip_info convert_to_readable(raw_name_data data)
+readable_ip_info convert_to_readable(const raw_name_data& data)
 {
 	std::vector<char> buf{ 50, '0', std::allocator<char>() };
 	const char* str = inet_ntop(AF_INET, &data.ipv4_addr().sin_addr, buf.data(), buf.size());
@@ -54,6 +54,10 @@ void UDPAcceptedConnector::throw_if_no_listener() const
 {
 	if (!_listen)
 		throw_new_exception("Accepted UDP Connector has no valid listener", LINE_CONTEXT);
+}
+
+UDPAcceptedConnector::UDPAcceptedConnector(UDPListener* listen, raw_name_data endpoint) : _listen(listen), _my_endpoint(endpoint)
+{
 }
 
 UDPAcceptedConnector::~UDPAcceptedConnector()
@@ -203,7 +207,8 @@ void UDPListener::process_data()
 
 		if (_connectors.find(received.endpoint) == _connectors.end())
 		{
-			_new_connections.push_back(received.endpoint);
+			if (std::find(_new_connections.begin(), _new_connections.end(), received.endpoint) == _new_connections.end())
+				_new_connections.push_back(received.endpoint);
 		}
 	}
 }
@@ -260,7 +265,7 @@ PtopSocket construct_udp_listener(std::string port, protocol proto, std::string 
 
 	auto listen_socket = PtopSocket(proto, name);
 
-	struct sockaddr_in serv_addr, cli_addr;
+	struct sockaddr_in serv_addr;
 
 	int portno = atoi(port.c_str());
 #ifdef WIN32
@@ -284,6 +289,8 @@ UDPListener::UDPListener(std::string port, protocol proto, std::string name) : P
 
 bool UDPListener::has_connection()
 {
+	process_data();
+
 	return _new_connections.size();
 }
 
@@ -292,10 +299,12 @@ std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
 	if (!has_connection())
 		return nullptr;
 
-	auto new_conn_endpoint = _new_connections.back();
-	_new_connections.pop_back();
+	const auto& new_conn_endpoint = _new_connections.back();
 
 	auto new_conn = std::unique_ptr<UDPAcceptedConnector>(new UDPAcceptedConnector(this, new_conn_endpoint));
+
+	_connectors[new_conn_endpoint] = new_conn.get();
+	_new_connections.pop_back();
 
 	return new_conn;
 }

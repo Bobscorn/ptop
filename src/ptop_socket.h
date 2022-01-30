@@ -45,7 +45,7 @@ class PtopSocket
 
     explicit PtopSocket(protocol proto, std::string name = "");
 
-    PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol), _name(std::move(other._name)) { 
+    PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol), _endpoint(other._endpoint), _name(std::move(other._name)) { 
         other._handle = REALLY_INVALID_SOCKET;
     };
     ~PtopSocket();

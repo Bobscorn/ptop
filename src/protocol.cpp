@@ -81,7 +81,7 @@ std::vector<char> protocol::receive_bytes(SOCKET handle, raw_name_data expected_
 	if (is_udp())
 	{
 		sockaddr addr;
-		socklen_t addr_len;
+		socklen_t addr_len = sizeof(sockaddr_in);
 		std::vector<char> data(500, (char)0, std::allocator<char>());
 		int result = ::recvfrom(handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
 		raw_name_data incoming{ addr, addr_len };

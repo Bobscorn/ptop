@@ -13,7 +13,7 @@
 #pragma warning(disable : 4250)
 #endif
 
-readable_ip_info convert_to_readable(raw_name_data);
+readable_ip_info convert_to_readable(const raw_name_data&);
 
 class Platform : public virtual ISocketWrapper {    
     protected:    
@@ -92,10 +92,34 @@ class NonBlockingConnector : public Platform, public virtual INonBlockingConnect
 	ConnectionStatus has_connected() override;
 };
 
-class UDPConnector : public virtual IDataSocketWrapper
+// Taken from https://stackoverflow.com/a/19195373
+template<class T>
+inline void hash_combine(std::size_t& s, const T& v)
 {
+	std::hash<T> h;
+	s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
+}
 
-};
+namespace std
+{
+	template<>
+	struct hash<raw_name_data>
+	{
+		std::size_t operator()(const raw_name_data& name_data) const
+		{
+			using std::size_t;
+			using std::hash;
+			using std::string;
+			
+			auto readable = convert_to_readable(name_data);
+
+			size_t h = hash<string>()(readable.ip_address);
+			hash_combine(h, readable.port);
+			return h;
+		}
+	};
+}
+
 
 class UDPListener;
 
