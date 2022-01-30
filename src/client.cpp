@@ -11,7 +11,7 @@
 
 using namespace std::chrono;
 
-client_init_kit::client_init_kit(std::string server_address_pair, ::protocol chosen_protocol) : protocol(chosen_protocol) {
+client_init_kit::client_init_kit(std::string server_address_pair, ::Protocol chosen_protocol) : protocol(chosen_protocol) {
     _server_socket = std::make_unique<PlatformAnalyser>(server_address_pair, ServerListenPort, protocol, "Server-Conn");
     // Indicate to server we're ready for p2p
     server_last_send = std::chrono::system_clock::now();
@@ -361,7 +361,7 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
     return false;
 }
 
-void client_loop(std::string server_address_pair, protocol input_protocol)
+void client_loop(std::string server_address_pair, Protocol input_protocol)
 {
     std::cout << "Starting ptop!" << std::endl;
     std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;

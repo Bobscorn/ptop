@@ -54,7 +54,7 @@ class Platform : public virtual ISocketWrapper {
 
 class PlatformListener : public Platform, public virtual IListenSocketWrapper {
 	public:
-	PlatformListener(std::string port, protocol input_protocol, std::string name);
+	PlatformListener(std::string port, Protocol input_protocol, std::string name);
  	void listen() override;
  	bool has_connection() override;
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
@@ -67,7 +67,7 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	public:
 	PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
 	PlatformAnalyser(PtopSocket&& socket);
-	PlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol, std::string name);
+	PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol input_protocol, std::string name);
 
 	Message receive_message() override;
 	bool has_message() override;
@@ -77,7 +77,7 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 
 class NonBlockingListener : public Platform, public virtual INonBlockingListener {
 	public:
-	NonBlockingListener(raw_name_data data, protocol input_protocol, std::string name);
+	NonBlockingListener(raw_name_data data, Protocol input_protocol, std::string name);
 
 	void listen() override;
 	bool has_connection() override;
@@ -86,7 +86,7 @@ class NonBlockingListener : public Platform, public virtual INonBlockingListener
 
 class NonBlockingConnector : public Platform, public virtual INonBlockingConnector {
 	public:
-	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, protocol input_protocol, std::string);
+	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, Protocol input_protocol, std::string);
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;
@@ -175,7 +175,7 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper
 
 	raw_name_data my_data();
 public:
-	UDPListener(std::string port, protocol proto, std::string name);
+	UDPListener(std::string port, Protocol proto, std::string name);
 
 	inline void listen() override {}
 	bool has_connection() override;

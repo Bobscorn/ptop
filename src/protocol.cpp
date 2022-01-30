@@ -18,7 +18,7 @@
 
 using namespace std;
 
-protocol::protocol(string possible_protocol) {
+Protocol::Protocol(string possible_protocol) {
     transform(possible_protocol.begin(), possible_protocol.end(), possible_protocol.begin(), ::tolower);
 
     if (possible_protocol == "tcp") {
@@ -38,15 +38,15 @@ protocol::protocol(string possible_protocol) {
     }
 }
 
-bool protocol::is_tcp() const {
+bool Protocol::is_tcp() const {
     return ai_protocol == IPPROTO_TCP;
 }
 
-bool protocol::is_udp() const { 
+bool Protocol::is_udp() const { 
     return ai_protocol == IPPROTO_UDP; 
 }
 
-bool protocol::send_bytes(SOCKET handle, raw_name_data endpoint, std::vector<char> bytes) {
+bool Protocol::send_bytes(SOCKET handle, raw_name_data endpoint, std::vector<char> bytes) {
     if (is_tcp())
 	{
 		int result = send(handle, bytes.data(), (int)bytes.size(), 0);
@@ -64,7 +64,7 @@ bool protocol::send_bytes(SOCKET handle, raw_name_data endpoint, std::vector<cha
     return false;
 }
 
-std::vector<char> protocol::receive_bytes(SOCKET handle, raw_name_data expected_endpoint)
+std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data expected_endpoint)
 {
     if (is_tcp())
 	{

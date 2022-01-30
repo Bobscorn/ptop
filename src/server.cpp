@@ -13,7 +13,7 @@
 
 using namespace std::chrono;
 
-server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
+server_init_kit::server_init_kit(Protocol ip_proto) : proto(ip_proto) {
     clientA = nullptr;
     clientB = nullptr;
     cA = nullptr;
@@ -224,8 +224,8 @@ void server_loop()
     std::thread user_input_thread{ input_thread_func, std::ref(user_input_queue) };
     user_input_thread.detach();
 
-    server_init_kit init_tcp{ protocol{"tcp"} };
-    server_init_kit init_udp{ protocol{"udp"} };
+    server_init_kit init_tcp{ Protocol{"tcp"} };
+    server_init_kit init_udp{ Protocol{"udp"} };
     std::cout << "Server is ready..." << std::endl;
 
     while (true)

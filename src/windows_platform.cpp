@@ -190,7 +190,7 @@ raw_name_data Platform::get_myname_raw() const
     return raw_data;
 }
 
-PtopSocket construct_windowslistensocket(std::string port, protocol input_protocol, std::string name) {
+PtopSocket construct_windowslistensocket(std::string port, Protocol input_protocol, std::string name) {
     try
     {
         std::cout << "[Listen] Creating new Socket on port (with localhost, named: " << name << "): " << port << std::endl;
@@ -227,7 +227,7 @@ PtopSocket construct_windowslistensocket(std::string port, protocol input_protoc
     }
 }
 
-PlatformListener::PlatformListener(std::string port, protocol input_protocol, std::string name) : Platform(construct_windowslistensocket(port, input_protocol, name)) 
+PlatformListener::PlatformListener(std::string port, Protocol input_protocol, std::string name) : Platform(construct_windowslistensocket(port, input_protocol, name)) 
 {
 }
 
@@ -248,7 +248,7 @@ std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection() {
     return std::make_unique<PlatformAnalyser>(std::move(tmp));
 }
 
-PtopSocket construct_windows_data_socket(std::string peer_address, std::string peer_port, protocol input_protocol, std::string name) {
+PtopSocket construct_windows_data_socket(std::string peer_address, std::string peer_port, Protocol input_protocol, std::string name) {
     std::cout << "[Data] Creating a Windows Data Socket (" << name << ") connecting to : " << peer_address << " : " << peer_port << std::endl;
     struct addrinfo* result = NULL,
         *ptr = NULL,
@@ -274,7 +274,7 @@ PtopSocket construct_windows_data_socket(std::string peer_address, std::string p
     return conn_socket;
 }
 
-PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, protocol input_protocol, std::string name) : Platform(construct_windows_data_socket(peer_address, peer_port, input_protocol, name)) 
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol input_protocol, std::string name) : Platform(construct_windows_data_socket(peer_address, peer_port, input_protocol, name)) 
 {
     try
     {
@@ -406,7 +406,7 @@ bool PlatformAnalyser::has_message()
     return _socket.has_message();
 }
 
-PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto, std::string name)
+PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, Protocol proto, std::string name)
 {
     try
     {
@@ -430,7 +430,7 @@ PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, protocol proto,
     }
 }
 
-NonBlockingListener::NonBlockingListener(raw_name_data data, protocol input_protocol, std::string name) 
+NonBlockingListener::NonBlockingListener(raw_name_data data, Protocol input_protocol, std::string name) 
     : Platform(
         windows_reuse_nb_listen_construct(data, input_protocol, name)
     )
@@ -455,7 +455,7 @@ std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
     return std::make_unique<PlatformAnalyser>(std::move(new_sock));
 }
 
-PtopSocket windows_reuse_nb_construct(raw_name_data data, protocol proto, std::string name)
+PtopSocket windows_reuse_nb_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	try {
 		auto readable = convert_to_readable(data);
@@ -479,7 +479,7 @@ PtopSocket windows_reuse_nb_construct(raw_name_data data, protocol proto, std::s
 }
 
 NonBlockingConnector::NonBlockingConnector(
-    raw_name_data data, std::string ip_address, std::string port, protocol input_protocol, std::string name) 
+    raw_name_data data, std::string ip_address, std::string port, Protocol input_protocol, std::string name) 
     : Platform(
         windows_reuse_nb_construct(data, input_protocol, name)
     )

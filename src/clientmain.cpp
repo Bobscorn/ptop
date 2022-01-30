@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         std::string possible_protocol{};
 
         std::cin >> possible_protocol;
-        protocol validated{ possible_protocol };
+        Protocol validated{ possible_protocol };
 
         client_loop(raw_ip, validated);
     }

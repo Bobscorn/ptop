@@ -259,7 +259,7 @@ raw_name_data UDPListener::my_data()
 	return _socket.get_name_raw();
 }
 
-PtopSocket construct_udp_listener(std::string port, protocol proto, std::string name)
+PtopSocket construct_udp_listener(std::string port, Protocol proto, std::string name)
 {
 	if (!proto.is_udp())
 		throw_new_exception("UDP Listener must only be used with UDP", LINE_CONTEXT);
@@ -284,7 +284,7 @@ PtopSocket construct_udp_listener(std::string port, protocol proto, std::string 
 	return listen_socket;
 }
 
-UDPListener::UDPListener(std::string port, protocol proto, std::string name) : Platform(construct_udp_listener(port, proto, name))
+UDPListener::UDPListener(std::string port, Protocol proto, std::string name) : Platform(construct_udp_listener(port, proto, name))
 {
 }
 

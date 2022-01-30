@@ -35,15 +35,15 @@ class PtopSocket
 {
     private:
     SOCKET _handle;
-    protocol _protocol;
+    Protocol _protocol;
     raw_name_data _endpoint;
     std::string _name;
-    PtopSocket(SOCKET handle, protocol proto, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(), _name(name) {}
-    PtopSocket(SOCKET handle, protocol proto, raw_name_data endpoint, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(endpoint), _name(name) {}
+    PtopSocket(SOCKET handle, Protocol proto, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(), _name(name) {}
+    PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(endpoint), _name(name) {}
 
     public:
 
-    explicit PtopSocket(protocol proto, std::string name = "");
+    explicit PtopSocket(Protocol proto, std::string name = "");
 
     PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol), _endpoint(other._endpoint), _name(std::move(other._name)) { 
         other._handle = REALLY_INVALID_SOCKET;
@@ -122,7 +122,7 @@ class PtopSocket
     inline bool is_listen() const { return get_socket_option<int>(SO_ACCEPTCONN); }
 
     inline SOCKET get_handle() const { return _handle; }
-    inline const protocol& get_protocol() const { return _protocol; }
+    inline const Protocol& get_protocol() const { return _protocol; }
 
     bool send_bytes(std::vector<char> bytes);
     std::vector<char> recv_bytes();

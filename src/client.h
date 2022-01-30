@@ -9,14 +9,14 @@
 #include "interfaces.h"
 #include "platform.h"
 
-void client_loop(std::string server_address_pair, protocol input_protocol);
+void client_loop(std::string server_address_pair, Protocol input_protocol);
 
 class client_init_kit {
     public:
-    client_init_kit(std::string server_address_pair, ::protocol input_protocol);
+    client_init_kit(std::string server_address_pair, ::Protocol input_protocol);
     std::chrono::system_clock::time_point server_last_send;
     EXECUTION_STATUS status;
-    ::protocol protocol;
+    ::Protocol protocol;
     bool do_delay = false;
 
     std::unique_ptr<IDataSocketWrapper>& get_server_socket();

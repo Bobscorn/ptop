@@ -4,9 +4,9 @@
 #include <string>
 #include "name_data.h"
 
-class protocol {
+class Protocol {
 public:
-    protocol(std::string possible_protocol);
+    Protocol(std::string possible_protocol);
 
 private:
     int ai_family;

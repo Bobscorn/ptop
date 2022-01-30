@@ -143,7 +143,7 @@ raw_name_data Platform::get_myname_raw() const
 	return _socket.get_name_raw();
 }
 
-PtopSocket listen_construct(std::string port, protocol input_proto, std::string name)
+PtopSocket listen_construct(std::string port, Protocol input_proto, std::string name)
 {
 	std::cout << "[Listen] Creating new Socket on port (with localhost, named: " << name << "): " << port << std::endl;
 	auto listen_socket = PtopSocket(input_proto, name);
@@ -168,7 +168,7 @@ PtopSocket listen_construct(std::string port, protocol input_proto, std::string 
 	return listen_socket;
 }
 
-PlatformListener::PlatformListener(std::string port, protocol input_proto, std::string name) : Platform(listen_construct(port, input_proto, name))
+PlatformListener::PlatformListener(std::string port, Protocol input_proto, std::string name) : Platform(listen_construct(port, input_proto, name))
 {
 }
 
@@ -286,7 +286,7 @@ PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket) : Platform(std::move(soc
 		throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
 }
 
-PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, protocol ip_proto, std::string name)
+PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
 {
 	std::cout << "[Data] Creating a Linux Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
 
@@ -311,7 +311,7 @@ PtopSocket data_connect_construct(std::string peer_address, std::string peer_por
 	return conn_socket;
 }
 
-PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, protocol proto, std::string name) 
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol proto, std::string name) 
 : Platform(data_connect_construct(peer_address, peer_port, proto, name))
 {
 	try_update_endpoint_info();
@@ -348,7 +348,7 @@ bool PlatformAnalyser::send_data(const Message& message)
 	return false;
 }
 
-PtopSocket reuse_listen_construct(raw_name_data data, protocol proto, std::string name)
+PtopSocket reuse_listen_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	auto readable = convert_to_readable(data);
 	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket '" << name << "' on: " << readable.ip_address << ":" << readable.port << std::endl;
@@ -366,7 +366,7 @@ PtopSocket reuse_listen_construct(raw_name_data data, protocol proto, std::strin
 	return listen_socket;
 }
 
-NonBlockingListener::NonBlockingListener(raw_name_data data, protocol proto, std::string name) 
+NonBlockingListener::NonBlockingListener(raw_name_data data, Protocol proto, std::string name) 
 : Platform(reuse_listen_construct(data, proto, name))
 {
 	
@@ -391,7 +391,7 @@ std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 	return std::make_unique<PlatformAnalyser>(std::move(new_sock));
 }
 
-PtopSocket reuse_connection_construct(raw_name_data data, protocol proto, std::string name)
+PtopSocket reuse_connection_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	auto readable = convert_to_readable(data);
 	std::cout << "[DataReuseNoB] Creating Connection socket '" << name << "' bound to : " << readable.ip_address << ":" << readable.port << std::endl;
@@ -409,7 +409,7 @@ PtopSocket reuse_connection_construct(raw_name_data data, protocol proto, std::s
 	return conn_socket;
 }
 
-NonBlockingConnector::NonBlockingConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto, std::string name) 
+NonBlockingConnector::NonBlockingConnector(raw_name_data data, std::string ip_address, std::string port, Protocol proto, std::string name) 
 : Platform(reuse_connection_construct(data, proto, name))
 {
 	// if tcp?

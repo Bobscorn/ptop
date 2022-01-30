@@ -27,7 +27,7 @@
 
 using namespace std::chrono;
 
-PtopSocket::PtopSocket(protocol proto, std::string name) : _protocol(proto), _name(std::move(name))
+PtopSocket::PtopSocket(Protocol proto, std::string name) : _protocol(proto), _name(std::move(name))
 {
 	int domain = _protocol.get_ai_family();
 	int type = _protocol.get_ai_socktype();
