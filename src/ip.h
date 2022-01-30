@@ -12,6 +12,7 @@ struct readable_ip_info
 	std::string port;
 
 	std::vector<char> to_bytes() const;
+	inline std::string to_string() const { return "(" + ip_address + ":" + port + ")"; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const readable_ip_info& ip_info)
