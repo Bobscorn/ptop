@@ -191,27 +191,9 @@ bool PtopSocket::has_message() const
 	return select_for(select_for::READ);
 }
 
-bool PtopSocket::has_died() const
+bool PtopSocket::has_died()
 {
-	if (is_tcp())
-	{
-		if (has_message())
-		{
-			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
-			int n = recv(_handle, recv_data.data(), (int)recv_data.size(), MSG_PEEK);
-			if (n == SOCKET_ERROR)
-			{
-				std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << get_last_error() << std::endl;
-				return true;
-			}
-			return n == 0;
-		}
-		return false;
-	}
-	if (is_udp())
-		return false;
-	throw_new_exception("Invalid protocol", LINE_CONTEXT);
-	return true;
+	return _protocol.has_died(_handle, has_message());
 }
 
 raw_name_data PtopSocket::get_peer_raw() const
@@ -245,22 +227,20 @@ bool PtopSocket::send_bytes(std::vector<char> bytes)
 	return _protocol.send_bytes(_handle, _endpoint, bytes);
 }
 
-std::vector<char> PtopSocket::recv_bytes()
+std::vector<char> PtopSocket::receive_bytes()
 {
 	return _protocol.receive_bytes(_handle, _endpoint);
 }
 
 
 bool PtopSocket::send_udp_bytes(udp_bytes bytes)
-{
-	int n = sendto(_handle, bytes.bytes.data(), bytes.bytes.size(), 0, &bytes.endpoint.name, bytes.endpoint.name_len);
-	throw_if_socket_error(n, "Failed to send UDP Bytes to " + convert_to_readable(bytes.endpoint).to_string() + " with: " + get_last_error(), LINE_CONTEXT);
-
-	return true;
+{	
+	bool output = _protocol.send_bytes(_handle, bytes.endpoint, bytes.bytes);
+	throw_if_socket_error(-1, "Failed to send UDP Bytes to " + convert_to_readable(bytes.endpoint).to_string() + " with: " + get_last_error(), LINE_CONTEXT);
+	return output;
 }
 
-// BEGIN UDP CRAP
-udp_bytes PtopSocket::recv_udp_bytes()
+udp_bytes PtopSocket::receive_udp_bytes()
 {
 	udp_bytes bytes;
 	bytes.endpoint.name_len = sizeof(bytes.endpoint);
@@ -273,4 +253,3 @@ udp_bytes PtopSocket::recv_udp_bytes()
 	bytes.bytes.resize(n);
 	return bytes;
 }
-// END UDP CRAP

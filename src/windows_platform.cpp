@@ -311,7 +311,7 @@ PtopSocket windows_data_socket_steal_construct(std::unique_ptr<INonBlockingConne
 void PlatformAnalyser::process_socket_data()
 {
     std::cout << "[Data] Trying to receive new data from Socket: " << Platform::get_identifier_str() << std::endl;
-    std::vector<char> recv_data = _socket.recv_bytes();
+    std::vector<char> recv_data = _socket.receive_bytes();
     if (recv_data.size() > 0)
     {
         std::cout << "Received " << recv_data.size() << " bytes" << std::endl;

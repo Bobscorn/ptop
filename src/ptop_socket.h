@@ -110,7 +110,7 @@ class PtopSocket
     bool select_for(select_for s_for) const;
 
     bool has_message() const;
-    bool has_died() const;
+    bool has_died();
 
     raw_name_data get_peer_raw() const;
     raw_name_data get_name_raw() const;
@@ -125,10 +125,8 @@ class PtopSocket
     inline const Protocol& get_protocol() const { return _protocol; }
 
     bool send_bytes(std::vector<char> bytes);
-    std::vector<char> recv_bytes();
+    std::vector<char> receive_bytes();
 
-    // BEGIN UDP CRAP
     bool send_udp_bytes(udp_bytes bytes);
-    udp_bytes recv_udp_bytes();
-    // END UDP CRAP
+    udp_bytes receive_udp_bytes();
 };

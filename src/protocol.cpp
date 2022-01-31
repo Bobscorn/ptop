@@ -102,3 +102,25 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data expected_
 	}
 	throw_new_exception("Invalid protocol", LINE_CONTEXT);
 }
+
+bool Protocol::has_died(SOCKET handle, bool has_message) {
+	if (is_tcp())
+	{
+		if (has_message)
+		{
+			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
+			int n = recv(handle, recv_data.data(), (int)recv_data.size(), MSG_PEEK);
+			if (n == SOCKET_ERROR)
+			{
+				std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << get_last_error() << std::endl;
+				return true;
+			}
+			return n == 0;
+		}
+		return false;
+	}
+	if (is_udp())
+		return false;
+	throw_new_exception("Invalid protocol", LINE_CONTEXT);
+	return true;
+}

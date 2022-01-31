@@ -198,7 +198,7 @@ void UDPListener::process_data()
 {
 	while (_socket.has_message())
 	{
-		auto received = _socket.recv_udp_bytes();
+		auto received = _socket.receive_udp_bytes();
 
 		if (_messages.find(received.endpoint) == _messages.end())
 		{
