@@ -235,9 +235,7 @@ std::vector<char> PtopSocket::receive_bytes()
 
 bool PtopSocket::send_udp_bytes(udp_bytes bytes)
 {	
-	bool output = _protocol.send_bytes(_handle, bytes.endpoint, bytes.bytes);
-	throw_if_socket_error(-1, "Failed to send UDP Bytes to " + convert_to_readable(bytes.endpoint).to_string() + " with: " + get_last_error(), LINE_CONTEXT);
-	return output;
+	return _protocol.send_bytes(_handle, bytes.endpoint, bytes.bytes);
 }
 
 udp_bytes PtopSocket::receive_udp_bytes()
