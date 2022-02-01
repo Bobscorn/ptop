@@ -21,7 +21,8 @@ struct raw_name_data
 
 	sockaddr name;
 	socklen_t name_len;
-
+	
+	bool initialized = false;
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
 	const sockaddr_in& ipv4_addr() const { return *(sockaddr_in*)&name; }
 

@@ -24,6 +24,6 @@ public:
     bool is_udp() const;
 
     bool send_bytes(SOCKET handle, raw_name_data endpoint, std::vector<char> bytes);
-    std::vector<char> receive_bytes(SOCKET handle, raw_name_data expected_endpoint);
+    std::vector<char> receive_bytes(SOCKET handle, raw_name_data& expected_endpoint);
     bool has_died(SOCKET handle, bool has_message);
 };

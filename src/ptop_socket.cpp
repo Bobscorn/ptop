@@ -238,16 +238,11 @@ bool PtopSocket::send_udp_bytes(udp_bytes bytes)
 	return _protocol.send_bytes(_handle, bytes.endpoint, bytes.bytes);
 }
 
-udp_bytes PtopSocket::receive_udp_bytes()
-{
-	udp_bytes bytes;
-	bytes.endpoint.name_len = sizeof(bytes.endpoint);
-	bytes.bytes = std::vector<char>(500, (char)0, std::allocator<char>());
-
-	int n = recvfrom(_handle, bytes.bytes.data(), (int)bytes.bytes.size(), 0, &bytes.endpoint.name, &bytes.endpoint.name_len);
-
-	throw_if_socket_error(n, "Failed to receive UDP bytes (" + _name + ") with: " + get_last_error(), LINE_CONTEXT);
-
-	bytes.bytes.resize(n);
-	return bytes;
+udp_bytes PtopSocket::receive_udp_bytes(){
+	raw_name_data new_name;
+	auto result = _protocol.receive_bytes(_handle, new_name);
+	udp_bytes output = udp_bytes{
+		result, new_name
+	};
+	return output;
 }
