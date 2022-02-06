@@ -8,6 +8,7 @@
 #include "protocol.h"
 #include "interfaces.h"
 #include "platform.h"
+#include "filetransfer.h"
 
 void client_loop(std::string server_address_pair, Protocol input_protocol);
 
@@ -18,6 +19,7 @@ class client_init_kit {
     EXECUTION_STATUS status;
     ::Protocol protocol;
     bool do_delay = false;
+
 
     std::unique_ptr<IDataSocketWrapper>& get_server_socket();
     void set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input);
@@ -37,6 +39,9 @@ class client_peer_kit {
     readable_ip_info public_info;
     readable_ip_info private_info;
     raw_name_data old_privatename;
+
+    std::unique_ptr<FileSender> file_sender;
+    std::unique_ptr<FileReceiver> file_receiver;
 
     std::chrono::system_clock::time_point peer_connect_start_time;
     std::unique_ptr<IDataSocketWrapper> peer_socket;

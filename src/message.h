@@ -30,6 +30,8 @@ enum class MESSAGE_TYPE
 	UDP_SYN_ACK,
 	UDP_ACK,
 	STREAM_CHUNK
+	MISSING_CHUNK,
+	PEER_FILE_END
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
@@ -44,12 +46,60 @@ struct Message
 
 	inline bool operator==(const Message& other) const { return Type == other.Type && Length == other.Length && Data == other.Data; }
 
+	template<class T>
+	T read_type(int& read_index) const;
+
+	template<>
+	std::string read_type<std::string>(int& read_index) const
+	{
+		int size = sizeof(size_t);
+		if (read_index + size > Data.size())
+			throw std::runtime_error("Not enough data to read string length");
+
+		size_t len = read_type<size_t>(read_index);
+		if (read_index + len * sizeof(char) > Data.size())
+			throw std::runtime_error("Not enough data to read string characters");
+
+		read_index += (int)len;
+		return std::string(Data.data() + read_index - len, Data.data() + read_index);
+	}
+
+	template<class T, std::enable_if_t<std::is_pod<T>::value>>
+	T read_type<T>(int& read_index) const
+	{
+		int size = sizeof(T);
+		if (read_index + size > Data.size())
+			throw std::runtime_error("Not enough data to read");
+
+		T* ptr = (T*)&(Data[read_index]);
+		read_index += size;
+		return *ptr;
+	}
+
 	static const Message null_message;
 };
 
-
 inline bool message_is_type(const MESSAGE_TYPE& type, const Message& m) { return m.Type == type; }
 std::vector<Message> data_to_messages(const std::vector<char>& data);
+
+template<class T>
+struct to_message;
+
+template<>
+struct to_message<MESSAGE_TYPE>
+{
+	Message operator()(const MESSAGE_TYPE& t)
+	{
+		Message mess;
+		mess.Data = std::vector<char>();
+		mess.Length = 0;
+		mess.Type = t;
+		return mess;
+	}
+};
+
+template<class T>
+struct from_message;
 
 inline std::string mt_to_string(const MESSAGE_TYPE& t)
 {
@@ -116,6 +166,7 @@ struct copy_to_message_struct
 template<class T, class... Types>
 struct copy_to_message_template
 {
+	template<typename = std::enable_if_t<std::is_pod<T>::value>>
 	constexpr static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
 	{
 		static_assert(std::is_pod<T>::value || std::is_same<std::vector<char>, T>::value, "Can only use POD or std::vector<char> in create_message");
@@ -140,6 +191,21 @@ struct copy_to_message_template<std::vector<char>, Types...>
 {
 	static void copy(std::vector<char>& dst, const std::vector<char>& src, Types... other_args)
 	{
+		dst.insert(dst.end(), src.begin(), src.end());
+		copy_to_message_struct::copy_to_message(dst, other_args...);
+	}
+};
+
+template<class... Types>
+struct copy_to_message_template<std::string, Types...>
+{
+	static void copy(std::vector<char>& dst, const std::string& src, Types... other_args)
+	{
+		size_t cur_size = dst.size();
+		size_t str_len = src.length();
+		dst.resize(cur_size + sizeof(size_t));
+		std::memcpy(&dst[cur_size], &str_len, sizeof(str_len));
+		dst.reserve(dst.size() + str_len);
 		dst.insert(dst.end(), src.begin(), src.end());
 		copy_to_message_struct::copy_to_message(dst, other_args...);
 	}

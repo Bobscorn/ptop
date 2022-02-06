@@ -51,6 +51,13 @@ class IDataSocketWrapper : virtual public ISocketWrapper
 
 	virtual bool send_data(const Message& message) = 0;
 
+	template<class T, class to_messager = to_message<T>>
+	bool send_message(const T& t)
+	{
+		to_messager a;
+		return this->send_data(a(t));
+	}
+
 	inline size_t bytes_seen() { return _seen_data; }
 	inline size_t bytes_sent() { return _sent_bytes; }
 };

@@ -180,7 +180,7 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
     }
 }
 
-EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer)
+EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer, client_peer_kit& peer_kit)
 {  
     const char* data = mess.Data.data();
     auto data_len = mess.Length;
@@ -203,13 +203,57 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         }
         case MESSAGE_TYPE::PEER_FILE:
         {
-            std::cout << "Received file from peer" << std::endl;
-            auto receiver = FileTransfer::BeginReception(message);
+            std::cout << "Receiving new file from peer" << std::endl;
+            if (peer_kit.file_receiver)
+                std::cerr << "We're already receiving a file from the peer! There's currently no way of distinguishing between two different transfers!" << std::endl;
+
+            peer_kit.file_receiver = FileTransfer::BeginReception(mess);
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
         case MESSAGE_TYPE::STREAM_CHUNK:
+        {
+            if (!peer_kit.file_receiver)
+            {
+                std::cerr << "Receiving the chunk of a file we don't have the header for!" << std::endl;
+                std::cerr << "Lets ignore this and hope we'll get the header later, and request the chunks we missed" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            peer_kit.file_receiver->onChunk(mess);
+
             return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::PEER_FILE_END:
+        {
+            if (!peer_kit.file_receiver)
+            {
+                std::cerr << "Receiving file end when we don't have a file header!" << std::endl;
+                std::cerr << "Truly there'll be no recovering from this .-. guess we'll die?" << std::endl;
+                std::cerr << "No Instead we'll just ignore this and hope the next time will work" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            peer_kit.file_receiver->onFileEnd(mess);
+
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::MISSING_CHUNK:
+        {
+            if (!peer_kit.file_sender)
+            {
+                std::cerr << "Our peer is reporting a missing chunk when we're not actively sending a file!" << std::endl;
+                std::cerr << "Perhaps we assumed success too early?" << std::endl;
+                std::cerr << "Anyway, ignoring that" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            peer_kit.file_sender->onMissingChunk(mess);
+
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
         
         case MESSAGE_TYPE::NONE:
         default:
@@ -398,24 +442,24 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     auto message = connection_socket->receive_message();
                     init_kit.status = process_server_data(init_kit, peer_kit, message);
                 }
-            }   
                 break;
+            }   
 
             case EXECUTION_STATUS::HOLE_PUNCH:
             {
                 init_kit.status = hole_punch(init_kit, peer_kit);
-            }
                 break;
+            }
                 
             case EXECUTION_STATUS::PEER_CONNECTED:
             {
                 if (peer_kit.peer_socket->has_message())
                 {
                     auto message = peer_kit.peer_socket->receive_message();
-                    init_kit.status = process_peer_data(message, peer_kit.peer_socket);    
+                    init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
-            }
                 break;
+            }
         }
         
         if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
