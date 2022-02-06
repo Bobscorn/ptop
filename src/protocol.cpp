@@ -86,11 +86,11 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 		sockaddr addr;
 		socklen_t addr_len = sizeof(sockaddr_in);
 		std::vector<char> data(500, (char)0, std::allocator<char>());
-		int result = ::recvfrom(handle, data.data(), (int)data.size(), 0, &expected_endpoint.name, &expected_endpoint.name_len);
+		int result = ::recvfrom(handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
 		throw_if_socket_error(result, "Failed to receive UDP bytes with: " + get_last_error(), LINE_CONTEXT);
 
 		raw_name_data incoming{ addr, addr_len };
-		if (incoming != expected_endpoint && expected_endpoint.initialized == false)
+		if (incoming != expected_endpoint && expected_endpoint.initialized == true)
 		{
 			auto readable = convert_to_readable(incoming);
 			auto message = "Receiving UDP data from an undesired endpoint (" + readable.ip_address + ":" + readable.port + ")";
@@ -101,6 +101,8 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 			auto message = "Receiving (UDP) data failed: " + get_last_error();
 			throw_new_exception(message, LINE_CONTEXT);
 		}
+		if (expected_endpoint.initialized == false)
+			std::memcpy(&expected_endpoint, &incoming, sizeof(raw_name_data));
 		expected_endpoint.initialized = true;
 		data.resize(result);
 		return data;
