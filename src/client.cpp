@@ -237,6 +237,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             }
 
             peer_kit.file_receiver->onFileEnd(mess);
+            peer_kit.file_receiver = nullptr;
 
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
@@ -349,9 +350,14 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
             }
         }
         
-        if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
-            init_kit.status = EXECUTION_STATUS::COMPLETE;
-        
+        if(peer_kit.file_receiver != nullptr) {
+            if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
+                init_kit.status = EXECUTION_STATUS::COMPLETE;
+        }        
+
+        else {
+            std::cout << "cannot enter commands while file transfer in progress." << std::endl;
+        }
         std::this_thread::sleep_for(100ms);
     }
 }
