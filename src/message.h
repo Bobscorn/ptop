@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <cstring>
+#include <stdexcept>
 
 
 
@@ -47,7 +48,16 @@ struct Message
 	inline bool operator==(const Message& other) const { return Type == other.Type && Length == other.Length && Data == other.Data; }
 
 	template<class T>
-	T read_type(int& read_index) const;
+	T read_type(int& read_index) const
+	{
+		int size = sizeof(T);
+		if (read_index + size > Data.size())
+			throw std::runtime_error("Not enough data to read");
+
+		T* ptr = (T*)&(Data[read_index]);
+		read_index += size;
+		return *ptr;
+	}
 
 	template<>
 	std::string read_type<std::string>(int& read_index) const
@@ -62,18 +72,6 @@ struct Message
 
 		read_index += (int)len;
 		return std::string(Data.data() + read_index - len, Data.data() + read_index);
-	}
-
-	template<class T, std::enable_if_t<std::is_pod<T>::value>>
-	T read_type<T>(int& read_index) const
-	{
-		int size = sizeof(T);
-		if (read_index + size > Data.size())
-			throw std::runtime_error("Not enough data to read");
-
-		T* ptr = (T*)&(Data[read_index]);
-		read_index += size;
-		return *ptr;
 	}
 
 	static const Message null_message;

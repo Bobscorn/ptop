@@ -1,5 +1,8 @@
 #include "filetransfer.h"
 
+#include <cstdint>
+#include <array>
+
 StreamChunk FileSender::IterateNextChunk()
 {
 	return StreamChunk();
@@ -18,10 +21,9 @@ StreamChunk FileSender::onMissingChunk(const Message& mess)
 	if (missing_id < 0 || missing_id >= _header.num_chunks)
 	{
 		std::cerr << "Received MISSING_CHUNK message with invalid chunk id" << std::endl;
-		return;
+		
 	}
-
-
+	return StreamChunk{};// ....for now
 }
 
 void FileSender::beginSending(PtopSocket& socket)
@@ -92,7 +94,28 @@ std::unique_ptr<FileReceiver> FileTransfer::BeginReception(const Message& messag
 	return std::unique_ptr<FileReceiver>();
 }
 
+constexpr uint32_t crc_polynomial = 0x34135u;
+
+constexpr auto crc_table = [] {
+	auto width = sizeof(uint32_t) * 8;
+	auto topbit = 1u << ((uint32_t)(width - 1));
+    std::array<uint32_t, 256> tbl{};
+    for (int dividend = 0; dividend < 256; ++dividend) {
+        uint32_t remainder = dividend << (width - 8);
+        for (uint8_t bit = 8; bit > 0; --bit) {
+            if (remainder & topbit) {
+                remainder = (remainder << 1) ^ crc_polynomial;
+            } else {
+                remainder = (remainder << 1);
+            }
+        }
+        tbl[dividend] = remainder;
+    }
+    return tbl;
+}();
+
 uint64_t hash_data(const std::vector<char>& data)
 {
 	// well.... crap
+	return 0;
 }

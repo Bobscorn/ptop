@@ -107,7 +107,7 @@ struct from_message<StreamChunk>
         int read_index = 0;
         StreamChunk chunk;
         chunk.chunk_id = mess.read_type<decltype(chunk.chunk_id)>(read_index);
-        chunk.chunk_hash = mess.read_type<std::string>(read_index);
+        chunk.chunk_hash = mess.read_type<uint64_t>(read_index);
         chunk.data_length = mess.read_type<decltype(chunk.data_length)>(read_index);
         chunk.data = std::vector<char>(mess.Data.begin() + read_index, mess.Data.begin() + read_index + chunk.data_length);
         return chunk;
