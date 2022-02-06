@@ -23,9 +23,11 @@
 #endif
 
 #include <iostream>
+#include <chrono>
 
+using namespace std::chrono;
 
-PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
+PtopSocket::PtopSocket(Protocol proto, std::string name) : _protocol(proto), _name(std::move(name))
 {
 	int domain = _protocol.get_ai_family();
 	int type = _protocol.get_ai_socktype();
@@ -36,7 +38,7 @@ PtopSocket::PtopSocket(protocol proto) : _protocol(proto)
 PtopSocket& PtopSocket::bind_socket(const raw_name_data& name, std::string error_message)
 {
 	int result = bind(_handle, &name.name, name.name_len);
-	throw_if_socket_error(result, error_message, LINE_CONTEXT);
+	throw_if_socket_error(result, error_message + " " + get_last_error(), LINE_CONTEXT);
 	return *this;
 }
 
@@ -44,11 +46,15 @@ PtopSocket& PtopSocket::connect(sockaddr* addr, socklen_t len)
 {
 	if (_protocol.is_tcp())
 	{
+		// cheeky little hack
+		set_socket_option(SO_KEEPALIVE, (int)1);
 		int n = ::connect(_handle, addr, len);
 		throw_if_socket_error(n, "Failed to connect " + get_last_error(), LINE_CONTEXT);
 	}
 	else if (_protocol.is_udp())
 	{
+		int n = ::connect(_handle, addr, len);
+		throw_if_socket_error(n, "Failed to connect " + get_last_error(), LINE_CONTEXT);
 		_endpoint = raw_name_data(*addr, len);
 	}
 	return *this;
@@ -76,7 +82,9 @@ PtopSocket PtopSocket::accept_data_socket()
 		{
 			throw_new_exception("Failed to accept incoming connection: " + get_last_error(), LINE_CONTEXT);
 		}
-		return PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+		auto new_sock = PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+		new_sock.set_socket_option(SO_KEEPALIVE, (int)1);
+		return new_sock;
 	}
 
 	catch(std::exception& e) {
@@ -92,14 +100,19 @@ bool PtopSocket::try_connect(sockaddr* addr, socklen_t len)
 
 void PtopSocket::listen(int max_conns)
 {
-	auto n = ::listen(_handle, max_conns);
-	throw_if_socket_error(n, "Failed to listen on socket. " + get_last_error(), LINE_CONTEXT);
+	if (is_tcp())
+	{
+		auto n = ::listen(_handle, max_conns);
+		throw_if_socket_error(n, "Failed to listen on socket. " + get_last_error(), LINE_CONTEXT);
+	}
 }
 
 bool PtopSocket::has_connection() const
 {
 	try
 	{
+		if (is_udp())
+			return false;
 		struct timeval timeout;
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 0;
@@ -175,41 +188,12 @@ bool PtopSocket::select_for(::select_for epic_for) const
 
 bool PtopSocket::has_message() const
 {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-
-	fd_set poll_read_set;
-	FD_ZERO(&poll_read_set);
-	FD_SET(_handle, &poll_read_set);
-
-	int n = select((int)_handle + 1, &poll_read_set, 0, 0, &timeout);
-	throw_if_socket_error(n, "Failed to poll linux socket readability " + get_last_error(), LINE_CONTEXT);
-
-	return n > 0;
+	return select_for(select_for::READ);
 }
 
-bool PtopSocket::has_died() const
+bool PtopSocket::has_died()
 {
-	if (is_tcp())
-	{
-		if (has_message())
-		{
-			std::vector<char> recv_data{ 100, '0', std::allocator<char>() };
-			int n = recv(_handle, recv_data.data(), (int)recv_data.size(), MSG_PEEK);
-			if (n == SOCKET_ERROR)
-			{
-				std::cerr << "[Data] Failed to peek data from linux socket (trying to determine if closed): " << get_last_error() << std::endl;
-				return true;
-			}
-			return n == 0;
-		}
-		return false;
-	}
-	if (is_udp())
-		return false;
-	throw_new_exception("Invalid protocol", LINE_CONTEXT);
-	return true;
+	return _protocol.has_died(_handle, has_message());
 }
 
 raw_name_data PtopSocket::get_peer_raw() const
@@ -240,62 +224,24 @@ raw_name_data PtopSocket::get_name_raw() const
 
 bool PtopSocket::send_bytes(std::vector<char> bytes)
 {
-	if (is_tcp())
-	{
-		int result = send(_handle, bytes.data(), (int)bytes.size(), 0);
-		if (result == SOCKET_ERROR)
-			return false;
-		return true;
-	}
-	else if (is_udp())
-	{
-		int result = sendto(_handle, bytes.data(), (int)bytes.size(), 0, &_endpoint.name, _endpoint.name_len);
-		if (result == SOCKET_ERROR)
-			return false;
-		return true;
-	}
-	else
-	{
-		throw_new_exception("Can not send data with an invalid protocol", LINE_CONTEXT);
-	}
+	return _protocol.send_bytes(_handle, _endpoint, bytes);
 }
 
-std::vector<char> PtopSocket::recv_bytes()
+std::vector<char> PtopSocket::receive_bytes()
 {
-	if (is_tcp())
-	{
-		std::vector<char> data(500, (char)0, std::allocator<char>());
-		int result = ::recv(_handle, data.data(), (int)data.size(), 0);
-		if (result == SOCKET_ERROR)
-		{
-			std::cout << "Receiving data failed" << std::endl;
-			return std::vector<char>();
-		}
-		data.resize(result);
-		return data;
-	}
-	if (is_udp())
-	{
-		while (true)
-		{
-			sockaddr addr;
-			socklen_t addr_len;
-			std::vector<char> data(500, (char)0, std::allocator<char>());
-			int result = ::recvfrom(_handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
-			raw_name_data incoming{ addr, addr_len };
-			
-			if (incoming != _endpoint)
-			{
-				auto readable = convert_to_readable(incoming);
-				std::cout << "Receiving UDP data from an undesired endpoint (" << readable << ")" << std::endl;
-				continue;
-			}
-			if (result == SOCKET_ERROR)
-			{
-				std::cerr << "Receiving (UDP) data failed: " << socket_error_to_string(result) << std::endl;
-				return std::vector<char>();
-			}
-		}
-	}
-	throw_new_exception("Invalid protocol", LINE_CONTEXT);
+	return _protocol.receive_bytes(_handle, _endpoint);
+}
+
+bool PtopSocket::send_udp_bytes(udp_bytes bytes)
+{	
+	return _protocol.send_bytes(_handle, bytes.endpoint, bytes.bytes);
+}
+
+udp_bytes PtopSocket::receive_udp_bytes(){
+	raw_name_data new_name;
+	auto result = _protocol.receive_bytes(_handle, new_name);
+	udp_bytes output = udp_bytes{
+		result, new_name
+	};
+	return output;
 }

@@ -15,14 +15,16 @@
 struct raw_name_data
 {
 	raw_name_data() = default;
-	raw_name_data(sockaddr addr) : name(addr), name_len(sizeof(addr)) {}
-	raw_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len) {}
-	raw_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)) {}
+	raw_name_data(sockaddr addr) : name(addr), name_len(sizeof(addr)), initialized(true) {};
+	raw_name_data(sockaddr addr, socklen_t len) : name(addr), name_len(len), initialized(true) {};
+	raw_name_data(sockaddr_in addr) : name(*(sockaddr*)&addr), name_len(sizeof(addr)), initialized(true) {};
 
 	sockaddr name;
 	socklen_t name_len;
-
+	
+	bool initialized = false;
 	sockaddr_in& ipv4_addr() { return *(sockaddr_in*)&name; }
+	const sockaddr_in& ipv4_addr() const { return *(sockaddr_in*)&name; }
 
 	inline bool operator==(const raw_name_data& other) const
 	{

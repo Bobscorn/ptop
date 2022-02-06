@@ -38,12 +38,34 @@ std::string linux_error(int err_code)
 
 Platform::Platform(PtopSocket&& socket) 
 	: _socket(std::move(socket))
-{ 
-	update_name_info();
+{
+	try_update_name_info();
 
 	if (_address == "Unassigned" || _address.empty() ||
 		_port == "Unassigned" || _port.empty()) {
 		throw_new_exception("failed to update name info", LINE_CONTEXT);
+	}
+}
+
+void Platform::try_update_name_info()
+{
+	try
+	{
+		update_name_info();
+	}
+	catch (const std::exception& e)
+	{
+	}
+}
+
+void Platform::try_update_endpoint_info()
+{
+	try
+	{
+		update_endpoint_info();
+	}
+	catch (const std::exception& e)
+	{
 	}
 }
 
@@ -58,6 +80,11 @@ void Platform::update_endpoint_info()
 {
 	try
 	{
+		if (_socket.is_tcp() && _socket.is_listen())
+		{
+			std::cout << "[Socket] Not updating endpoint as this socket " << get_identifier_str() << " is a listen socket" << std::endl;
+			return;
+		}
 		auto name = get_peername_readable();
 		_endpoint_address = name.ip_address;
 		_endpoint_port = name.port;
@@ -116,14 +143,14 @@ raw_name_data Platform::get_myname_raw() const
 	return _socket.get_name_raw();
 }
 
-PtopSocket listen_construct(std::string port, protocol input_proto)
+PtopSocket listen_construct(std::string port, Protocol input_proto, std::string name)
 {
-	std::cout << "[Listen] Create new Socket on port (with localhost): " << port << std::endl;
-	auto listen_socket = PtopSocket(input_proto);
+	std::cout << "[Listen] Creating new Socket on port (with localhost, named: " << name << "): " << port << std::endl;
+	auto listen_socket = PtopSocket(input_proto, name);
 
 	socklen_t cli_len;
 	if (listen_socket.is_invalid())
-		throw std::runtime_error(std::string("[Listen] Failed to create linux socket: ") + linux_error());
+		throw std::runtime_error(std::string("[Listen] ") + name + " Failed to create linux socket : " + linux_error());
 
 	listen_socket.set_socket_reuse();
 
@@ -135,19 +162,19 @@ PtopSocket listen_construct(std::string port, protocol input_proto)
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(portno);
 
-	std::cout << "Binding..." << std::endl;
+	std::cout << name << " Binding..." << std::endl;
 	listen_socket.bind_socket(raw_name_data{ *(sockaddr*)&serv_addr, sizeof(serv_addr) });
 
 	return listen_socket;
 }
 
-PlatformListener::PlatformListener(std::string port, protocol input_proto) : Platform(listen_construct(port, input_proto))
+PlatformListener::PlatformListener(std::string port, Protocol input_proto, std::string name) : Platform(listen_construct(port, input_proto, name))
 {
 }
 
 void PlatformListener::listen()
 {	
-	std::cout << "[Listen] Socket now Listening (" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
+	std::cout << "[Listen] Socket " << get_name() << " now Listening(" << get_my_ip() << ":" << get_my_port() << ")" << std::endl;
 	_socket.start_listening();
 }
 
@@ -158,7 +185,7 @@ bool PlatformListener::has_connection()
 
 std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection()
 {
-	std::cout << "[Listen] Socket Attempting to accept a connection" << std::endl;
+	std::cout << "[Listen] " << get_identifier_str() << " Attempting to accept a connection" << std::endl;
 
 	try {
 		auto tmp = _socket.accept_data_socket();
@@ -175,10 +202,11 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
 	try
 	{
-		std::cout << "[Data] Moving linux_reusable_nonblocking_connection_socket " << old->get_identifier_str() << " to a data_socket" << std::endl;
-		ReusableConnector& real_old = *dynamic_cast<ReusableConnector*>(old.get());
+		std::cout << "[Data] Moving INonBlockingConnector " << old->get_identifier_str() << " to a data_socket" << std::endl;
+		NonBlockingConnector& real_old = *dynamic_cast<NonBlockingConnector*>(old.get());
 		PtopSocket sup = real_old.release_socket();
 		sup.set_non_blocking(false);
+		sup.set_socket_no_reuse();
 		return sup;
 	}
 	catch (const std::exception& e)
@@ -190,7 +218,7 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 void PlatformAnalyser::process_socket_data()
 {
 	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
-	std::vector<char> recv_data = _socket.recv_bytes();
+	std::vector<char> recv_data = _socket.receive_bytes();
 	if (recv_data.size() > 0)
 	{
 		std::cout << "Received " << recv_data.size() << " bytes" << std::endl;
@@ -241,7 +269,7 @@ PlatformAnalyser::PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old)
 {
 	try
 	{
-		//update_endpoint_info();
+		try_update_endpoint_info();
 	}
 	catch (const std::exception& e)
 	{
@@ -258,9 +286,9 @@ PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket) : Platform(std::move(soc
 		throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
 }
 
-PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, protocol ip_proto)
+PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
 {
-	std::cout << "[Data] Creating a Linux Data Socket connecting to: " << peer_address << ":" << peer_port << std::endl;
+	std::cout << "[Data] Creating a Linux Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
 
 	struct addrinfo* result = NULL,
 		* ptr = NULL,
@@ -274,18 +302,19 @@ PtopSocket data_connect_construct(std::string peer_address, std::string peer_por
 	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
 
 	if (n == SOCKET_ERROR)
-		throw_new_exception("Failed to get address info for: " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
+		throw_new_exception("Failed to get address info for: (" + name + ") " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
 
-	auto conn_socket = PtopSocket(ip_proto);
+	auto conn_socket = PtopSocket(ip_proto, name);
+	conn_socket.set_socket_reuse();
 	conn_socket.connect(result->ai_addr, result->ai_addrlen);
 
 	return conn_socket;
 }
 
-PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, protocol proto) 
-: Platform(data_connect_construct(peer_address, peer_port, proto))
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol proto, std::string name) 
+: Platform(data_connect_construct(peer_address, peer_port, proto, name))
 {
-	update_endpoint_info();
+	try_update_endpoint_info();
 }
 
 Message PlatformAnalyser::receive_message()
@@ -299,7 +328,7 @@ Message PlatformAnalyser::receive_message()
 		return tmp;
 	}
 
-	throw_new_exception("Failed to parse incoming data", LINE_CONTEXT);
+	return Message::null_message;
 }
 
 bool PlatformAnalyser::has_message()
@@ -319,15 +348,15 @@ bool PlatformAnalyser::send_data(const Message& message)
 	return false;
 }
 
-PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
+PtopSocket reuse_listen_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	auto readable = convert_to_readable(data);
-	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket on: " << readable.ip_address << ":" << readable.port << std::endl;
+	std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket '" << name << "' on: " << readable.ip_address << ":" << readable.port << std::endl;
 
-	auto listen_socket = PtopSocket(proto);
+	auto listen_socket = PtopSocket(proto, name);
 
 	if (listen_socket.is_invalid())
-		throw std::runtime_error("[ListenReuseNoB] " + readable.ip_address + ":" + readable.port + " Failed to create reusable nonblocking listen socket: " + linux_error());
+		throw_new_exception("[ListenReuseNoB] (" + name + ") " + readable.ip_address + ":" + readable.port + " Failed to create reusable nonblocking listen socket: " + linux_error(), LINE_CONTEXT);
 
 	listen_socket.set_non_blocking(true);
 	listen_socket.set_socket_reuse();
@@ -337,36 +366,36 @@ PtopSocket reuse_listen_construct(raw_name_data data, protocol proto)
 	return listen_socket;
 }
 
-ReusableListener::ReusableListener(raw_name_data data, protocol proto) 
-: Platform(reuse_listen_construct(data, proto))
+NonBlockingListener::NonBlockingListener(raw_name_data data, Protocol proto, std::string name) 
+: Platform(reuse_listen_construct(data, proto, name))
 {
 	
 }
 
-void ReusableListener::listen()
+void NonBlockingListener::listen()
 {
-	std::cout << "[ListenReuseNoB] Now Listening on: " << get_my_ip() << ":" << get_my_port() << std::endl;
+	std::cout << "[ListenReuseNoB] " + get_identifier_str() + " Now Listening on  port: " << get_my_port() << std::endl;
 	_socket.listen(4);
 }
 
-bool ReusableListener::has_connection()
+bool NonBlockingListener::has_connection()
 {
 	return _socket.has_connection();
 }
 
-std::unique_ptr<IDataSocketWrapper> ReusableListener::accept_connection()
+std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 {
-	std::cout << "[ListenReuseNoB] Accepting Connection..." << std::endl;
+	std::cout << "[ListenReuseNoB] " + get_identifier_str() + " Accepting Connection..." << std::endl;
 
 	auto new_sock = _socket.accept_data_socket();
 	return std::make_unique<PlatformAnalyser>(std::move(new_sock));
 }
 
-PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
+PtopSocket reuse_connection_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	auto readable = convert_to_readable(data);
-	std::cout << "[DataReuseNoB] Creating Connection socket bound to: " << readable.ip_address << ":" << readable.port << std::endl;
-	auto conn_socket = PtopSocket(proto);
+	std::cout << "[DataReuseNoB] Creating Connection socket '" << name << "' bound to : " << readable.ip_address << ":" << readable.port << std::endl;
+	auto conn_socket = PtopSocket(proto, name);
 
 	if (conn_socket.is_invalid())
 		throw_new_exception("[DataReuseNoB] Failed to create nonblocking socket: " + linux_error(), LINE_CONTEXT);
@@ -374,14 +403,14 @@ PtopSocket reuse_connection_construct(raw_name_data data, protocol proto)
 	conn_socket.set_non_blocking(true);
 	conn_socket.set_socket_reuse();
 
-	conn_socket.bind_socket(data, "[DataReuseNoB] Failed to bind");
-	std::cout << "[DataReuseNoB] Successfully bound Data socket to: " << readable.ip_address << ":" << readable.port << std::endl;
+	conn_socket.bind_socket(data, std::string("[DataReuseNoB] (") + name + ") Failed to bind");
+	std::cout << "[DataReuseNoB] Successfully bound Data socket (" << name << ") to: " << readable.ip_address << ":" << readable.port << std::endl;
 
 	return conn_socket;
 }
 
-ReusableConnector::ReusableConnector(raw_name_data data, std::string ip_address, std::string port, protocol proto) 
-: Platform(reuse_connection_construct(data, proto))
+NonBlockingConnector::NonBlockingConnector(raw_name_data data, std::string ip_address, std::string port, Protocol proto, std::string name) 
+: Platform(reuse_connection_construct(data, proto, name))
 {
 	// if tcp?
 	try
@@ -394,11 +423,11 @@ ReusableConnector::ReusableConnector(raw_name_data data, std::string ip_address,
 	}
 }
 
-void ReusableConnector::connect(std::string ip_address, std::string port)
+void NonBlockingConnector::connect(std::string ip_address, std::string port)
 {
 	try
 	{
-		std::cout << "[DataReuseNoB] Trying to connect to: " << ip_address << ":" << port << std::endl;
+		std::cout << "[DataReuseNoB] (" << get_name() << ") Trying to connect to : " << ip_address << ":" << port << std::endl;
 		struct addrinfo* results, hints;
 		bzero(&hints, sizeof(hints));
 		hints.ai_family = AF_INET;
@@ -409,13 +438,14 @@ void ReusableConnector::connect(std::string ip_address, std::string port)
 
 		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
 		if (iResult != 0)
-			throw_new_exception("Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
+			throw_new_exception("Socket '" + get_name() + "' Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
 
 		if (results == nullptr)
-			throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "'", LINE_CONTEXT);
+			throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "' (socket '" + get_name() + "')", LINE_CONTEXT);
 
 		_socket.connect(results->ai_addr, results->ai_addrlen);
-		std::cout << "[DataReuseNoB] Successfully BEGUN Connection to: " << ip_address << ":" << port << std::endl;
+		std::cout << "[DataReuseNoB] (" << get_name() << ") Successfully BEGUN Connection to : " << ip_address << ":" << port << std::endl;
+		try_update_endpoint_info();
 	}
 	catch (const std::exception& e)
 	{
@@ -423,7 +453,7 @@ void ReusableConnector::connect(std::string ip_address, std::string port)
 	}
 }
 
-ConnectionStatus ReusableConnector::has_connected()
+ConnectionStatus NonBlockingConnector::has_connected()
 {
 	try
 	{
@@ -435,7 +465,7 @@ ConnectionStatus ReusableConnector::has_connected()
 			auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
 			if (sock_error != 0 && sock_error != EAGAIN && sock_error != EINPROGRESS)
 			{
-				std::cerr << LINE_CONTEXT << " [DataReuseNoB] Socket failed to connect with: " << linux_error(sock_error) << std::endl;
+				std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << linux_error(sock_error) << std::endl;
 				return ConnectionStatus::FAILED;
 			}
 
@@ -449,7 +479,7 @@ ConnectionStatus ReusableConnector::has_connected()
 
 		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
 
-		std::cerr << LINE_CONTEXT << " [DataReuseNoB] Socket failed to connect with: " << linux_error(sock_error) << std::endl;
+		std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << linux_error(sock_error) << std::endl;
 
 		return ConnectionStatus::FAILED;
 	}

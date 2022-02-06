@@ -12,6 +12,8 @@
 #include <shared_mutex>
 #include <functional>
 
+
+
 class server_init_kit;
 
 void server_loop();
@@ -33,9 +35,9 @@ class server_init_kit {
         std::vector<char> recv_data;
 
         EXECUTION_STATUS status;
-        protocol proto;
+        Protocol proto;
 
-        server_init_kit(protocol proto);
+        server_init_kit(Protocol proto);
         server_init_kit(server_init_kit&& other);
 
         server_init_kit& operator=(server_init_kit&& other);

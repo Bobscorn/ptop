@@ -13,12 +13,15 @@
 
 using namespace std::chrono;
 
-server_init_kit::server_init_kit(protocol ip_proto) : proto(ip_proto) {
+server_init_kit::server_init_kit(Protocol ip_proto) : proto(ip_proto) {
     clientA = nullptr;
     clientB = nullptr;
     cA = nullptr;
     cB = nullptr;
-    server_socket = std::make_unique<PlatformListener>(ServerListenPort, ip_proto);
+    if (ip_proto.is_udp())
+        server_socket = std::make_unique<UDPListener>(ServerListenPort, ip_proto, "Server-Listener");
+    else
+        server_socket = std::make_unique<PlatformListener>(ServerListenPort, ip_proto, "Server-Listener");
     server_socket->listen();
     recv_data = std::vector<char>();
     //dont need to initialize structs. it will default its params by itself
@@ -36,8 +39,8 @@ void hole_punch_clients(IDataSocketWrapper*& clientA, IDataSocketWrapper*& clien
 
     std::cout << "Hole punching clients: A(" << dataA.ip_address << ":" << dataA.port << "), B(" << dataB.ip_address << ":" << dataB.port << ")" << std::endl;
 
-    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER_AS_LEADER, dataB.to_bytes(), privB.to_bytes(), 69));
-    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_PEER, dataA.to_bytes(), privA.to_bytes(), 69));
+    clientA->send_data(create_message(MESSAGE_TYPE::CONNECT_TO_PEER, dataB.to_bytes(), privB.to_bytes()));
+    clientB->send_data(create_message(MESSAGE_TYPE::CONNECT_TO_PEER, dataA.to_bytes(), privA.to_bytes()));
 
     clientA = nullptr;
     clientB = nullptr;
@@ -221,8 +224,8 @@ void server_loop()
     std::thread user_input_thread{ input_thread_func, std::ref(user_input_queue) };
     user_input_thread.detach();
 
-    server_init_kit init_tcp{ protocol{"tcp"} };
-    server_init_kit init_udp{ protocol{"udp"} };
+    server_init_kit init_tcp{ Protocol{"tcp"} };
+    server_init_kit init_udp{ Protocol{"udp"} };
     std::cout << "Server is ready..." << std::endl;
 
     while (true)
