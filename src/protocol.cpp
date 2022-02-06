@@ -83,7 +83,7 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 		if (expected_endpoint.initialized == false){
 			expected_endpoint.name_len = sizeof(raw_name_data);
 		}
-		sockaddr addr;
+		auto addr = sockaddr{};
 		socklen_t addr_len = sizeof(sockaddr_in);
 		std::vector<char> data(500, (char)0, std::allocator<char>());
 		int result = ::recvfrom(handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
