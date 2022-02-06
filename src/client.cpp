@@ -204,9 +204,12 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         case MESSAGE_TYPE::PEER_FILE:
         {
             std::cout << "Received file from peer" << std::endl;
-            // TODO: actually read the file
+            auto receiver = FileTransfer::BeginReception(message);
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
+        
+        case MESSAGE_TYPE::STREAM_CHUNK:
+            return EXECUTION_STATUS::PEER_CONNECTED;
         
         case MESSAGE_TYPE::NONE:
         default:

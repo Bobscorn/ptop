@@ -29,6 +29,7 @@ enum class MESSAGE_TYPE
 	UDP_SYN,
 	UDP_SYN_ACK,
 	UDP_ACK,
+	STREAM_CHUNK
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;

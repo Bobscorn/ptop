@@ -41,8 +41,7 @@ int main(int argc, char** argv) {
 
     try
     {
-#if defined(WIN32) | defined(_WIN64)
-        // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order
+#if defined(WIN32) | defined(_WIN64) // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order        
         windows_internet wsa_wrapper(MAKEWORD(2, 2));
 #endif
 
@@ -69,22 +68,5 @@ int main(int argc, char** argv) {
         print_exception(e);
         return -1;
     }
-
     return 0;
-
-    // std::string raw_ip{};
-    // std::cin >> raw_ip;
-
-    // if (raw_ip == "") {
-    //     continue;
-    // }
-
-    // //TransmitFile(socket, file, 0, 0, NULL, NULL, TF_WRITE_BEHIND); //file should be opened with FILE_FLAG_SEQUENTIAL_SCAN option
-
-    // int last_error = WSAGetLastError();
-
-    // if (last_error != 0) {
-
-    // }
 }
-
