@@ -204,11 +204,20 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         }
         case MESSAGE_TYPE::PEER_FILE:
         {
-            std::cout << "Receiving new file from peer" << std::endl;
             if (peer_kit.file_receiver)
-                std::cerr << "We're already receiving a file from the peer! There's currently no way of distinguishing between two different transfers!" << std::endl;
+                std::cerr <<"Already receiving a file from the peer!" << std::endl;
 
-            peer_kit.file_receiver = FileTransfer::BeginReception(mess);
+            else {
+                std::cout << "Receiving new file from peer" << std::endl;
+                peer_kit.file_receiver = FileTransfer::BeginReception(mess);
+                peer->send_data(create_message(MESSAGE_TYPE::STREAM_ACKNOWLEDGED));
+            }            
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+        
+        case MESSAGE_TYPE::STREAM_ACKNOWLEDGED:
+        {
+            peer->send_data(create_message(MESSAGE_TYPE::STREAM_ACKNOWLEDGED));
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
@@ -217,12 +226,11 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             if (!peer_kit.file_receiver)
             {
                 std::cerr << "Receiving the chunk of a file we don't have the header for!" << std::endl;
-                std::cerr << "Lets ignore this and hope we'll get the header later, and request the chunks we missed" << std::endl;
-                return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
-            peer_kit.file_receiver->onChunk(mess);
-
+            else
+                peer_kit.file_receiver->onChunk(mess);
+     
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
