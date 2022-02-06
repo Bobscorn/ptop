@@ -41,7 +41,7 @@ void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk
 #define dumb_tmp max
 #undef max
 #endif
-	auto max_size = std::numeric_limits<std::streamsize>::max();
+	constexpr auto max_size = std::numeric_limits<std::streamsize>::max();
 #ifdef dumb_tmp
 #define max dumb_tmp
 #undef dumb_tmp
@@ -55,10 +55,13 @@ void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk
 		ifs.read(chunk.data.data(), CHUNK_SIZE);
 
 		last_read_count = ifs.gcount();
+		if (last_read_count == max_size)
+			break;
+
 		chunk.data_length = last_read_count;
 		chunk.data.resize(last_read_count);
 
-		chunk.chunk_hash = hash_data(chunk.data);
+		chunk.chunk_crc = crc_data(chunk.data);
 
 		chunks.push_back(chunk);
 	}
@@ -74,6 +77,10 @@ void FileReceiver::onFileEnd(const Message& message)
 
 FileReceiver::FileReceiver(const Message& message)
 {
+	from_message<FileHeader> from_msg;
+	FileHeader header = from_msg(message);
+
+	std::cout << "Receiving file: '" << header.filename << "." << header.extension << "' with " << header.num_chunks << " chunks" << std::endl;
 }
 
 void FileReceiver::checksum()
@@ -84,17 +91,17 @@ void FileReceiver::order_chunk()
 {
 }
 
-std::unique_ptr<FileSender> FileTransfer::BeginTransfer(FileHeader header, PtopSocket socket)
+std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, PtopSocket& socket)
 {
-	return std::unique_ptr<FileSender>();
+	return std::make_unique<FileSender>(header, socket);
 }
 
 std::unique_ptr<FileReceiver> FileTransfer::BeginReception(const Message& message)
 {
-	return std::unique_ptr<FileReceiver>();
+	return std::make_unique<FileReceiver>(message);
 }
 
-constexpr uint32_t crc_polynomial = 0x34135u;
+constexpr uint32_t crc_polynomial = 0xBA0DC66Bu; // stole this polynomial from like.... somewhere
 
 constexpr auto crc_table = [] {
 	auto width = sizeof(uint32_t) * 8;
@@ -114,8 +121,20 @@ constexpr auto crc_table = [] {
     return tbl;
 }();
 
-uint64_t hash_data(const std::vector<char>& data)
+// Supposedly some CRC implementations 'reflect' some if not all parts of this algorithm
+// Screw that
+// Calculates a Cyclic Redundancy Checksum value (CRC) of an arbitrary length of data
+// Utilizes the crc_table computed with the polynomial in crc_polynomial
+uint32_t crc_data(const std::vector<char>& data)
 {
-	// well.... crap
-	return 0;
+	uint32_t remainder = 0xFFFFFFFF;
+	size_t len = data.size();
+
+	auto iter = data.begin();
+	for (; len; --len, ++iter)
+	{
+		remainder = crc_table[((*iter) ^ (remainder)) & 0xff] ^ ((remainder) >> 8);
+	}
+
+	return ~remainder;
 }

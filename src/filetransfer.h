@@ -25,17 +25,19 @@
 // Number of bytes stored in a StreamChunk's data vector
 const int CHUNK_SIZE = 1000;
 
-uint64_t hash_data(const std::vector<char>& data);
+uint32_t crc_data(const std::vector<char>& data);
 
 struct FileHeader {
     std::string filename;
     std::string extension;
     int num_chunks;
+    int file_id;
 };
 
 struct StreamChunk {
+    int file_id;
     int chunk_id;
-    uint64_t chunk_hash;
+    uint64_t chunk_crc;
     int data_length;
     std::vector<char> data;
 };
@@ -49,7 +51,7 @@ class FileSender {
         StreamChunk onMissingChunk(const Message& mess);
 
     private:
-        FileSender(const FileHeader& header, Protocol protocol, PtopSocket& socket) : _header(header), _file(header.filename + "." + header.extension, std::ios::binary) { beginSending(socket); }
+        FileSender(const FileHeader& header, PtopSocket& socket) : _header(header), _file(header.filename + "." + header.extension, std::ios::binary) { beginSending(socket); }
         FileHeader _header;
         std::ifstream _file;
         std::vector<StreamChunk> _chunks;
@@ -77,7 +79,7 @@ class FileReceiver {
 
 class FileTransfer {
 public:
-    static std::unique_ptr<FileSender> BeginTransfer(FileHeader header, PtopSocket socket);
+    static std::unique_ptr<FileSender> BeginTransfer(const FileHeader& header, PtopSocket& socket);
     static std::unique_ptr<FileReceiver> BeginReception(const Message& message);
 };
 
@@ -86,7 +88,7 @@ struct to_message<StreamChunk>
 {
     Message operator()(const StreamChunk& val)
     {
-        return create_message(MESSAGE_TYPE::STREAM_CHUNK, val.chunk_id, val.chunk_hash, val.data_length, val.data);
+        return create_message(MESSAGE_TYPE::STREAM_CHUNK, val.chunk_id, val.chunk_crc, val.data_length, val.data);
     }
 };
 
@@ -107,7 +109,7 @@ struct from_message<StreamChunk>
         int read_index = 0;
         StreamChunk chunk;
         chunk.chunk_id = mess.read_type<decltype(chunk.chunk_id)>(read_index);
-        chunk.chunk_hash = mess.read_type<uint64_t>(read_index);
+        chunk.chunk_crc = mess.read_type<uint64_t>(read_index);
         chunk.data_length = mess.read_type<decltype(chunk.data_length)>(read_index);
         chunk.data = std::vector<char>(mess.Data.begin() + read_index, mess.Data.begin() + read_index + chunk.data_length);
         return chunk;
