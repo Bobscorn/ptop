@@ -543,3 +543,15 @@ std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
 
 	return new_conn;
 }
+
+bool PlatformAnalyser::send_data(const Message& message)
+{
+    std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
+    auto bytes = message.to_bytes();
+    if (_socket.send_bytes(bytes))
+    {
+        _sent_bytes += bytes.size();
+        return true;
+    }
+    return false;
+}

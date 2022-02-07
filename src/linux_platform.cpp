@@ -305,18 +305,6 @@ bool PlatformAnalyser::has_message()
 	return _socket.has_message();
 }
 
-bool PlatformAnalyser::send_data(const Message& message)
-{
-	std::cout << "Socket " << (*this).get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
-	auto bytes = message.to_bytes();
-	if (_socket.send_bytes(bytes))
-	{
-		_sent_bytes += bytes.size();
-		return true;
-	}
-	return false;
-}
-
 PtopSocket reuse_listen_construct(raw_name_data data, Protocol proto, std::string name)
 {
 	auto readable = convert_to_readable(data);

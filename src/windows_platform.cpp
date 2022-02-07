@@ -248,18 +248,6 @@ std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection() {
     return std::make_unique<PlatformAnalyser>(std::move(tmp));
 }
 
-bool PlatformAnalyser::send_data(const Message& message)
-{
-    std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
-    auto bytes = message.to_bytes();
-    if (_socket.send_bytes(bytes))
-    {
-        _sent_bytes += bytes.size();
-        return true;
-    }
-    return false;
-}
-
 PtopSocket windows_data_socket_steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 {
     std::cout << "[Data] Moving INonBlockingConnector " << old->get_identifier_str() << " to a PlatformAnalyzer" << std::endl;
