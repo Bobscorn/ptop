@@ -62,7 +62,8 @@ bool Commands::handleMessage(std::string input_message, std::unique_ptr<IDataSoc
 }
 
 bool Commands::handleFiles(std::string input_message) {
-    std::cout << "file sending not implemented" << std::endl;
+    std::cout << "starting file transfer" << std::endl;
+
     return false;
 }
 
@@ -80,7 +81,6 @@ bool Commands::handleDelay(client_init_kit& i_kit) {
 }
 
 bool Commands::handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit) {
-    std::cout << "Deburger:" << std::endl;
     std::cout << "Protocol: " << (i_kit.protocol.is_tcp() ? "TCP" : (i_kit.protocol.is_udp() ? "UDP" : "Unknown...")) << std::endl;
     std::cout << "Current State: ";
     switch (i_kit.status)
@@ -131,7 +131,7 @@ bool Commands::handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit) {
 void print_help()
 {
     auto space = "\t";
-    std::cout << "PTOP Peer v69.42 is running" << std::endl;
+    std::cout << "PTOP Peer v2 is running" << std::endl;
     std::cout << "Runtime commands:" << std::endl;
     std::cout << space << "file: [filename]" << std::endl;
     std::cout << space << space << "sends a file to your peer (not currently implemented)" << std::endl;
