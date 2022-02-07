@@ -15,6 +15,9 @@ enum class ConnectionStatus
 	FAILED = 2,
 };
 
+
+uint32_t crc_data(const std::vector<char>& data);
+
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
 // A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long
@@ -30,9 +33,11 @@ enum class MESSAGE_TYPE
 	UDP_SYN,
 	UDP_SYN_ACK,
 	UDP_ACK,
-	STREAM_CHUNK
 	MISSING_CHUNK,
-	PEER_FILE_END
+	PEER_FILE_END,
+	STREAM_ACKNOWLEDGED,
+	STREAM_CHUNK,
+	CHUNK_ERROR
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
@@ -80,6 +85,10 @@ struct Message
 inline bool message_is_type(const MESSAGE_TYPE& type, const Message& m) { return m.Type == type; }
 std::vector<Message> data_to_messages(const std::vector<char>& data);
 
+struct StreamMessage : Message {
+	//uint32_t chunk_crc;
+};
+
 template<class T>
 struct to_message;
 
@@ -98,6 +107,9 @@ struct to_message<MESSAGE_TYPE>
 
 template<class T>
 struct from_message;
+
+template<class T>
+struct from_message_with_crc;
 
 inline std::string mt_to_string(const MESSAGE_TYPE& t)
 {
@@ -124,34 +136,7 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 	}
 }
 
-template<class T, typename = std::enable_if_t<std::is_pod<T>::value>>
-Message create_message(MESSAGE_TYPE type, T other_data)
-{
-	MESSAGE_LENGTH_T length = sizeof(other_data);
-	Message mess;
-	mess.Type = type;
-	mess.Length = sizeof(other_data);
-	mess.Data = std::vector<char>((char*)&other_data, ((char*)&other_data) + sizeof(other_data));
-	return mess;
-}
-
-inline Message create_message(MESSAGE_TYPE type)
-{
-	Message data;
-	data.Type = type;
-	data.Length = 0;
-	data.Data = std::vector<char>();
-	return data;
-}
-
-inline Message create_message(MESSAGE_TYPE type, std::vector<char> data)
-{
-	Message mess;
-	mess.Type = type;
-	mess.Length = (MESSAGE_LENGTH_T)data.size();
-	mess.Data = std::move(data);
-	return mess;
-}
+StreamMessage create_streammessage(MESSAGE_TYPE input_type, std::vector<char> data);
 
 struct copy_to_message_struct
 {
@@ -165,13 +150,13 @@ template<class T, class... Types>
 struct copy_to_message_template
 {
 	template<typename = std::enable_if_t<std::is_pod<T>::value>>
-	constexpr static void copy(std::vector<char>& dst, const T& arg, Types... other_args)
+	constexpr static void copy(std::vector<char>& destination, const T& arg, Types... other_args)
 	{
 		static_assert(std::is_pod<T>::value || std::is_same<std::vector<char>, T>::value, "Can only use POD or std::vector<char> in create_message");
-		dst.resize(dst.size() + sizeof(T));
-		T* back = ((T*)(&dst.back() - sizeof(T) + 1));
+		destination.resize(destination.size() + sizeof(T));
+		T* back = ((T*)(&destination.back() - sizeof(T) + 1));
 		*back = arg;
-		copy_to_message_struct::copy_to_message(dst, other_args...);
+		copy_to_message_struct::copy_to_message(destination, other_args...);
 	}
 };
 
@@ -187,35 +172,35 @@ struct copy_to_message_template<std::vector<char>>
 template<class... Types>
 struct copy_to_message_template<std::vector<char>, Types...>
 {
-	static void copy(std::vector<char>& dst, const std::vector<char>& src, Types... other_args)
+	static void copy(std::vector<char>& destination, const std::vector<char>& src, Types... other_args)
 	{
-		dst.insert(dst.end(), src.begin(), src.end());
-		copy_to_message_struct::copy_to_message(dst, other_args...);
+		destination.insert(destination.end(), src.begin(), src.end());
+		copy_to_message_struct::copy_to_message(destination, other_args...);
 	}
 };
 
 template<class... Types>
 struct copy_to_message_template<std::string, Types...>
 {
-	static void copy(std::vector<char>& dst, const std::string& src, Types... other_args)
+	static void copy(std::vector<char>& destination, const std::string& src, Types... other_args)
 	{
-		size_t cur_size = dst.size();
+		size_t cur_size = destination.size();
 		size_t str_len = src.length();
-		dst.resize(cur_size + sizeof(size_t));
-		std::memcpy(&dst[cur_size], &str_len, sizeof(str_len));
-		dst.reserve(dst.size() + str_len);
-		dst.insert(dst.end(), src.begin(), src.end());
-		copy_to_message_struct::copy_to_message(dst, other_args...);
+		destination.resize(cur_size + sizeof(size_t));
+		std::memcpy(&destination[cur_size], &str_len, sizeof(str_len));
+		destination.reserve(destination.size() + str_len);
+		destination.insert(destination.end(), src.begin(), src.end());
+		copy_to_message_struct::copy_to_message(destination, other_args...);
 	}
 };
 
 template<class ...Types>
-inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst, Types ...args)
+inline void copy_to_message_struct::copy_to_message(std::vector<char>& destination, Types ...args)
 {
-	copy_to_message_template<Types...>::copy(dst, args...);
+	copy_to_message_template<Types...>::copy(destination, args...);
 }
 
-inline void copy_to_message_struct::copy_to_message(std::vector<char>& dst) {}
+inline void copy_to_message_struct::copy_to_message(std::vector<char>& destination) {}
 
 template<typename... Types>
 inline Message create_message(MESSAGE_TYPE type, Types... args)
@@ -224,19 +209,6 @@ inline Message create_message(MESSAGE_TYPE type, Types... args)
 	mess.Type = type;
 	mess.Data = std::vector<char>{};
 	copy_to_message_struct::copy_to_message(mess.Data, args...);
-	mess.Length = (MESSAGE_LENGTH_T)mess.Data.size();
-	return mess;
-}
-
-inline Message create_message(MESSAGE_TYPE type, std::string data)
-{
-	Message mess;
-	mess.Type = type;
-	size_t len = data.length();
-	mess.Data = std::vector<char>(sizeof(len), '0');
-	std::memcpy(mess.Data.data(), &len, sizeof(len));
-	mess.Data.reserve(sizeof(type) + sizeof(len) + data.length());
-	mess.Data.insert(mess.Data.end(), data.begin(), data.end());
 	mess.Length = (MESSAGE_LENGTH_T)mess.Data.size();
 	return mess;
 }

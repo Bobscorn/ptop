@@ -1,6 +1,8 @@
 #include "commands.h"
+
 #include "interfaces.h"
 #include "client.h"
+#include "filetransfer.h"
 
 #include <string.h>
 
@@ -9,28 +11,33 @@ Commands Commands::_singleton = Commands();
 bool Commands::commandSaidQuit(
     std::string input_message, 
     std::unique_ptr<IDataSocketWrapper>& peer_socket, 
-    client_init_kit& i_kit, 
-    client_peer_kit& peer_kit, 
+    client_init_kit& i_kit,
+    client_peer_kit& p_kit,
     std::unique_lock<std::shared_mutex>& take_message_lock) {
 
     auto msg_found = input_message.find(MESSAGE);
     auto file_found = input_message.find(FILE);
     auto delay_found = input_message.find(DELAY);
+    auto debug_found = input_message.find(DEBUG);
     auto help_found = input_message.find(HELP);
     auto quit_found = input_message.find(QUIT);
 
     if(msg_found != std::string::npos) {
         auto text = input_message.substr(msg_found + strlen(MESSAGE));
-        return handleMessage(text, peer_kit.peer_socket, i_kit);
+        return handleMessage(text, peer_socket, i_kit);
     }
 
     else if(file_found != std::string::npos) {
         auto text = input_message.substr(file_found + strlen(FILE));
-        return handleFiles(text);
+        return handleFiles(text, p_kit);
     }
 
     else if(delay_found != std::string::npos) {
         return handleDelay(i_kit);
+    }
+
+    else if (debug_found != std::string::npos) {
+        return handleDebug(i_kit, p_kit);
     }
 
     else if(help_found != std::string::npos) {
@@ -61,8 +68,34 @@ bool Commands::handleMessage(std::string input_message, std::unique_ptr<IDataSoc
     return false;
 }
 
-bool Commands::handleFiles(std::string input_message) {
-    std::cout << "starting file transfer" << std::endl;
+bool Commands::handleFiles(std::string input_message, client_peer_kit& peer_kit) {
+    std::cout << "Starting file transfer" << std::endl;
+
+    if (peer_kit.file_sender)
+    {
+        std::cout << "Existing file transfer exists!" << std::endl;
+        return false;
+    }
+
+    FileHeader header;
+
+    size_t last_dot = input_message.find_last_of(".");
+    if (last_dot == std::string::npos)
+    {
+        header.filename = input_message;
+        header.extension = "";
+    }
+    else
+    {
+        auto filename = input_message.substr(0, last_dot);
+        auto extension = input_message.substr(last_dot + 1);
+        header.filename = filename;
+        header.extension = extension;
+    }
+
+    peer_kit.file_sender = FileTransfer::BeginTransfer(header, peer_kit.peer_socket);
+    
+    std::cout << "Sending file with name: '" << header.filename << "' and extension '" << header.extension << "' (" << header.filename << "." << header.extension << ")" << std::endl;
 
     return false;
 }

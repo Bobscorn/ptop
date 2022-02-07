@@ -9,8 +9,8 @@ class Commands {
     bool Commands::commandSaidQuit(
         std::string input_message, 
         std::unique_ptr<IDataSocketWrapper>& peer_socket, 
-        client_init_kit& i_kit, 
-        client_peer_kit& peer_kit, 
+        client_init_kit& i_kit,
+        client_peer_kit& p_kit,
         std::unique_lock<std::shared_mutex>& take_message_lock);
     
     private:
@@ -24,7 +24,7 @@ class Commands {
     inline Commands() {};
     static Commands _singleton;
     bool handleMessage(std::string input_message, std::unique_ptr<IDataSocketWrapper>& peer_socket, client_init_kit& i_kit);
-    bool handleFiles(std::string input_message);
+    bool handleFiles(std::string input_message, client_peer_kit& peer_kit);
     bool handleDelay(client_init_kit& i_kit);
     bool handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit);
     bool handleHelp();

@@ -205,7 +205,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         case MESSAGE_TYPE::PEER_FILE:
         {
             if (peer_kit.file_receiver)
-                std::cerr <<"Already receiving a file from the peer!" << std::endl;
+                std::cerr << "Already receiving a file from the peer!" << std::endl;
 
             else {
                 std::cout << "Receiving new file from peer" << std::endl;
@@ -217,7 +217,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         
         case MESSAGE_TYPE::STREAM_ACKNOWLEDGED:
         {
-            peer->send_data(create_message(MESSAGE_TYPE::STREAM_ACKNOWLEDGED));
+            peer_kit.file_sender->sendFile(peer_kit.peer_socket);
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
@@ -229,7 +229,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             }
 
             else
-                peer_kit.file_receiver->onChunk(mess);
+                peer_kit.file_receiver->onChunk(mess, peer_kit.peer_socket);
      
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
@@ -239,8 +239,6 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             if (!peer_kit.file_receiver)
             {
                 std::cerr << "Receiving file end when we don't have a file header!" << std::endl;
-                std::cerr << "Truly there'll be no recovering from this .-. guess we'll die?" << std::endl;
-                std::cerr << "No Instead we'll just ignore this and hope the next time will work" << std::endl;
                 return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
@@ -250,17 +248,15 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
-        case MESSAGE_TYPE::MISSING_CHUNK:
+        case MESSAGE_TYPE::CHUNK_ERROR:
         {
             if (!peer_kit.file_sender)
             {
                 std::cerr << "Our peer is reporting a missing chunk when we're not actively sending a file!" << std::endl;
-                std::cerr << "Perhaps we assumed success too early?" << std::endl;
-                std::cerr << "Anyway, ignoring that" << std::endl;
                 return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
-            peer_kit.file_sender->onMissingChunk(mess);
+            peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
 
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
@@ -297,7 +293,7 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
         {
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
-            return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, peer_kit, take_message_lock);
+            return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, take_message_lock);
         }
         take_message_lock.unlock();
     }
