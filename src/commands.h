@@ -6,7 +6,7 @@
 class Commands {
     public:
     static inline Commands& get() { return _singleton; };
-    bool Commands::commandSaidQuit(
+    bool commandSaidQuit(
         std::string input_message, 
         std::unique_ptr<IDataSocketWrapper>& peer_socket, 
         client_init_kit& i_kit,
