@@ -293,6 +293,13 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
         {
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
+            
+            if(peer_kit.file_receiver != nullptr) { {
+                std::cout << "cannot enter commands while file transfer in progress." << std::endl;
+                take_message_lock.unlock();
+                return false;
+            }
+
             take_message_lock.unlock();
             return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, peer_kit, take_message_lock);
         }
@@ -355,14 +362,9 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
             }
         }
         
-        if(peer_kit.file_receiver != nullptr) {
-            if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
-                init_kit.status = EXECUTION_STATUS::COMPLETE;
-        }        
-
-        else {
-            std::cout << "cannot enter commands while file transfer in progress." << std::endl;
-        }
+        if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
+            init_kit.status = EXECUTION_STATUS::COMPLETE;
+        
         std::this_thread::sleep_for(100ms);
     }
 }
