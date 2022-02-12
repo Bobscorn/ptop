@@ -64,26 +64,27 @@ struct Message
 		return *ptr;
 	}
 
-	template<>
-	std::string read_type<std::string>(int& read_index) const
-	{
-		int size = sizeof(size_t);
-		if (read_index + size > Data.size())
-			throw std::runtime_error("Not enough data to read string length");
-
-		size_t len = read_type<size_t>(read_index);
-		if (read_index + len * sizeof(char) > Data.size())
-			throw std::runtime_error("Not enough data to read string characters");
-
-		read_index += (int)len;
-		return std::string(Data.data() + read_index - len, Data.data() + read_index);
-	}
+	
 
 	static const Message null_message;
 };
 
 inline bool message_is_type(const MESSAGE_TYPE& type, const Message& m) { return m.Type == type; }
 std::vector<Message> data_to_messages(const std::vector<char>& data);
+template<>
+inline std::string Message::read_type<std::string>(int& read_index) const
+{
+	int size = sizeof(size_t);
+	if (read_index + size > Data.size())
+		throw std::runtime_error("Not enough data to read string length");
+
+	size_t len = read_type<size_t>(read_index);
+	if (read_index + len * sizeof(char) > Data.size())
+		throw std::runtime_error("Not enough data to read string characters");
+
+	read_index += (int)len;
+	return std::string(Data.data() + read_index - len, Data.data() + read_index);
+}
 
 struct StreamMessage : Message {
 	//uint32_t chunk_crc;
