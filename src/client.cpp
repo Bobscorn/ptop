@@ -6,7 +6,7 @@
 #include "platform.h"
 #include "ip.h"
 #include "error.h"
-#include "Commands.h"
+#include "commands.h"
 
 #include <iostream>
 
