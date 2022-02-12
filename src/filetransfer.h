@@ -29,7 +29,7 @@ struct FileHeader {
     std::string filename;
     std::string extension;
     int num_chunks;
-    int file_id;
+    int file_id = 0;
 };
 
 struct StreamChunk {
@@ -88,9 +88,10 @@ struct to_message<StreamChunk>
 {
     Message operator()(const StreamChunk& val)
     {
-        std::vector<char> data{};
-        copy_to_message_struct::copy_to_message(data, val.chunk_id, val.data_length, val.data);
-        return create_streammessage(MESSAGE_TYPE::STREAM_CHUNK, data);
+        return create_message(MESSAGE_TYPE::STREAM_CHUNK, val.file_id, val.chunk_id, val.data_length, val.data);
+        // std::vector<char> data{};
+        // copy_to_message_struct::copy_to_message(data, val.chunk_id, val.data_length, val.data);
+        // return create_streammessage(MESSAGE_TYPE::STREAM_CHUNK, data);
     }
 };
 
@@ -110,6 +111,7 @@ struct from_message<StreamChunk>
     {
         int read_index = 0;
         StreamChunk chunk;
+        chunk.file_id = mess.read_type<decltype(chunk.file_id)>(read_index);
         chunk.chunk_id = mess.read_type<decltype(chunk.chunk_id)>(read_index);
         chunk.data_length = mess.read_type<decltype(chunk.data_length)>(read_index);
         chunk.data = std::vector<char>(mess.Data.begin() + read_index, mess.Data.begin() + read_index + chunk.data_length);

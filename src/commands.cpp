@@ -58,9 +58,8 @@ bool Commands::commandSaidQuit(
 bool Commands::handleMessage(std::string input_message, std::unique_ptr<IDataSocketWrapper>& peer_socket, client_init_kit& i_kit) {
     if (peer_socket)
     {
-        std::string send_message = input_message.substr(5);
-        std::cout << "Sending string of: " << send_message << std::endl;
-        peer_socket->send_data(create_message(MESSAGE_TYPE::PEER_MSG, send_message));
+        std::cout << "Sending string of: " << input_message << std::endl;
+        peer_socket->send_data(create_message(MESSAGE_TYPE::PEER_MSG, input_message));
     }
     else
         std::cout << "Can not send to peer, we have no peer connection" << std::endl;

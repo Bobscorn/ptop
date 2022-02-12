@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <array>
+#include <limits>
 
 const StreamChunk StreamChunk::empty = StreamChunk{ -1, -1, -1, std::vector<char>() };
 
@@ -32,7 +33,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 			return;
 		}
 		
-		socket->send_message(to_message<StreamChunk>()(chunk));
+		socket->send_message(chunk);
 	}
 }
 
@@ -62,8 +63,7 @@ void FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWr
 		std::cerr << "Received CHUNK_ERROR on chunk id: " << missing_id << std::endl;
 	}	
 	auto chunk = _chunks[missing_id];
-	auto message = to_message<StreamChunk>()(chunk);
-	socket->send_message(message);
+	socket->send_message(chunk);
 }
 
 void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk>& chunks)
@@ -110,21 +110,23 @@ FileReceiver::FileReceiver(const Message& message)
 
 void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	auto from_msg_wc = from_message_with_crc<StreamChunk>();
-	uint32_t incoming_crc;
-	auto chunk = from_msg_wc(message, incoming_crc);
+	// auto from_msg_wc = from_message_with_crc<StreamChunk>();
+	// uint32_t incoming_crc;
+	// auto chunk = from_msg_wc(message, incoming_crc);
 
-	uint32_t my_crc = 0;
-	{
-		auto crc_check_msg = to_message<StreamChunk>()(chunk);
-		my_crc = crc_data(crc_check_msg.Data);
-	}
+	// uint32_t my_crc = 0;
+	// {
+	// 	auto crc_check_msg = to_message<StreamChunk>()(chunk);
+	// 	my_crc = crc_data(crc_check_msg.Data);
+	// }
 
-	if (my_crc != incoming_crc)
-	{
-		socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
-		return;
-	}
+	// if (my_crc != incoming_crc)
+	// {
+	// 	socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
+	// 	return;
+	// }
+
+	auto chunk = from_message<StreamChunk>()(message);
 	
 	if (chunk.file_id != _header.file_id)
 		return;
@@ -172,10 +174,10 @@ void FileReceiver::onFileEnd(const Message& message)
 
 std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	return std::make_unique<FileSender>(header, socket);
+	return std::unique_ptr<FileSender>(new FileSender(header, socket));
 }
 
 std::unique_ptr<FileReceiver> FileTransfer::BeginReception(const Message& message)
 {
-	return std::make_unique<FileReceiver>(message);
+	return std::unique_ptr<FileReceiver>(new FileReceiver(message));
 }

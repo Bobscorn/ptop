@@ -293,7 +293,8 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
         {
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
-            return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, take_message_lock);
+            take_message_lock.unlock();
+            return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, peer_kit, take_message_lock);
         }
         take_message_lock.unlock();
     }

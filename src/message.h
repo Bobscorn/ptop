@@ -16,7 +16,7 @@ enum class ConnectionStatus
 };
 
 
-uint32_t crc_data(const std::vector<char>& data);
+//uint32_t crc_data(const std::vector<char>& data);
 
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
