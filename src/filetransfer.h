@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <chrono>
 
 /// Messages:
 /// MESSAGE_TYPE::PEER_FILE:
@@ -23,7 +24,11 @@
 /// Contains nothing, sent once a file has been fully sent
 
 // Number of bytes stored in a StreamChunk's data vector
-const int CHUNK_SIZE = 1000;
+constexpr int CHUNK_SIZE = 500000;
+constexpr int KILOBYTE = 1024;
+
+using namespace std::chrono;
+constexpr std::chrono::seconds LAST_CHUNK_TIME = 5s;
 
 struct FileHeader {
     std::string filename;
@@ -35,7 +40,7 @@ struct FileHeader {
 struct StreamChunk {
     int file_id;
     int chunk_id;
-    int data_length;
+    int data_length;    
     std::vector<char> data;
 
     bool operator==(const StreamChunk& other) const;
@@ -68,13 +73,17 @@ class FileReceiver {
     public:
         void onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket);
         void onFileEnd(const Message& message);
+        bool isWriteTime();
 
     private:
+
         FileReceiver(const Message& message);
+
+        void write_to_file();
 
         FileHeader _header;
         std::vector<StreamChunk> _chunks;
-
+        std::chrono::system_clock::time_point _deadmanswitch;
 };
 
 class FileTransfer {
@@ -143,8 +152,8 @@ struct from_message<FileHeader>
     {
         int read_index = 0;
         FileHeader header;
-        header.extension = mess.read_type<std::string>(read_index);
         header.filename = mess.read_type<std::string>(read_index);
+        header.extension = mess.read_type<std::string>(read_index);
         header.num_chunks = mess.read_type<decltype(header.num_chunks)>(read_index);
         return header;
     }

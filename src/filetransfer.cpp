@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <array>
 #include <limits>
+#include <thread>
+#include <chrono>
 
 const StreamChunk StreamChunk::empty = StreamChunk{ -1, -1, -1, std::vector<char>() };
 
@@ -30,11 +32,13 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		
 		if(chunk == StreamChunk::empty) {
 			sending = false;
-			return;
+			break;
 		}
 		
 		socket->send_message(chunk);
 	}
+	
+	socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END));
 }
 
 const StreamChunk& FileSender::IterateNextChunk()
@@ -104,6 +108,8 @@ FileReceiver::FileReceiver(const Message& message)
 	_header = header;
 
 	std::cout << "Receiving file: '" << header.filename << "." << header.extension << "' with " << header.num_chunks << " chunks" << std::endl;
+	int file_size = header.num_chunks * CHUNK_SIZE / KILOBYTE;
+	std::cout << "file size: " << file_size << "KB" << std::endl;
 
 	_chunks.resize(_header.num_chunks, StreamChunk::empty);
 }
@@ -125,12 +131,11 @@ void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 	// 	socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
 	// 	return;
 	// }
+	
 
 	auto chunk = from_message<StreamChunk>()(message);
+	std::cout << "received chunk, chunk id: " << chunk.chunk_id << std::endl;
 	
-	if (chunk.file_id != _header.file_id)
-		return;
-
 	auto index = chunk.chunk_id;
 	if (index < 0 || index >= _chunks.size())
 		return;
@@ -142,6 +147,25 @@ void FileReceiver::onFileEnd(const Message& message)
 {
 	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "' " << std::endl;
 
+	_deadmanswitch = std::chrono::system_clock::now();
+
+	using namespace std::chrono;
+	std::this_thread::sleep_for(5s);
+}
+
+bool FileReceiver::isWriteTime() //...nice
+{
+	auto new_now = std::chrono::system_clock::now();
+
+	if (new_now - _deadmanswitch > LAST_CHUNK_TIME)
+	{
+		write_to_file();
+		return true;
+	}
+	return false;
+}
+
+void FileReceiver::write_to_file() {
 	bool file_good = true;
 	for (int i = 0; i < _chunks.size() && file_good; ++i)
 	{
