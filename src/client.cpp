@@ -294,7 +294,7 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
             
-            if(peer_kit.file_receiver != nullptr) { {
+            if(peer_kit.file_receiver != nullptr) {
                 std::cout << "cannot enter commands while file transfer in progress." << std::endl;
                 take_message_lock.unlock();
                 return false;
