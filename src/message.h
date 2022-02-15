@@ -26,6 +26,9 @@ enum class MESSAGE_TYPE
 	CONNECT_TO_PEER,
 	PEER_MSG,
 	PEER_FILE,
+	UDP_SYN,
+	UDP_SYN_ACK,
+	UDP_ACK,
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
@@ -42,6 +45,10 @@ struct Message
 
 	static const Message null_message;
 };
+
+
+inline bool message_is_type(const MESSAGE_TYPE& type, const Message& m) { return m.Type == type; }
+std::vector<Message> data_to_messages(const std::vector<char>& data);
 
 inline std::string mt_to_string(const MESSAGE_TYPE& t)
 {

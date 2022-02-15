@@ -6,6 +6,7 @@
 
 #include "ptop_socket.h"
 #include "interfaces.h"
+#include "time.h"
 
 
 #ifdef WIN32
@@ -13,7 +14,28 @@
 #pragma warning(disable : 4250)
 #endif
 
+using namespace std::chrono_literals;
+
 readable_ip_info convert_to_readable(const raw_name_data&);
+
+struct UDPHandShakeStatus
+{
+	s_time handshake_completed_time;
+	s_time last_syn_send_time;
+	s_time last_ack_send_time;
+	s_time last_syn_receive_time;
+	s_time last_ack_receive_time;
+
+	inline constexpr bool has_sent_syn() const { return last_syn_send_time.time_since_epoch().count(); }
+	inline constexpr bool has_sent_ack() const { return last_ack_send_time.time_since_epoch().count(); }
+	inline constexpr bool has_received_syn() const { return last_syn_receive_time.time_since_epoch().count(); }
+	inline constexpr bool has_received_ack() const { return last_ack_receive_time.time_since_epoch().count(); }
+
+	static constexpr std::chrono::seconds RESEND_SYN_TIME = 1s;
+	static constexpr std::chrono::seconds TIMEOUT_HANDSHAKE_TIME = 15s;
+};
+
+bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket); // Returns successful handshake
 
 class Platform : public virtual ISocketWrapper {    
     protected:    
@@ -63,6 +85,7 @@ class PlatformListener : public Platform, public virtual IListenSocketWrapper {
 class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	std::queue<Message> _stored_messages;
 	void process_socket_data();
+	UDPHandShakeStatus _handshake_status;
 
 	public:
 	PlatformAnalyser(std::unique_ptr<INonBlockingConnector>&& old);
@@ -85,6 +108,8 @@ class NonBlockingListener : public Platform, public virtual INonBlockingListener
 };
 
 class NonBlockingConnector : public Platform, public virtual INonBlockingConnector {
+	UDPHandShakeStatus _handshake_status;
+
 	public:
 	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, Protocol input_protocol, std::string);
 
@@ -129,6 +154,7 @@ class UDPAcceptedConnector : public virtual IDataSocketWrapper
 
 	UDPListener* _listen;
 	raw_name_data _my_endpoint;
+	UDPHandShakeStatus _handshake_status;
 
 	friend class UDPListener;
 
@@ -161,11 +187,17 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper
 {
 	std::unordered_map<raw_name_data, std::queue<Message>> _messages;
 	std::unordered_map<raw_name_data, UDPAcceptedConnector*> _connectors;
-	std::vector<raw_name_data> _new_connections;
+	std::vector<UDPAcceptedConnector*> _handshook_connectors; // Handshook but not yet accepted via accept_connection()
+	std::vector<UDPAcceptedConnector*> _need_handshake_connectors; // Connections that have been handshook
 
 	friend class UDPAcceptedConnector;
+	typedef std::vector<UDPAcceptedConnector*>::iterator vec_it;
 
 	void process_data();
+	bool messages_contains(const std::vector<Message>& msgs, MESSAGE_TYPE type);
+	vec_it find_conn_by_endpoint(std::vector<UDPAcceptedConnector*>& msgs, const raw_name_data& endpoint);
+
+	void handle_handshaking(const std::vector<Message>& msgs, const raw_name_data& endpoint);
 
 	void remove_connector(raw_name_data endpoint, UDPAcceptedConnector* conn);
 
@@ -176,6 +208,7 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper
 	raw_name_data my_data();
 public:
 	UDPListener(std::string port, Protocol proto, std::string name);
+	~UDPListener();
 
 	inline void listen() override {}
 	bool has_connection() override;

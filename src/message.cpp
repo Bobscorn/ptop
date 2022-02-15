@@ -1,6 +1,9 @@
 #include "message.h"
+
 #include <iostream>
 #include <string>
+
+#include "loop.h"
 
 const Message Message::null_message = Message{ MESSAGE_TYPE::NONE, (MESSAGE_LENGTH_T)-1, std::vector<char>() };
 
@@ -12,4 +15,39 @@ std::vector<char> Message::to_bytes() const
 	for (int i = 0; i < Data.size(); ++i)
 		out_data[i + offset] = Data[i];
 	return out_data;
+}
+
+std::vector<Message> data_to_messages(const std::vector<char>& data)
+{
+    std::vector<Message> messages;
+    if (data.size() > 0)
+    {
+        int data_read = 0;
+
+        while ((data.size() - data_read) > 0)
+        {
+            MESSAGE_TYPE type;
+            MESSAGE_LENGTH_T length;
+            std::vector<char> msg_data;
+
+            if (!try_read_data(data.data(), data_read, data.size(), type))
+            {
+                break;
+            }
+            if (!try_read_data(data.data(), data_read, data.size(), length))
+            {
+                break;
+            }
+            if ((size_t)data_read + length > data.size())
+            {
+                break;
+            }
+            msg_data = std::vector<char>(data.data() + data_read, data.data() + data_read + length);
+            data_read += length;
+            auto new_message = Message{ type, length, std::move(msg_data) };
+            messages.push_back(new_message);
+        }
+    }
+
+    return messages;
 }

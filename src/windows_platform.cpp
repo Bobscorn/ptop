@@ -248,44 +248,6 @@ std::unique_ptr<IDataSocketWrapper> PlatformListener::accept_connection() {
     return std::make_unique<PlatformAnalyser>(std::move(tmp));
 }
 
-PtopSocket construct_windows_data_socket(std::string peer_address, std::string peer_port, Protocol input_protocol, std::string name) {
-    std::cout << "[Data] Creating a Windows Data Socket (" << name << ") connecting to : " << peer_address << " : " << peer_port << std::endl;
-    struct addrinfo* result = NULL,
-        *ptr = NULL,
-        hints;
-
-    ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = input_protocol.get_ai_family();
-    hints.ai_socktype = input_protocol.get_ai_socktype();
-    hints.ai_protocol = input_protocol.get_ai_protocol();
-
-    // Resolve the server address and port
-    int iResult = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
-
-    if (iResult != 0) {
-        std::cerr << "Failed to resolve server: " << iResult << std::endl;
-        throw std::exception((std::string("Socket " + name + " Failed to resolve peer address, error: ") + std::to_string(iResult)).c_str());
-    }
-
-    PtopSocket conn_socket = PtopSocket(input_protocol, name);
-
-    conn_socket.connect(result->ai_addr, (socklen_t)result->ai_addrlen);
-
-    return conn_socket;
-}
-
-PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol input_protocol, std::string name) : Platform(construct_windows_data_socket(peer_address, peer_port, input_protocol, name)) 
-{
-    try
-    {
-        try_update_endpoint_info();
-    }
-    catch (const std::exception& e)
-    {
-        throw_with_context(e, LINE_CONTEXT);
-    }
-}
-
 bool PlatformAnalyser::send_data(const Message& message)
 {
     std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
@@ -515,42 +477,6 @@ void NonBlockingConnector::connect(std::string ip_address, std::string port)
 	{
 		throw_with_context(e, LINE_CONTEXT);
 	}
-}
-
-ConnectionStatus NonBlockingConnector::has_connected()
-{
-    try
-    {
-        if (_socket.is_invalid())
-            return ConnectionStatus::FAILED;
-
-        if (_socket.select_for(select_for::WRITE))
-        {
-            auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
-            if (sock_error != 0 && sock_error != EAGAIN && sock_error != EINPROGRESS)
-            {
-                std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << get_win_error(sock_error) << std::endl;
-                return ConnectionStatus::FAILED;
-            }
-
-            update_endpoint_if_needed();
-            return ConnectionStatus::SUCCESS;
-        }
-
-
-        if (!_socket.select_for(select_for::EXCEPT))
-            return ConnectionStatus::PENDING;
-
-        auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
-
-        std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << get_win_error(sock_error) << std::endl;
-
-        return ConnectionStatus::FAILED;
-    }
-    catch (const std::exception& e)
-    {
-        throw_with_context(e, LINE_CONTEXT);
-    }
 }
 
 #endif
