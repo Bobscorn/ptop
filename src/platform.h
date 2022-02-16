@@ -31,8 +31,8 @@ struct UDPHandShakeStatus
 	inline constexpr bool has_received_syn() const { return last_syn_receive_time.time_since_epoch().count(); }
 	inline constexpr bool has_received_ack() const { return last_ack_receive_time.time_since_epoch().count(); }
 
-	static constexpr std::chrono::seconds RESEND_SYN_TIME = 1s;
-	static constexpr std::chrono::seconds TIMEOUT_HANDSHAKE_TIME = 15s;
+	static const std::chrono::seconds RESEND_SYN_TIME;
+	static const std::chrono::seconds TIMEOUT_HANDSHAKE_TIME;
 };
 
 bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket); // Returns successful handshake

@@ -3,12 +3,21 @@
 #include "loop.h"
 
 #if defined(__linux__)
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+#include <unistd.h>
+#include <sys/types.h> 
 #endif
 
 #include <string>
 #include <algorithm>
 #include <functional>
+
+const std::chrono::seconds UDPHandShakeStatus::RESEND_SYN_TIME = 1s;
+const std::chrono::seconds UDPHandShakeStatus::TIMEOUT_HANDSHAKE_TIME = 15s;
 
 std::string Platform::get_identifier_str() {
 	std::string name_str = "Unnamed";
