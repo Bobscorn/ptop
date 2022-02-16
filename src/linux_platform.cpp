@@ -286,37 +286,6 @@ PlatformAnalyser::PlatformAnalyser(PtopSocket&& socket) : Platform(std::move(soc
 		throw std::runtime_error("[Data] Invalid socket in Copy Constructor");
 }
 
-PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
-{
-	std::cout << "[Data] Creating a Linux Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
-
-	struct addrinfo* result = NULL,
-		* ptr = NULL,
-		hints;
-
-	bzero(&hints, sizeof(hints));
-	hints.ai_family = ip_proto.get_ai_family();
-	hints.ai_socktype = ip_proto.get_ai_socktype();
-	hints.ai_protocol = ip_proto.get_ai_protocol();
-
-	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
-
-	if (n == SOCKET_ERROR)
-		throw_new_exception("Failed to get address info for: (" + name + ") " + peer_address + ":" + peer_port + " with: " + linux_error(), LINE_CONTEXT);
-
-	auto conn_socket = PtopSocket(ip_proto, name);
-	conn_socket.set_socket_reuse();
-	conn_socket.connect(result->ai_addr, result->ai_addrlen);
-
-	return conn_socket;
-}
-
-PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol proto, std::string name) 
-: Platform(data_connect_construct(peer_address, peer_port, proto, name))
-{
-	try_update_endpoint_info();
-}
-
 Message PlatformAnalyser::receive_message()
 {
 	process_socket_data();
@@ -446,42 +415,6 @@ void NonBlockingConnector::connect(std::string ip_address, std::string port)
 		_socket.connect(results->ai_addr, results->ai_addrlen);
 		std::cout << "[DataReuseNoB] (" << get_name() << ") Successfully BEGUN Connection to : " << ip_address << ":" << port << std::endl;
 		try_update_endpoint_info();
-	}
-	catch (const std::exception& e)
-	{
-		throw_with_context(e, LINE_CONTEXT);
-	}
-}
-
-ConnectionStatus NonBlockingConnector::has_connected()
-{
-	try
-	{
-		if (_socket.is_invalid())
-			return ConnectionStatus::FAILED;
-
-		if (_socket.select_for(select_for::WRITE))
-		{
-			auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
-			if (sock_error != 0 && sock_error != EAGAIN && sock_error != EINPROGRESS)
-			{
-				std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << linux_error(sock_error) << std::endl;
-				return ConnectionStatus::FAILED;
-			}
-
-			update_endpoint_if_needed();
-			return ConnectionStatus::SUCCESS;
-		}
-
-
-		if (!_socket.select_for(select_for::EXCEPT))
-			return ConnectionStatus::PENDING;
-
-		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
-
-		std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << linux_error(sock_error) << std::endl;
-
-		return ConnectionStatus::FAILED;
 	}
 	catch (const std::exception& e)
 	{

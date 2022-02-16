@@ -3,11 +3,21 @@
 #include "loop.h"
 
 #if defined(__linux__)
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+#include <unistd.h>
+#include <sys/types.h> 
 #endif
 
 #include <string>
 #include <algorithm>
+#include <functional>
+
+const std::chrono::seconds UDPHandShakeStatus::RESEND_SYN_TIME = 1s;
+const std::chrono::seconds UDPHandShakeStatus::TIMEOUT_HANDSHAKE_TIME = 15s;
 
 std::string Platform::get_identifier_str() {
 	std::string name_str = "Unnamed";
@@ -43,12 +53,146 @@ readable_ip_info convert_to_readable(const raw_name_data& data)
 	return out;
 }
 
+PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
+{
+	std::cout << "[Data] Creating a Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
+
+	struct addrinfo* result = NULL,
+		* ptr = NULL,
+		hints;
+
+#ifdef WIN32
+	ZeroMemory(&hints, sizeof(hints));
+#elif defined(__linux__)
+	bzero(&hints, sizeof(hints));
+#endif
+	hints.ai_family = ip_proto.get_ai_family();
+	hints.ai_socktype = ip_proto.get_ai_socktype();
+	hints.ai_protocol = ip_proto.get_ai_protocol();
+
+	int n = getaddrinfo(peer_address.c_str(), peer_port.c_str(), &hints, &result);
+
+	if (n == SOCKET_ERROR)
+		throw_new_exception("Failed to get address info for: (" + name + ") " + peer_address + ":" + peer_port + " with: " + get_last_error(), LINE_CONTEXT);
+
+	auto conn_socket = PtopSocket(ip_proto, name);
+	conn_socket.set_socket_reuse();
+	conn_socket.connect(result->ai_addr, result->ai_addrlen);
+
+	UDPHandShakeStatus handshake_status{};
+	if (ip_proto.is_udp())
+	{
+		s_time start_time = time_now();
+		bool has_connected = false;
+		while (has_connected == false)
+		{
+			has_connected = do_udp_handshake(handshake_status, conn_socket);
+			std::this_thread::sleep_for(100ms);
+
+			if (time_now() - start_time > UDPHandShakeStatus::TIMEOUT_HANDSHAKE_TIME)
+				throw_new_exception("Failed to UDP handshake: Timeout expired", LINE_CONTEXT);
+		}
+	}
+
+	return conn_socket;
+}
+
+PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_port, Protocol proto, std::string name)
+	: Platform(data_connect_construct(peer_address, peer_port, proto, name))
+{
+	try_update_endpoint_info();
+}
+
 Platform::~Platform()
 {
 	if (_socket.is_valid())
 		std::cout << "Closing socket: " << get_identifier_str() << std::endl;
 	else
 		std::cout << "Closing Dead socket" << std::endl;
+}
+
+bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket)
+{
+	if (handshake_status.has_received_syn() && handshake_status.has_received_ack())
+		return true;
+	else
+	{
+		if (socket.has_message())
+		{
+			auto msgs = data_to_messages(socket.receive_bytes());
+			if (std::find_if(msgs.cbegin(), msgs.cend(), [](const Message& m) { return m.Type == MESSAGE_TYPE::UDP_SYN_ACK; }) != msgs.cend())
+			{
+				handshake_status.last_syn_receive_time = time_now();
+				handshake_status.last_ack_receive_time = time_now();
+				socket.send_bytes(create_message(MESSAGE_TYPE::UDP_ACK).to_bytes());
+				handshake_status.last_ack_send_time = time_now();
+				return true;
+			}
+			else if (std::find_if(msgs.cbegin(), msgs.cend(), [](const Message& m) { return m.Type == MESSAGE_TYPE::UDP_ACK; }) != msgs.cend())
+			{
+				handshake_status.last_ack_receive_time = time_now();
+				return true;
+			}
+			else if (std::find_if(msgs.cbegin(), msgs.cend(), [](const Message& m) { return m.Type == MESSAGE_TYPE::UDP_SYN; }) != msgs.cend())
+			{
+				handshake_status.last_syn_receive_time = time_now();
+			}
+		}
+		if (handshake_status.has_received_syn())
+		{
+			socket.send_bytes(create_message(MESSAGE_TYPE::UDP_SYN_ACK).to_bytes());
+			handshake_status.last_ack_send_time = handshake_status.last_syn_send_time = time_now();
+		}
+		else if (time_now() - handshake_status.last_syn_send_time > UDPHandShakeStatus::RESEND_SYN_TIME)
+		{
+			socket.send_bytes(create_message(MESSAGE_TYPE::UDP_SYN).to_bytes());
+			handshake_status.last_syn_send_time = time_now();
+		}
+	}
+	return false;
+}
+
+ConnectionStatus NonBlockingConnector::has_connected()
+{
+	try
+	{
+		if (_socket.is_invalid())
+			return ConnectionStatus::FAILED;
+
+		if (_socket.is_udp())
+		{
+			if (do_udp_handshake(_handshake_status, _socket))
+				return ConnectionStatus::SUCCESS;
+			return ConnectionStatus::PENDING;
+		}
+
+		if (_socket.select_for(select_for::WRITE))
+		{
+			auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
+			if (sock_error != 0 && sock_error != EAGAIN && sock_error != EINPROGRESS)
+			{
+				std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << socket_error_to_string(sock_error) << std::endl;
+				return ConnectionStatus::FAILED;
+			}
+
+			update_endpoint_if_needed();
+			return ConnectionStatus::SUCCESS;
+		}
+
+
+		if (!_socket.select_for(select_for::EXCEPT))
+			return ConnectionStatus::PENDING;
+
+		auto sock_error = _socket.get_socket_option<int>(SO_ERROR);
+
+		std::cerr << "[DataReuseNoB] " << LINE_CONTEXT << " Socket '" << get_name() << "' failed to connect with: " << socket_error_to_string(sock_error) << std::endl;
+
+		return ConnectionStatus::FAILED;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 void UDPAcceptedConnector::throw_if_no_listener() const
@@ -199,17 +343,86 @@ void UDPListener::process_data()
 	while (_socket.has_message())
 	{
 		auto received = _socket.receive_udp_bytes();
+		auto endpoint = received.endpoint;
 
 		if (_messages.find(received.endpoint) == _messages.end())
 		{
 			_messages[received.endpoint] = std::queue<Message>();
-			process_into_messages(_messages[received.endpoint], received.bytes);
+		}
+		auto new_msgs = data_to_messages(received.bytes);
+
+		if (_connectors.find(endpoint) == _connectors.end())
+		{
+			handle_handshaking(new_msgs, endpoint);
 		}
 
-		if (_connectors.find(received.endpoint) == _connectors.end())
+		for (auto& m : new_msgs)
+			_messages[endpoint].push(m);
+	}
+}
+
+bool UDPListener::messages_contains(const std::vector<Message>& msgs, MESSAGE_TYPE type)
+{
+	return std::find_if(msgs.cbegin(), msgs.cend(), std::bind(message_is_type, type, std::placeholders::_1)) != msgs.cend();
+}
+
+UDPListener::vec_it UDPListener::find_conn_by_endpoint(std::vector<UDPAcceptedConnector*>& msgs, const raw_name_data& endpoint)
+{
+	return std::find_if(msgs.begin(), msgs.end(), [&endpoint](UDPAcceptedConnector* m) { return m->get_peername_raw() == endpoint; });
+}
+
+void UDPListener::handle_handshaking(const std::vector<Message>& msgs, const raw_name_data& endpoint)
+{
+	if (messages_contains(msgs, MESSAGE_TYPE::UDP_SYN))
+	{
+		decltype(_need_handshake_connectors)::iterator existing_conn = find_conn_by_endpoint(_need_handshake_connectors, endpoint);
+		if (existing_conn == _need_handshake_connectors.end())
 		{
-			if (std::find(_new_connections.begin(), _new_connections.end(), received.endpoint) == _new_connections.end())
-				_new_connections.push_back(received.endpoint);
+			auto new_conn = new UDPAcceptedConnector(this, endpoint);
+			_need_handshake_connectors.push_back(new_conn);
+			new_conn->send_data(create_message(MESSAGE_TYPE::UDP_SYN_ACK));
+			new_conn->_handshake_status.last_syn_receive_time = time_now();
+			new_conn->_handshake_status.last_syn_send_time = new_conn->_handshake_status.last_ack_send_time = time_now();
+		}
+	}
+	if (messages_contains(msgs, MESSAGE_TYPE::UDP_SYN_ACK))
+	{
+		decltype(_need_handshake_connectors)::iterator existing_conn = find_conn_by_endpoint(_need_handshake_connectors, endpoint);
+		if (existing_conn == _need_handshake_connectors.end())
+		{
+			auto new_conn = new UDPAcceptedConnector(this, endpoint);
+			auto& shake_status = new_conn->_handshake_status;
+			new_conn->send_data(create_message(MESSAGE_TYPE::UDP_ACK));
+			shake_status.last_ack_send_time = time_now();
+			shake_status.last_ack_receive_time = shake_status.last_syn_receive_time = time_now();
+			_handshook_connectors.push_back(new_conn);
+		}
+		else
+		{
+			auto conn = *existing_conn;
+			auto& shake_status = conn->_handshake_status;
+			shake_status.last_ack_receive_time = time_now();
+			shake_status.last_syn_receive_time = time_now();
+			conn->send_data(create_message(MESSAGE_TYPE::UDP_ACK));
+			conn->_handshake_status.last_ack_send_time = time_now();
+			_need_handshake_connectors.erase(existing_conn);
+			_handshook_connectors.push_back(conn);
+		}
+	}
+	if (messages_contains(msgs, MESSAGE_TYPE::UDP_ACK))
+	{
+		std::vector<UDPAcceptedConnector*>::iterator conn_it;
+		if ((conn_it = find_conn_by_endpoint(_need_handshake_connectors, endpoint)) != _need_handshake_connectors.end())
+		{
+			auto conn = *conn_it;
+
+			if (conn->_handshake_status.has_received_syn())
+			{
+				conn->_handshake_status.last_ack_receive_time = time_now();
+				conn->_handshake_status.handshake_completed_time = time_now();
+				_need_handshake_connectors.erase(conn_it);
+				_handshook_connectors.push_back(conn);
+			}
 		}
 	}
 }
@@ -288,11 +501,32 @@ UDPListener::UDPListener(std::string port, Protocol proto, std::string name) : P
 {
 }
 
+UDPListener::~UDPListener()
+{
+	for (auto& pair : _connectors)
+		if (pair.second)
+			pair.second->_listen = nullptr;
+
+	for (auto& conn : _handshook_connectors)
+		if (conn)
+		{
+			conn->_listen = nullptr;
+			delete conn;
+		}
+
+	for (auto& conn : _need_handshake_connectors)
+		if (conn)
+		{
+			conn->_listen = nullptr;
+			delete conn;
+		}
+}
+
 bool UDPListener::has_connection()
 {
 	process_data();
 
-	return _new_connections.size();
+	return _handshook_connectors.size();
 }
 
 std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
@@ -300,12 +534,12 @@ std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
 	if (!has_connection())
 		return nullptr;
 
-	const auto& new_conn_endpoint = _new_connections.back();
+	const auto& new_conn_endpoint = _handshook_connectors.back();
 
-	auto new_conn = std::unique_ptr<UDPAcceptedConnector>(new UDPAcceptedConnector(this, new_conn_endpoint));
+	auto new_conn = std::unique_ptr<UDPAcceptedConnector>(new_conn_endpoint);
 
-	_connectors[new_conn_endpoint] = new_conn.get();
-	_new_connections.pop_back();
+	_connectors[new_conn_endpoint->_my_endpoint] = new_conn.get();
+	_handshook_connectors.pop_back();
 
 	return new_conn;
 }
