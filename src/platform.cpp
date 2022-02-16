@@ -55,7 +55,7 @@ readable_ip_info convert_to_readable(const raw_name_data& data)
 
 PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
 {
-	std::cout << "[Data] Creating a Linux Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
+	std::cout << "[Data] Creating a Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
 
 	struct addrinfo* result = NULL,
 		* ptr = NULL,
