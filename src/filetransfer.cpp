@@ -91,7 +91,7 @@ void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk
 		ifs.read(chunk.data.data(), CHUNK_SIZE);
 
 		last_read_count = ifs.gcount();
-		if (last_read_count == max_size)
+		if (last_read_count == max_size || last_read_count == 0)
 			break;
 
 		chunk.data_length = last_read_count;
