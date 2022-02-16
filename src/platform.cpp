@@ -497,7 +497,23 @@ PtopSocket construct_udp_listener(std::string port, Protocol proto, std::string 
 	return listen_socket;
 }
 
+PtopSocket construct_udp_nonblocking_listener(raw_name_data bind_name, Protocol proto, std::string name)
+{
+	auto listen_socket = PtopSocket(proto, name);
+	
+	listen_socket.set_non_blocking(true);
+	listen_socket.set_socket_reuse();
+	
+	listen_socket.bind_socket(bind_name);
+
+	return listen_socket;
+}
+
 UDPListener::UDPListener(std::string port, Protocol proto, std::string name) : Platform(construct_udp_listener(port, proto, name))
+{
+}
+
+UDPListener::UDPListener(raw_name_data bind_name, Protocol proto, std::string name) : Platform(construct_udp_nonblocking_listener(bind_name, proto, name))
 {
 }
 

@@ -44,11 +44,17 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
 
     old_privatename = init_kit.get_server_socket()->get_myname_raw();
     init_kit.set_server_socket(nullptr); //need to close the server socket HERE to maintain the same session in the peer sockets
+
+    if (init_kit.protocol.is_udp())
+        listen_sock = std::make_unique<UDPListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
+    else
+        listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
+
+    listen_sock->listen();
+
     public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol, "HolePunch-Public");
     private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol, "HolePunch-Private");
         
-    listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
-    listen_sock->listen();
 
     peer_connect_start_time = std::chrono::system_clock::now();
 }
