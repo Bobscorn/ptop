@@ -24,8 +24,8 @@
 /// Contains nothing, sent once a file has been fully sent
 
 // Number of bytes stored in a StreamChunk's data vector
-constexpr int CHUNK_SIZE = 500000;
-constexpr int KILOBYTE = 1024;
+// Must be able to fit into a single packet, so at most 64 kilobytes, but to account for the header we subtract 256 bytes
+constexpr int CHUNK_SIZE = 64 * KILOBYTE - 256;
 
 using namespace std::chrono;
 constexpr std::chrono::seconds LAST_CHUNK_TIME = 5s;
@@ -60,7 +60,6 @@ class FileSender {
         FileSender(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
         
         FileHeader _header;
-        std::ifstream _file;
         std::vector<StreamChunk> _chunks;
 
         int _next_chunk_send = 0;

@@ -21,6 +21,8 @@ enum class ConnectionStatus
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
 // A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long
+constexpr int KILOBYTE = 1024;
+constexpr int MEGABYTE = KILOBYTE * 1024;
 
 enum class MESSAGE_TYPE
 {

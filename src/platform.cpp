@@ -229,6 +229,7 @@ bool UDPAcceptedConnector::send_data(const Message& message)
 {
 	throw_if_no_listener();
 
+	std::cout << "Sending " << mt_to_string(message.Type) << " " << message.Length << " bytes to " << convert_to_readable(_my_endpoint) << std::endl;
 	return _listen->send_data(message, _my_endpoint);
 }
 

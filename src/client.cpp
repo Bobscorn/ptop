@@ -223,7 +223,9 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         
         case MESSAGE_TYPE::STREAM_ACKNOWLEDGED:
         {
+            std::cout << "Peer " << peer_kit.peer_socket->get_identifier_str() << " has acknowledged file, sending chunks." << std::endl;
             peer_kit.file_sender->sendFile(peer_kit.peer_socket);
+            peer_kit.file_sender = nullptr;
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
@@ -366,6 +368,7 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                 if(peer_kit.file_receiver != nullptr)
                     if(peer_kit.file_receiver->isWriteTime()) {
                         peer_kit.file_receiver = nullptr;
+                        std::cout << "Resetting file receiver" << std::endl;
                     }
 
                 break;

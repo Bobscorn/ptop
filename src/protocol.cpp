@@ -18,6 +18,8 @@
 
 using namespace std;
 
+std::vector<char> recv_data{ READ_BYTE_BUFFER, (char)0, std::allocator<char>() };
+
 Protocol::Protocol(string possible_protocol) {
     transform(possible_protocol.begin(), possible_protocol.end(), possible_protocol.begin(), ::tolower);
 
@@ -68,29 +70,27 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 {
     if (is_tcp())
 	{
-		std::vector<char> data(500, (char)0, std::allocator<char>());
-		int result = ::recv(handle, data.data(), (int)data.size(), 0);
+		int result = ::recv(handle, recv_data.data(), (int)recv_data.capacity(), 0);
 		if (result == SOCKET_ERROR)
 		{
 			std::cout << "Receiving data failed" << std::endl;
 			return std::vector<char>();
 		}
-		data.resize(result);
-		return data;
+		recv_data.resize(result);
+		return recv_data;
 	}
 	if (is_udp())
 	{
-		if (expected_endpoint.initialized == false){
-			expected_endpoint.name_len = sizeof(raw_name_data);
-		}
+		std::vector<char> data{ READ_BYTE_BUFFER, (char)0, std::allocator<char>() };
 		auto addr = sockaddr{};
 		socklen_t addr_len = sizeof(sockaddr_in);
-		std::vector<char> data(500, (char)0, std::allocator<char>());
-		int result = ::recvfrom(handle, data.data(), (int)data.size(), 0, &addr, &addr_len);
+		int result = ::recvfrom(handle, data.data(), (int)data.capacity(), 0, &addr, &addr_len);
 		throw_if_socket_error(result, "Failed to receive UDP bytes with: " + get_last_error(), LINE_CONTEXT);
 
+		std::cout << "Received " << result << " UDP Bytes" << std::endl;
+
 		raw_name_data incoming{ addr, addr_len };
-		if (incoming != expected_endpoint && expected_endpoint.initialized == true)
+		if (incoming != expected_endpoint && expected_endpoint.name_len)
 		{
 			auto readable = convert_to_readable(incoming);
 			auto message = "Receiving UDP data from an undesired endpoint (" + readable.ip_address + ":" + readable.port + ")";
@@ -101,9 +101,8 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 			auto message = "Receiving (UDP) data failed: " + get_last_error();
 			throw_new_exception(message, LINE_CONTEXT);
 		}
-		if (expected_endpoint.initialized == false)
+		if (expected_endpoint.name_len == 0)
 			std::memcpy(&expected_endpoint, &incoming, sizeof(raw_name_data));
-		expected_endpoint.initialized = true;
 		data.resize(result);
 		return data;
 	}

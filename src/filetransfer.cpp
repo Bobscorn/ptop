@@ -5,6 +5,7 @@
 #include <array>
 #include <limits>
 #include <thread>
+#include <iostream>
 #include <chrono>
 
 const StreamChunk StreamChunk::empty = StreamChunk{ -1, -1, -1, std::vector<char>() };
@@ -17,14 +18,16 @@ bool StreamChunk::operator==(const StreamChunk& other) const
 		&& data == other.data;
 }
 
-FileSender::FileSender(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header), _file(header.filename + "." + header.extension, std::ios::binary) {
-	processFileToChunks(_file, _chunks);
+FileSender::FileSender(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header) {
+	std::ifstream file{ header.filename + "." + header.extension, std::ios::binary };
+	processFileToChunks(file, _chunks);
 	_header.num_chunks = _chunks.size();
 	auto mess = to_message<FileHeader>()(_header);
 	socket->send_data(mess);
 }
 
 void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
+	std::cout << "Sending " << _chunks.size() << " chunks to peer" << std::endl;
 	bool sending = true;
 
 	while(sending) {
@@ -148,16 +151,13 @@ void FileReceiver::onFileEnd(const Message& message)
 	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "' " << std::endl;
 
 	_deadmanswitch = std::chrono::system_clock::now();
-
-	using namespace std::chrono;
-	std::this_thread::sleep_for(5s);
 }
 
 bool FileReceiver::isWriteTime() //...nice
 {
 	auto new_now = std::chrono::system_clock::now();
 
-	if (new_now - _deadmanswitch > LAST_CHUNK_TIME)
+	if (_deadmanswitch.time_since_epoch().count() > 0 && new_now - _deadmanswitch > LAST_CHUNK_TIME)
 	{
 		write_to_file();
 		return true;

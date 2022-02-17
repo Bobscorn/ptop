@@ -9,6 +9,7 @@
 #include <string>
 
 constexpr SOCKET REALLY_INVALID_SOCKET = -1;
+constexpr int READ_BYTE_BUFFER = 2 * 64 * KILOBYTE;
 
 void throw_if_socket_error(int n, std::string message, std::string line_context);
 std::string socket_error_to_string(int err);
