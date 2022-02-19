@@ -25,7 +25,8 @@
 
 // Number of bytes stored in a StreamChunk's data vector
 // Must be able to fit into a single packet, so at most 64 kilobytes, but to account for the header we subtract 256 bytes
-constexpr int CHUNK_SIZE = 64 * KILOBYTE - 256;
+// Even more reliable would be to ensure a chunk is under the MTU (Maximum Transmission Unit), of which the minimum is 576 bytes (https://en.wikipedia.org/wiki/Maximum_transmission_unit)
+constexpr int CHUNK_SIZE = 576 - 80;
 
 using namespace std::chrono;
 constexpr std::chrono::seconds LAST_CHUNK_TIME = 5s;
