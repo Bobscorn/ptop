@@ -19,6 +19,22 @@ bool StreamChunk::operator==(const StreamChunk& other) const
 		&& data == other.data;
 }
 
+bool FileSender::resendEndFile(std::unique_ptr<IDataSocketWrapper>& socket)
+{
+	s_time now = time_now();
+	if (is_real_time(_initial_end_send) && now - _initial_end_send > MaxEndAcknowledgeWaitTime)
+		return true;
+
+	if (is_real_time(_initial_end_send) && now - _last_end_send > ResendEndInterval)
+	{
+		socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END));
+		_last_end_send = time_now();
+		return false;
+	}
+
+	return false;
+}
+
 FileSender::FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header) {
 	processFileToChunks(file, _chunks);
 	_header.num_chunks = _chunks.size();
@@ -42,6 +58,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 	}
 	
 	socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END));
+	_initial_end_send = _last_end_send = time_now();
 }
 
 const StreamChunk& FileSender::IterateNextChunk()
@@ -117,8 +134,16 @@ FileReceiver::FileReceiver(const Message& message)
 	_header = header;
 
 	std::cout << "Receiving file: '" << header.filename << "." << header.extension << "' with " << header.num_chunks << " chunks" << std::endl;
-	int file_size = header.num_chunks * CHUNK_SIZE / KILOBYTE;
-	std::cout << "file size: " << file_size << "KB" << std::endl;
+	if (header.num_chunks < 1)
+	{
+		std::cout << "It is an empty file" << std::endl;
+	}
+	else
+	{
+		int file_size_upper = header.num_chunks * CHUNK_SIZE / KILOBYTE;
+		int file_size_lower = (header.num_chunks - 1) * CHUNK_SIZE / KILOBYTE;
+		std::cout << "file is between: " << file_size_lower << "KB and " << file_size_upper << "KB" << std::endl;
+	}
 
 	_chunks.resize(_header.num_chunks, StreamChunk::empty);
 }
@@ -152,20 +177,21 @@ void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 	_chunks[index] = chunk;
 }
 
-void FileReceiver::onFileEnd(const Message& message)
+void FileReceiver::onFileEnd(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "' " << std::endl;	
+	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "', acknowledging" << std::endl;
+	socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END_ACK));
 }
 
 bool FileTransfer::timeout_expired(std::chrono::system_clock::time_point deadmanswitch) // Returns whether we have written and should be destroyed
 {
 	auto new_now = std::chrono::system_clock::now();
 
-	if (deadmanswitch.time_since_epoch().count() > 0 && new_now - deadmanswitch <= LAST_CHUNK_TIME)
+	if (is_real_time(deadmanswitch) && new_now - deadmanswitch > MaximumIdleWaitTime)
 	{
 		return true;
 	}
-	std::cout << "ERROR: " << duration_to_str(LAST_CHUNK_TIME) << " since last chunk received." << std::endl;
+
 	return false;
 }
 

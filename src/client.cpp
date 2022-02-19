@@ -225,7 +225,6 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         {
             std::cout << "Peer " << peer_kit.peer_socket->get_identifier_str() << " has acknowledged file, sending chunks." << std::endl;
             peer_kit.file_sender->sendFile(peer_kit.peer_socket);
-            peer_kit.file_sender = nullptr;
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
@@ -250,7 +249,20 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
                 return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
-            peer_kit.file_receiver->onFileEnd(mess);
+            peer_kit.file_receiver->onFileEnd(mess, peer_kit.peer_socket);
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::PEER_FILE_END_ACK:
+        {
+            if (!peer_kit.file_sender)
+            {
+                std::cerr << "Received a file end acknowledgement when we aren't sending" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            std::cout << "Peer has acknowledged file end, resetting current file transfer" << std::endl;
+            peer_kit.file_sender = nullptr;
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
@@ -368,7 +380,7 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
 
-                if(peer_kit.file_sender != nullptr && FileTransfer::timeout_expired(peer_kit.file_sender->get_deadman()) == true) {
+                if(peer_kit.file_sender != nullptr && peer_kit.file_sender->resendEndFile(peer_kit.peer_socket)) {
                     peer_kit.file_sender = nullptr;
                     std::cout << "Resetting file sender" << std::endl;
                 }
@@ -378,13 +390,11 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                 // }
 
                 if(peer_kit.file_receiver != nullptr && FileTransfer::timeout_expired(peer_kit.file_receiver->get_deadman()) == true) {
+                    peer_kit.file_receiver->write_to_file();
                     peer_kit.file_receiver = nullptr;
                     std::cout << "Resetting file receiver" << std::endl;
                 }
 
-                else {
-                    peer_kit.file_receiver->write_to_file();
-                }                
                 break;
             }
         }

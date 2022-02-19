@@ -3,6 +3,7 @@
 #include "message.h"
 #include "protocol.h"
 #include "interfaces.h"
+#include "time.h"
 
 #include <string>
 #include <vector>
@@ -29,7 +30,6 @@
 constexpr int CHUNK_SIZE = 576 - 80;
 
 using namespace std::chrono;
-constexpr std::chrono::seconds LAST_CHUNK_TIME = 10s;
 
 struct FileHeader {
     std::string filename;
@@ -60,24 +60,37 @@ class FileSender {
         bool onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);        
         inline std::chrono::system_clock::time_point get_deadman() { return _deadmanswitch; };
 
-    private:
-        FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);        
-        FileHeader _header;
-        std::vector<StreamChunk> _chunks;
-        std::chrono::system_clock::time_point _deadmanswitch;
+        /// <summary>
+        /// Resends the PEER_FILE_END message on a set interval if this has not seen the PEER_FILE_END_ACK, and checks if has expired
+        /// </summary>
+        /// <param name="socket">Socket to send data to file transfer peer</param>
+        /// <return>Returns whether this file sending has expired</return>
+        bool resendEndFile(std::unique_ptr<IDataSocketWrapper>& socket);
 
-        int _next_chunk_send = 0;
+        inline static constexpr s_duration ResendEndInterval = 1s; // Interval to wait before resending the PEER_FILE_END message if we haven't received an acknowledge
+        inline static constexpr s_duration MaxEndAcknowledgeWaitTime = 10s; // Maximum time to wait for a PEER_FILE_END_ACK message
+
+    private:
+        FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);     
+
         void processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk>& chunks);
         const StreamChunk& IterateNextChunk();
-        inline void relieve_deadman() { _deadmanswitch = std::chrono::system_clock::now(); }
-        
+        inline void relieve_deadman() { _deadmanswitch = std::chrono::system_clock::now(); }   
+
+        FileHeader _header;
+        std::vector<StreamChunk> _chunks;
+        s_time _deadmanswitch;
+        s_time _initial_end_send;
+        s_time _last_end_send;
+
+        int _next_chunk_send = 0;
 };
 
 class FileReceiver {
     friend class FileTransfer;
     public:
         void onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket);
-        void onFileEnd(const Message& message);
+        void onFileEnd(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket);
         void write_to_file();        
         std::chrono::system_clock::time_point get_deadman() { return _deadmanswitch; };
 
@@ -94,6 +107,8 @@ public:
     static std::unique_ptr<FileSender> BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
     static std::unique_ptr<FileReceiver> BeginReception(const Message& message);
     static bool timeout_expired(std::chrono::system_clock::time_point deadmanswitch);
+
+    inline static constexpr std::chrono::seconds MaximumIdleWaitTime = 10s;
 };
 
 template<>

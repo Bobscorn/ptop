@@ -37,6 +37,7 @@ enum class MESSAGE_TYPE
 	UDP_ACK,
 	MISSING_CHUNK,
 	PEER_FILE_END,
+	PEER_FILE_END_ACK,
 	STREAM_ACKNOWLEDGED,
 	STREAM_CHUNK,
 	CHUNK_ERROR
@@ -118,18 +119,19 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 {
 	switch (t)
 	{
-		case MESSAGE_TYPE::MY_DATA:			return  "MY_DATA: Connection's Private :3 Data";
-		case MESSAGE_TYPE::READY_FOR_P2P:	return  "READY_FOR_P2P: Connection is ready for P2P";
-		case MESSAGE_TYPE::PEER_MSG:		return  "MSG: Plain Text Msg";
-		case MESSAGE_TYPE::PEER_FILE:		return  "FILE: Incoming File";
-		case MESSAGE_TYPE::CONNECT_TO_PEER: return  "CONNECT_PEER: Data required to connect to a peer";
-		case MESSAGE_TYPE::UDP_SYN:			return  "UDP_SYN: UDP Handshake initial message";
-		case MESSAGE_TYPE::UDP_SYN_ACK:		return  "UDP_SYN_ACK: UDP Handshake response message";
-		case MESSAGE_TYPE::UDP_ACK:			return  "UDP_ACK: UDP Handshake final response";
-		case MESSAGE_TYPE::PEER_FILE_END:	return  "PEER_FILE_END: File end message";
+		case MESSAGE_TYPE::MY_DATA:				return  "MY_DATA: Connection's Private :3 Data";
+		case MESSAGE_TYPE::READY_FOR_P2P:		return  "READY_FOR_P2P: Connection is ready for P2P";
+		case MESSAGE_TYPE::PEER_MSG:			return  "MSG: Plain Text Msg";
+		case MESSAGE_TYPE::PEER_FILE:			return  "FILE: Incoming File";
+		case MESSAGE_TYPE::CONNECT_TO_PEER:		return  "CONNECT_PEER: Data required to connect to a peer";
+		case MESSAGE_TYPE::UDP_SYN:				return  "UDP_SYN: UDP Handshake initial message";
+		case MESSAGE_TYPE::UDP_SYN_ACK:			return  "UDP_SYN_ACK: UDP Handshake response message";
+		case MESSAGE_TYPE::UDP_ACK:				return  "UDP_ACK: UDP Handshake final response";
+		case MESSAGE_TYPE::PEER_FILE_END:		return  "PEER_FILE_END: File end message";
+		case MESSAGE_TYPE::PEER_FILE_END_ACK:	return  "PEER_FILE_END_ACK: File end message acknowledgement";
 		case MESSAGE_TYPE::STREAM_ACKNOWLEDGED: return  "STREAM_ACKNOWLEDGED: File sending acknowledgement";
-		case MESSAGE_TYPE::STREAM_CHUNK:	return  "STREAM_CHUNK: A chunk of a file";
-		case MESSAGE_TYPE::CHUNK_ERROR:		return  "CHUNK_ERROR: An erroneous chunk message";
+		case MESSAGE_TYPE::STREAM_CHUNK:		return  "STREAM_CHUNK: A chunk of a file";
+		case MESSAGE_TYPE::CHUNK_ERROR:			return  "CHUNK_ERROR: An erroneous chunk message";
 
 		case MESSAGE_TYPE::NONE:
 		default:
