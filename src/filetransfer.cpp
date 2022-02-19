@@ -1,5 +1,6 @@
 #include "filetransfer.h"
 #include "interfaces.h"
+#include "time.h"
 
 #include <cstdint>
 #include <array>
@@ -59,7 +60,7 @@ StreamChunk FileSender::GetTargetChunk(int index)
 	return _chunks[index];
 }
 
-void FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket)
+bool FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket)
 {
 	int read_index = 0;
 	int missing_id = mess.read_type<int>(read_index);
@@ -67,9 +68,15 @@ void FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWr
 	if (missing_id < 0 || missing_id >= _header.num_chunks)
 	{
 		std::cerr << "Received CHUNK_ERROR on chunk id: " << missing_id << std::endl;
-	}	
+	}
+
+	if(FileTransfer::timeout_expired(_deadmanswitch)) {
+		return true;
+	}
 	auto chunk = _chunks[missing_id];
 	socket->send_message(chunk);
+	relieve_deadman();
+	return false;
 }
 
 void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk>& chunks)
@@ -133,7 +140,7 @@ void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 	// 	socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
 	// 	return;
 	// }
-	
+	relieve_deadman();
 
 	auto chunk = from_message<StreamChunk>()(message);
 	std::cout << "received chunk, chunk id: " << chunk.chunk_id << std::endl;
@@ -147,20 +154,18 @@ void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 
 void FileReceiver::onFileEnd(const Message& message)
 {
-	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "' " << std::endl;
-
-	_deadmanswitch = std::chrono::system_clock::now();
+	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "' " << std::endl;	
 }
 
-bool FileReceiver::isWriteTime() //...nice
+bool FileTransfer::timeout_expired(std::chrono::system_clock::time_point deadmanswitch) // Returns whether we have written and should be destroyed
 {
 	auto new_now = std::chrono::system_clock::now();
 
-	if (_deadmanswitch.time_since_epoch().count() > 0 && new_now - _deadmanswitch > LAST_CHUNK_TIME)
+	if (deadmanswitch.time_since_epoch().count() > 0 && new_now - deadmanswitch <= LAST_CHUNK_TIME)
 	{
-		write_to_file();
 		return true;
 	}
+	std::cout << "ERROR: " << duration_to_str(LAST_CHUNK_TIME) << " since last chunk received." << std::endl;
 	return false;
 }
 

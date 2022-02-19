@@ -29,7 +29,7 @@
 constexpr int CHUNK_SIZE = 576 - 80;
 
 using namespace std::chrono;
-constexpr std::chrono::seconds LAST_CHUNK_TIME = 5s;
+constexpr std::chrono::seconds LAST_CHUNK_TIME = 10s;
 
 struct FileHeader {
     std::string filename;
@@ -55,17 +55,22 @@ class FileSender {
     public:
         void sendFile(std::unique_ptr<IDataSocketWrapper>& socket);
         StreamChunk GetTargetChunk(int index);
-        void onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);
+
+        ///sends whether filesender expired
+        bool onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);        
+        inline std::chrono::system_clock::time_point get_deadman() { return _deadmanswitch; };
 
     private:
-        FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
-        
+        FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);        
         FileHeader _header;
         std::vector<StreamChunk> _chunks;
+        std::chrono::system_clock::time_point _deadmanswitch;
 
         int _next_chunk_send = 0;
         void processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk>& chunks);
         const StreamChunk& IterateNextChunk();
+        inline void relieve_deadman() { _deadmanswitch = std::chrono::system_clock::now(); }
+        
 };
 
 class FileReceiver {
@@ -73,23 +78,22 @@ class FileReceiver {
     public:
         void onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket);
         void onFileEnd(const Message& message);
-        bool isWriteTime();
+        void write_to_file();        
+        std::chrono::system_clock::time_point get_deadman() { return _deadmanswitch; };
 
     private:
-
         FileReceiver(const Message& message);
-
-        void write_to_file();
-
         FileHeader _header;
-        std::vector<StreamChunk> _chunks;
+        std::vector<StreamChunk> _chunks;            
         std::chrono::system_clock::time_point _deadmanswitch;
+        inline void relieve_deadman() { _deadmanswitch = std::chrono::system_clock::now(); };
 };
 
 class FileTransfer {
 public:
     static std::unique_ptr<FileSender> BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
     static std::unique_ptr<FileReceiver> BeginReception(const Message& message);
+    static bool timeout_expired(std::chrono::system_clock::time_point deadmanswitch);
 };
 
 template<>

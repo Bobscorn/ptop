@@ -262,7 +262,10 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
                 return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
-            peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
+            bool expired = peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
+
+            if(expired)
+                peer_kit.file_sender = nullptr;
 
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
@@ -365,12 +368,23 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
 
-                if(peer_kit.file_receiver != nullptr)
-                    if(peer_kit.file_receiver->isWriteTime()) {
-                        peer_kit.file_receiver = nullptr;
-                        std::cout << "Resetting file receiver" << std::endl;
-                    }
+                if(peer_kit.file_sender != nullptr && FileTransfer::timeout_expired(peer_kit.file_sender->get_deadman()) == true) {
+                    peer_kit.file_sender = nullptr;
+                    std::cout << "Resetting file sender" << std::endl;
+                }
 
+                // else {
+                    //peer_kit.file_sender->send_file_chunk();
+                // }
+
+                if(peer_kit.file_receiver != nullptr && FileTransfer::timeout_expired(peer_kit.file_receiver->get_deadman()) == true) {
+                    peer_kit.file_receiver = nullptr;
+                    std::cout << "Resetting file receiver" << std::endl;
+                }
+
+                else {
+                    peer_kit.file_receiver->write_to_file();
+                }                
                 break;
             }
         }
