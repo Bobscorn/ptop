@@ -93,6 +93,10 @@ bool Commands::handleFiles(std::string input_message, client_peer_kit& peer_kit)
     }
 
     peer_kit.file_sender = FileTransfer::BeginTransfer(header, peer_kit.peer_socket);
+
+    if(peer_kit.file_sender == nullptr) {
+        return false;
+    }
     
     std::cout << "Sending file with name: '" << header.filename << "' and extension '" << header.extension << "' (" << header.filename << "." << header.extension << ")" << std::endl;
 

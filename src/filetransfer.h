@@ -58,7 +58,7 @@ class FileSender {
         void onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);
 
     private:
-        FileSender(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
+        FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);
         
         FileHeader _header;
         std::vector<StreamChunk> _chunks;

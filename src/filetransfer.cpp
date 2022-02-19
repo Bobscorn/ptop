@@ -18,8 +18,7 @@ bool StreamChunk::operator==(const StreamChunk& other) const
 		&& data == other.data;
 }
 
-FileSender::FileSender(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header) {
-	std::ifstream file{ header.filename + "." + header.extension, std::ios::binary };
+FileSender::FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header) {
 	processFileToChunks(file, _chunks);
 	_header.num_chunks = _chunks.size();
 	auto mess = to_message<FileHeader>()(_header);
@@ -198,7 +197,13 @@ void FileReceiver::write_to_file() {
 
 std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	return std::unique_ptr<FileSender>(new FileSender(header, socket));
+	std::ifstream file{ header.filename + "." + header.extension, std::ios::binary };
+
+	if(!file.good()) {
+		std::cout << "ERROR: file not found." << std::endl;
+		return nullptr;
+	}
+	return std::unique_ptr<FileSender>(new FileSender(std::move(file), header, socket));
 }
 
 std::unique_ptr<FileReceiver> FileTransfer::BeginReception(const Message& message)
