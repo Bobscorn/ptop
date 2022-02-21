@@ -229,6 +229,7 @@ bool UDPAcceptedConnector::send_data(const Message& message)
 {
 	throw_if_no_listener();
 
+	std::cout << "Sending " << mt_to_string(message.Type) << " " << message.Length << " bytes to " << convert_to_readable(_my_endpoint) << std::endl;
 	return _listen->send_data(message, _my_endpoint);
 }
 
@@ -497,7 +498,23 @@ PtopSocket construct_udp_listener(std::string port, Protocol proto, std::string 
 	return listen_socket;
 }
 
+PtopSocket construct_udp_nonblocking_listener(raw_name_data bind_name, Protocol proto, std::string name)
+{
+	auto listen_socket = PtopSocket(proto, name);
+	
+	listen_socket.set_non_blocking(true);
+	listen_socket.set_socket_reuse();
+	
+	listen_socket.bind_socket(bind_name);
+
+	return listen_socket;
+}
+
 UDPListener::UDPListener(std::string port, Protocol proto, std::string name) : Platform(construct_udp_listener(port, proto, name))
+{
+}
+
+UDPListener::UDPListener(raw_name_data bind_name, Protocol proto, std::string name) : Platform(construct_udp_nonblocking_listener(bind_name, proto, name))
 {
 }
 
@@ -542,4 +559,16 @@ std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
 	_handshook_connectors.pop_back();
 
 	return new_conn;
+}
+
+bool PlatformAnalyser::send_data(const Message& message)
+{
+    std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
+    auto bytes = message.to_bytes();
+    if (_socket.send_bytes(bytes))
+    {
+        _sent_bytes += bytes.size();
+        return true;
+    }
+    return false;
 }

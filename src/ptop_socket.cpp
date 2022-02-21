@@ -238,7 +238,7 @@ bool PtopSocket::send_udp_bytes(udp_bytes bytes)
 }
 
 udp_bytes PtopSocket::receive_udp_bytes(){
-	raw_name_data new_name;
+	raw_name_data new_name{};
 	auto result = _protocol.receive_bytes(_handle, new_name);
 	udp_bytes output = udp_bytes{
 		result, new_name

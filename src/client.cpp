@@ -6,6 +6,7 @@
 #include "platform.h"
 #include "ip.h"
 #include "error.h"
+#include "commands.h"
 
 #include <iostream>
 
@@ -43,11 +44,17 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
 
     old_privatename = init_kit.get_server_socket()->get_myname_raw();
     init_kit.set_server_socket(nullptr); //need to close the server socket HERE to maintain the same session in the peer sockets
+
+    if (init_kit.protocol.is_udp())
+        listen_sock = std::make_unique<UDPListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
+    else
+        listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
+
+    listen_sock->listen();
+
     public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol, "HolePunch-Public");
     private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol, "HolePunch-Private");
         
-    listen_sock = std::make_unique<NonBlockingListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
-    listen_sock->listen();
 
     peer_connect_start_time = std::chrono::system_clock::now();
 }
@@ -180,7 +187,7 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
     }
 }
 
-EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer)
+EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<IDataSocketWrapper>& peer, client_peer_kit& peer_kit)
 {  
     const char* data = mess.Data.data();
     auto data_len = mess.Length;
@@ -203,8 +210,75 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         }
         case MESSAGE_TYPE::PEER_FILE:
         {
-            std::cout << "Received file from peer" << std::endl;
-            // TODO: actually read the file
+            if (peer_kit.file_receiver)
+                std::cerr << "Already receiving a file from the peer!" << std::endl;
+
+            else {
+                std::cout << "Receiving new file from peer" << std::endl;
+                peer_kit.file_receiver = FileTransfer::BeginReception(mess);
+                peer->send_data(create_message(MESSAGE_TYPE::STREAM_ACKNOWLEDGED));
+            }            
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+        
+        case MESSAGE_TYPE::STREAM_ACKNOWLEDGED:
+        {
+            std::cout << "Peer " << peer_kit.peer_socket->get_identifier_str() << " has acknowledged file, sending chunks." << std::endl;
+            peer_kit.file_sender->sendFile(peer_kit.peer_socket);
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+        
+        case MESSAGE_TYPE::STREAM_CHUNK:
+        {
+            if (!peer_kit.file_receiver)
+            {
+                std::cerr << "Receiving the chunk of a file we don't have the header for!" << std::endl;
+            }
+
+            else
+                peer_kit.file_receiver->onChunk(mess, peer_kit.peer_socket);
+     
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::PEER_FILE_END:
+        {
+            if (!peer_kit.file_receiver)
+            {
+                std::cerr << "Receiving file end when we don't have a file header!" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            peer_kit.file_receiver->onFileEnd(mess, peer_kit.peer_socket);
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::PEER_FILE_END_ACK:
+        {
+            if (!peer_kit.file_sender)
+            {
+                std::cerr << "Received a file end acknowledgement when we aren't sending" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            std::cout << "Peer has acknowledged file end, resetting current file transfer" << std::endl;
+            peer_kit.file_sender = nullptr;
+            return EXECUTION_STATUS::PEER_CONNECTED;
+        }
+
+        case MESSAGE_TYPE::CHUNK_ERROR:
+        {
+            if (!peer_kit.file_sender)
+            {
+                std::cerr << "Our peer is reporting a missing chunk when we're not actively sending a file!" << std::endl;
+                return EXECUTION_STATUS::PEER_CONNECTED;
+            }
+
+            bool expired = peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
+
+            if(expired)
+                peer_kit.file_sender = nullptr;
+
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
@@ -231,30 +305,6 @@ void get_user_input(thread_queue& msg_queue)
     } while (true);
 }
 
-
-void print_help()
-{
-    auto space = "\t";
-    std::cout << "PTOP Peer v69.42 is running" << std::endl;
-    std::cout << "Runtime commands:" << std::endl;
-    std::cout << space << "file: [filename]" << std::endl;
-    std::cout << space << space << "sends a file to your peer (not currently implemented)" << std::endl;
-    std::cout << std::endl;
-    std::cout << space << "msg: [text]" << std::endl;
-    std::cout << space << space << "sends plain text message of [text] (without braces) to your peer" << std::endl;
-    std::cout << space << space << "example: \"msg: banana\" will send 'banana' to your peer" << std::endl;
-    std::cout << std::endl;
-    std::cout << space << "delay" << std::endl;
-    std::cout << space << space << "delays this peer's hole punch call by a set amount (changes and cbf updating this every time)" << std::endl;
-    std::cout << space << space << "this must be called before this peer tries to hole punch" << std::endl;
-    std::cout << std::endl;
-    std::cout << space << "quit" << std::endl;
-    std::cout << space << space << "closes the program" << std::endl;
-    std::cout << std::endl;
-    std::cout << space << "debug" << std::endl;
-    std::cout << space << space << "outputs current status and relevant information" << std::endl;
-}
-
 // Returns whether to quit or not
 bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mutex>& take_message_lock, std::unique_ptr<IDataSocketWrapper>& peer_socket, client_init_kit& i_kit, client_peer_kit& peer_kit)
 {
@@ -264,97 +314,15 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
         {
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
-
-            if (input_message.substr(0, 5) == "msg: ")
-            {
-                if (peer_socket)
-                {
-                    std::string send_message = input_message.substr(5);
-                    std::cout << "Sending string of: " << send_message << std::endl;
-                    peer_socket->send_data(create_message(MESSAGE_TYPE::PEER_MSG, send_message));
-                }
-                else
-                    std::cout << "Can not send to peer, we have no peer connection" << std::endl;
-            }
-            else if (input_message.substr(0, 6) == "file: ")
-            {
-                std::cout << "file sending not implemented" << std::endl;
-            }
-            else if (input_message.substr(0, 4) == "quit")
-            {
-                std::cout << "Quitting..." << std::endl;
-                take_message_lock.unlock();
-                return true;
-            }
-            else if (input_message.substr(0, 5) == "delay")
-            {
-                if (i_kit.status == EXECUTION_STATUS::RENDEZVOUS)
-                {
-                    std::cout << "Delaying this peer's hole punch" << std::endl;
-                    i_kit.do_delay = true;
-                }
-                else
-                {
-                    std::cout << "Too late in execution to delay hole punching" << std::endl;
-                }
-            }
-            else if (input_message.substr(0, 5) == "debug")
-            {
-                std::cout << "Deburger:" << std::endl;
-                std::cout << "Protocol: " << (i_kit.protocol.is_tcp() ? "TCP" : (i_kit.protocol.is_udp() ? "UDP" : "Unknown...")) << std::endl;
-                std::cout << "Current State: ";
-                switch (i_kit.status)
-                {
-                default:
-                    std::cout << es_to_string(i_kit.status) << " Client should not be in this state, potentially a bug" << std::endl;
-                    break;
-                case EXECUTION_STATUS::RENDEZVOUS:
-                {
-                    std::cout << "Rendezvousing with server" << std::endl;
-                    auto& server_conn = i_kit.get_server_socket();
-                    if (!server_conn)
-                        std::cout << "Connection to server appears to be null" << std::endl;
-                    else
-                    {
-                        std::cout << "Connected to server at: " << server_conn->get_identifier_str() << std::endl;
-                    }
-                }
-                    break;
-                case EXECUTION_STATUS::HOLE_PUNCH:
-                    std::cout << "Hole punching to peer" << std::endl;
-                    if (!peer_kit.public_connector)
-                        std::cout << "Public connector is null" << std::endl;
-                    else
-                        std::cout << "Public connector: " << peer_kit.public_connector->get_identifier_str() << std::endl;
-                    if (!peer_kit.private_connector)
-                        std::cout << "Private connector is null" << std::endl;
-                    else
-                        std::cout << "Private connector: " << peer_kit.private_connector->get_identifier_str() << std::endl;
-                    if (!peer_kit.listen_sock)
-                        std::cout << "Listen socket is null" << std::endl;
-                    else
-                        std::cout << "Listen socket: " << peer_kit.listen_sock->get_identifier_str() << std::endl;
-
-                    break;
-                case EXECUTION_STATUS::PEER_CONNECTED:
-                    std::cout << "Connected to peer" << std::endl;
-                    if (!peer_kit.peer_socket)
-                        std::cout << "Peer socket is null (a bug)" << std::endl;
-                    else
-                        std::cout << "Peer socket is: " << peer_kit.peer_socket->get_identifier_str() << std::endl;
-                    break;
-                }
-            }
-            else if (input_message.substr(0, 4) == "help")
-            {
-                print_help();
-            }
-            else if (input_message.size() && input_message.find_first_not_of(' ') != std::string::npos)
-            {
-                std::cout << "Unknown command: " << input_message << std::endl;
-                std::cout << "Type 'help' to see available commands" << std::endl;
-            }
             
+            if(peer_kit.file_receiver != nullptr) {
+                std::cout << "cannot enter commands while file transfer in progress." << std::endl;
+                take_message_lock.unlock();
+                return false;
+            }
+
+            take_message_lock.unlock();
+            return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, peer_kit, take_message_lock);
         }
         take_message_lock.unlock();
     }
@@ -395,24 +363,40 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     auto message = connection_socket->receive_message();
                     init_kit.status = process_server_data(init_kit, peer_kit, message);
                 }
-            }   
                 break;
+            }   
 
             case EXECUTION_STATUS::HOLE_PUNCH:
             {
                 init_kit.status = hole_punch(init_kit, peer_kit);
-            }
                 break;
+            }
                 
             case EXECUTION_STATUS::PEER_CONNECTED:
             {
                 if (peer_kit.peer_socket->has_message())
                 {
                     auto message = peer_kit.peer_socket->receive_message();
-                    init_kit.status = process_peer_data(message, peer_kit.peer_socket);    
+                    init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
-            }
+
+                if(peer_kit.file_sender != nullptr && peer_kit.file_sender->resendEndFile(peer_kit.peer_socket)) {
+                    peer_kit.file_sender = nullptr;
+                    std::cout << "Resetting file sender" << std::endl;
+                }
+
+                // else {
+                    //peer_kit.file_sender->send_file_chunk();
+                // }
+
+                if(peer_kit.file_receiver != nullptr && FileTransfer::timeout_expired(peer_kit.file_receiver->get_deadman()) == true) {
+                    peer_kit.file_receiver->write_to_file();
+                    peer_kit.file_receiver = nullptr;
+                    std::cout << "Resetting file receiver" << std::endl;
+                }
+
                 break;
+            }
         }
         
         if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
@@ -421,4 +405,3 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
         std::this_thread::sleep_for(100ms);
     }
 }
-

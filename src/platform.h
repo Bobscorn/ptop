@@ -183,7 +183,7 @@ public:
 	virtual void set_name(std::string name) override;
 };
 
-class UDPListener : public Platform, public virtual IListenSocketWrapper
+class UDPListener : public Platform, public virtual IListenSocketWrapper, public virtual INonBlockingListener
 {
 	std::unordered_map<raw_name_data, std::queue<Message>> _messages;
 	std::unordered_map<raw_name_data, UDPAcceptedConnector*> _connectors;
@@ -208,6 +208,7 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper
 	raw_name_data my_data();
 public:
 	UDPListener(std::string port, Protocol proto, std::string name);
+	UDPListener(raw_name_data bind_name, Protocol proto, std::string name);
 	~UDPListener();
 
 	inline void listen() override {}
