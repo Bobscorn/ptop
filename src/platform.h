@@ -167,6 +167,7 @@ public:
 	Message receive_message() override;
 	bool has_message() override;
 
+	bool can_send_data() override;
 	bool send_data(const Message& message) override;
 
 	// Inherited via IDataSocketWrapper
@@ -202,6 +203,7 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper, public
 
 	void remove_connector(raw_name_data endpoint, UDPAcceptedConnector* conn);
 
+	bool can_send_data();
 	bool send_data(const Message& message, raw_name_data to);
 	bool has_message(raw_name_data from);
 	Message receive_message(raw_name_data from);

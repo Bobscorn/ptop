@@ -122,12 +122,10 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 		case MESSAGE_TYPE::UDP_SYN:				return  "UDP_SYN: UDP Handshake initial message";
 		case MESSAGE_TYPE::UDP_SYN_ACK:			return  "UDP_SYN_ACK: UDP Handshake response message";
 		case MESSAGE_TYPE::UDP_ACK:				return  "UDP_ACK: UDP Handshake final response";
-		case MESSAGE_TYPE::PEER_FILE_END:		return  "PEER_FILE_END: File end message";
-		case MESSAGE_TYPE::PEER_FILE_END_ACK:	return  "PEER_FILE_END_ACK: File end message acknowledgement";
 		case MESSAGE_TYPE::STREAM_ACKNOWLEDGED: return  "STREAM_ACKNOWLEDGED: File sending acknowledgement";
 		case MESSAGE_TYPE::STREAM_CHUNK:		return  "STREAM_CHUNK: A chunk of a file";
 		case MESSAGE_TYPE::CHUNK_ERROR:			return  "CHUNK_ERROR: An erroneous chunk message";
-		case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:	return  "CHUNK_ERROR: Acknowledgement of a file chunk";
+		case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:	return  "CHUNK_ACKNOWLEDGED: Acknowledgement of a file chunk";
 
 		case MESSAGE_TYPE::NONE:
 		default:

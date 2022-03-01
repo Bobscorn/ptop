@@ -62,6 +62,7 @@ struct StreamChunkState
     StreamChunk chunk;
     s_time last_send_time;
     StreamChunkAcknowledge acknowledge_state;
+    int times_sent = 0;
 
     inline bool is_empty() const { return chunk == StreamChunk::empty; }
     static const StreamChunkState empty;
@@ -70,17 +71,22 @@ struct StreamChunkState
 class FileSender {
     friend class FileTransfer;
     public:
+        inline void startSending() { _last_activity = time_now(); _received_initial_ack = true; }
+
         void sendFile(std::unique_ptr<IDataSocketWrapper>& socket);
         StreamChunkState GetTargetChunk(int index);
 
-        /// Returns whether to destroy this file sender
-        bool onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);        
-        bool onChunkAck(const Message& mess);
+        void onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket);
+        bool onChunkAck(const Message& mess); // Returns whether to destroy this file sender
 
         bool hasExpired() const;
 
-        inline static constexpr s_duration ResendChunkInterval = 5s;
-        inline static constexpr s_duration MaxIdleWaitTime = 15s;
+        int numChunksSent() const;
+        int numChunksAcked() const;
+        int numFileChunks() const;
+
+        inline static constexpr s_duration ResendChunkInterval = 10s;
+        inline static constexpr s_duration MaxIdleWaitTime = 20s;
 
     private:
         typedef std::vector<StreamChunkState>::iterator chunk_iter;
@@ -100,6 +106,8 @@ class FileSender {
         int _next_chunk_send = 0;
         int _last_chunk_scan = 0;
         int _num_acked_chunks = 0;
+
+        bool _received_initial_ack = false;
 };
 
 class FileReceiver {
@@ -109,6 +117,9 @@ class FileReceiver {
         bool onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket);
         void write_to_file();        
         std::chrono::system_clock::time_point get_deadman() { return _deadmanswitch; };
+
+        int numReceived() const;
+        int numFileChunks() const;
 
     private:
         FileReceiver(const Message& message);

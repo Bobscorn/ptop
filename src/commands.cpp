@@ -155,6 +155,14 @@ bool Commands::handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit) {
                 std::cout << "Peer socket is null (a bug)" << std::endl;
             else
                 std::cout << "Peer socket is: " << peer_kit.peer_socket->get_identifier_str() << std::endl;
+            if (peer_kit.file_sender)
+                std::cout << "There is an active file sending, sent: " << peer_kit.file_sender->numChunksSent() << "/" << peer_kit.file_sender->numFileChunks() << ", acked: " << peer_kit.file_sender->numChunksAcked() << "/" << peer_kit.file_sender->numFileChunks() << std::endl;
+            else
+                std::cout << "There is no active file sending" << std::endl;
+            if (peer_kit.file_receiver)
+                std::cout << "There is an active file receiving, received: " << peer_kit.file_receiver->numReceived() << "/" << peer_kit.file_receiver->numFileChunks() << std::endl;
+            else
+                std::cout << "There is no active file being received" << std::endl;
             break;
         
         default:

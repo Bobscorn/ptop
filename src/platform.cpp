@@ -233,6 +233,13 @@ bool UDPAcceptedConnector::send_data(const Message& message)
 	return _listen->send_data(message, _my_endpoint);
 }
 
+bool UDPAcceptedConnector::can_send_data()
+{
+	throw_if_no_listener();
+
+	return _listen->can_send_data();
+}
+
 readable_ip_info UDPAcceptedConnector::get_peer_data() const
 {
 	return convert_to_readable(_my_endpoint);
@@ -466,6 +473,11 @@ Message UDPListener::receive_message(raw_name_data from)
 	auto tmp = q.front();
 	q.pop();
 	return tmp;
+}
+
+bool UDPListener::can_send_data()
+{
+	return _socket.select_for(select_for::WRITE);
 }
 
 raw_name_data UDPListener::my_data()
