@@ -36,7 +36,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 
 	s_time start_sending = time_now();
 	while(socket->can_send_data() && (time_now() - start_sending < consecutive_sending_timeout)) {
-		auto& iter = IterateNextChunk();
+		auto iter = IterateNextChunk();
 		
 		// chunk will be empty if have sent all chunks
 		if(iter == _chunks.end()) {
