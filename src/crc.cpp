@@ -1,6 +1,7 @@
 #include "crc.h"
 
 #include <array>
+#include <cstring>
 
 constexpr uint32_t crc_polynomial = 0xBA0DC66Bu; // stole this polynomial from like.... somewhere
 
