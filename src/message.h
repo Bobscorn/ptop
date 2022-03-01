@@ -15,9 +15,6 @@ enum class ConnectionStatus
 	FAILED = 2,
 };
 
-
-//uint32_t crc_data(const std::vector<char>& data);
-
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
 // A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long
@@ -35,12 +32,10 @@ enum class MESSAGE_TYPE
 	UDP_SYN,
 	UDP_SYN_ACK,
 	UDP_ACK,
-	MISSING_CHUNK,
-	PEER_FILE_END,
-	PEER_FILE_END_ACK,
 	STREAM_ACKNOWLEDGED,
 	STREAM_CHUNK,
-	CHUNK_ERROR
+	CHUNK_ERROR,
+	CHUNK_ACKNOWLEDGED,
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
@@ -132,6 +127,7 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 		case MESSAGE_TYPE::STREAM_ACKNOWLEDGED: return  "STREAM_ACKNOWLEDGED: File sending acknowledgement";
 		case MESSAGE_TYPE::STREAM_CHUNK:		return  "STREAM_CHUNK: A chunk of a file";
 		case MESSAGE_TYPE::CHUNK_ERROR:			return  "CHUNK_ERROR: An erroneous chunk message";
+		case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:	return  "CHUNK_ERROR: Acknowledgement of a file chunk";
 
 		case MESSAGE_TYPE::NONE:
 		default:
