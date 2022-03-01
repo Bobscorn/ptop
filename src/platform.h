@@ -95,6 +95,7 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	Message receive_message() override;
 	bool has_message() override;
 
+	bool can_send_data() override;
 	bool send_data(const Message& message) override;
 };
 

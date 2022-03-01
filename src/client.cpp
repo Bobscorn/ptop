@@ -241,28 +241,14 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
-        case MESSAGE_TYPE::PEER_FILE_END:
-        {
-            if (!peer_kit.file_receiver)
-            {
-                std::cerr << "Receiving file end when we don't have a file header!" << std::endl;
-                return EXECUTION_STATUS::PEER_CONNECTED;
-            }
-
-            peer_kit.file_receiver->onFileEnd(mess, peer_kit.peer_socket);
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
-
-        case MESSAGE_TYPE::PEER_FILE_END_ACK:
+        case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:
         {
             if (!peer_kit.file_sender)
-            {
-                std::cerr << "Received a file end acknowledgement when we aren't sending" << std::endl;
-                return EXECUTION_STATUS::PEER_CONNECTED;
-            }
+                std::cerr << "Receiving a chunk acknowledgement when we aren't sending!" << std::endl;
+            else
+                if (peer_kit.file_sender->onChunkAck(mess))
+                    peer_kit.file_sender = nullptr;
 
-            std::cout << "Peer has acknowledged file end, resetting current file transfer" << std::endl;
-            peer_kit.file_sender = nullptr;
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
@@ -380,9 +366,14 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
 
-                if(peer_kit.file_sender != nullptr && peer_kit.file_sender->resendEndFile(peer_kit.peer_socket)) {
-                    peer_kit.file_sender = nullptr;
-                    std::cout << "Resetting file sender" << std::endl;
+                if(peer_kit.file_sender != nullptr)
+                {
+                    peer_kit.file_sender->sendFile(peer_kit.peer_socket);
+                    if (peer_kit.file_sender->hasExpired())
+                    {
+                        peer_kit.file_sender = nullptr;
+                        std::cout << "Resetting file sender" << std::endl;
+                    }
                 }
 
                 // else {

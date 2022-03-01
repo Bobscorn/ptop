@@ -572,3 +572,8 @@ bool PlatformAnalyser::send_data(const Message& message)
     }
     return false;
 }
+
+bool PlatformAnalyser::can_send_data()
+{
+	return _socket.select_for(select_for::WRITE);
+}
