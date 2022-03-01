@@ -56,10 +56,10 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 
 				auto& chunk = _chunks[_last_chunk_scan];
 
-				if (chunk.acknowledge_state != StreamChunkAcknowledge::ACKNOWLEDGED)
+				if (chunk.acknowledge_state != StreamChunkAcknowledge::ACKNOWLEDGED && chunk.times_sent < 3)
 				{
 					any_left_chunks = true;
-					if (time_now() - chunk.last_send_time > ResendChunkInterval && chunk.times_sent < 3)
+					if (time_now() - chunk.last_send_time > ResendChunkInterval)
 					{
 						sendChunk(chunk, socket);
 						break;
