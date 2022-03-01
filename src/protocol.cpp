@@ -87,7 +87,9 @@ std::vector<char> Protocol::receive_bytes(SOCKET handle, raw_name_data& expected
 		int result = ::recvfrom(handle, data.data(), (int)data.capacity(), 0, &addr, &addr_len);
 		throw_if_socket_error(result, "Failed to receive UDP bytes with: " + get_last_error(), LINE_CONTEXT);
 
+#ifdef DATA_COUT
 		std::cout << "Received " << result << " UDP Bytes" << std::endl;
+#endif
 
 		raw_name_data incoming{ addr, addr_len };
 		if (incoming != expected_endpoint && expected_endpoint.name_len)

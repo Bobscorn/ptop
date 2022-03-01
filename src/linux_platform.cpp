@@ -217,11 +217,15 @@ PtopSocket steal_construct(std::unique_ptr<INonBlockingConnector>&& old)
 
 void PlatformAnalyser::process_socket_data()
 {
+#ifdef DATA_COUT
 	std::cout << "[Data] Trying to receive new data from Socket: " << get_identifier_str() << std::endl;
+#endif
 	std::vector<char> recv_data = _socket.receive_bytes();
 	if (recv_data.size() > 0)
 	{
+#ifdef DATA_COUT
 		std::cout << "Received " << recv_data.size() << " bytes" << std::endl;
+#endif
 		_seen_data += recv_data.size();
 
 		int data_read = 0;
@@ -254,7 +258,9 @@ void PlatformAnalyser::process_socket_data()
 			data_read += length;
 			auto new_message = Message{ type, length, std::move(data) };
 			_stored_messages.push(new_message);
+#ifdef DATA_COUT
 			std::cout << "Socket " << get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
+#endif
 		}
 	}
 	else
