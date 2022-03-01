@@ -85,8 +85,8 @@ class FileSender {
         int numChunksAcked() const;
         int numFileChunks() const;
 
-        inline static constexpr s_duration ResendChunkInterval = 10s;
-        inline static constexpr s_duration MaxIdleWaitTime = 20s;
+        static const s_duration ResendChunkInterval;
+        static const s_duration MaxIdleWaitTime;
 
     private:
         typedef std::vector<StreamChunkState>::iterator chunk_iter;
@@ -138,7 +138,7 @@ public:
     static std::unique_ptr<FileReceiver> BeginReception(const Message& message);
     static bool timeout_expired(std::chrono::system_clock::time_point deadmanswitch);
 
-    inline static constexpr std::chrono::seconds MaximumIdleWaitTime = 10s;
+    static const std::chrono::seconds MaximumIdleWaitTime;
 };
 
 template<>

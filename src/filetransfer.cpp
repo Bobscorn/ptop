@@ -12,6 +12,11 @@
 const StreamChunk StreamChunk::empty = StreamChunk{ -1, -1, -1, std::vector<char>() };
 const StreamChunkState StreamChunkState::empty = StreamChunkState{ StreamChunk::empty, s_time(), StreamChunkAcknowledge::NONE };
 
+const s_duration FileSender::ResendChunkInterval = 10s;
+const s_duration FileSender::MaxIdleWaitTime = 20s;
+
+const std::chrono::seconds FileTransfer::MaximumIdleWaitTime = 15s;
+
 
 bool StreamChunk::operator==(const StreamChunk& other) const
 {

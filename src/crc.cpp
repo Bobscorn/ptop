@@ -4,7 +4,7 @@
 
 constexpr uint32_t crc_polynomial = 0xBA0DC66Bu; // stole this polynomial from like.... somewhere
 
-constexpr std::array<uint32_t, 256> calculate_table(uint32_t polynomial)
+std::array<uint32_t, 256> calculate_table(uint32_t polynomial)
 {
     auto width = sizeof(uint32_t) * 8;
     auto topbit = 1u << ((uint32_t)(width - 1));
@@ -24,7 +24,7 @@ constexpr std::array<uint32_t, 256> calculate_table(uint32_t polynomial)
     return tbl;
 }
 
-constexpr auto crc_table = calculate_table(crc_polynomial);
+auto crc_table = calculate_table(crc_polynomial);
 
 //Supposedly some CRC implementations 'reflect' some if not all parts of this algorithm
 //Screw that
