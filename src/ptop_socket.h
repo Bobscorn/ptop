@@ -7,6 +7,9 @@
 #include "message.h"
 
 #include <string>
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
 
 constexpr SOCKET REALLY_INVALID_SOCKET = -1;
 constexpr int READ_BYTE_BUFFER = 2 * 64 * KILOBYTE;
@@ -35,20 +38,25 @@ struct udp_bytes
 class PtopSocket
 {
     private:
-    SOCKET _handle;
+    std::shared_ptr<SOCKET> _handle;
     Protocol _protocol;
     raw_name_data _endpoint;
     std::string _name;
-    PtopSocket(SOCKET handle, Protocol proto, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(), _name(name) {}
-    PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, std::string name = "") : _handle(handle), _protocol(proto), _endpoint(endpoint), _name(name) {}
+    std::thread _polling_thread;
+    std::shared_ptr<std::shared_mutex> _handle_mutex;
+    std::shared_ptr<std::shared_mutex> _message_obj_mutex;
+    std::shared_ptr<std::vector<udp_bytes>> _shared_message_obj;
+
+    std::shared_ptr<bool> _thread_die = std::make_shared<bool>(false);
+
+    PtopSocket(SOCKET handle, Protocol proto, std::string name = "");
+    PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, std::string name = "");
 
     public:
 
     explicit PtopSocket(Protocol proto, std::string name = "");
 
-    PtopSocket(PtopSocket&& other) : _handle(other._handle), _protocol(other._protocol), _endpoint(other._endpoint), _name(std::move(other._name)) { 
-        other._handle = REALLY_INVALID_SOCKET;
-    };
+    PtopSocket(PtopSocket&& other);
     ~PtopSocket();
 
     inline void set_name(std::string name)
@@ -64,7 +72,7 @@ class PtopSocket
     template<class OptT>
     PtopSocket& set_socket_option(int option_name, OptT optionVal, std::string error_message)
     {
-        int result = setsockopt(_handle, SOL_SOCKET, option_name, (char*)&optionVal, sizeof(OptT));
+        int result = setsockopt(*_handle, SOL_SOCKET, option_name, (char*)&optionVal, sizeof(OptT));
         throw_if_socket_error(result, error_message, LINE_CONTEXT);
         return *this;
     }
@@ -80,7 +88,7 @@ class PtopSocket
     {
         OptT opt;
         socklen_t optSize = sizeof(OptT);
-        int result = getsockopt(_handle, SOL_SOCKET, option_name, (char*)&opt, &optSize);
+        int result = getsockopt(*_handle, SOL_SOCKET, option_name, (char*)&opt, &optSize);
         throw_if_socket_error(result, "Failed to get socket option", LINE_CONTEXT);
         return opt;
     }
@@ -108,21 +116,21 @@ class PtopSocket
     bool has_connection() const;
 
     bool poll_for(int poll_flag) const;
-    bool select_for(select_for s_for) const;
+    bool select_for(select_for s_for);
 
-    bool has_message() const;
+    bool has_message();
     bool has_died();
 
     raw_name_data get_peer_raw() const;
     raw_name_data get_name_raw() const;
 
-    inline bool is_invalid() const { return _handle == REALLY_INVALID_SOCKET; }
-    inline bool is_valid() const { return _handle != REALLY_INVALID_SOCKET; }
+    inline bool is_invalid() const { return !_handle || *_handle == REALLY_INVALID_SOCKET; }
+    inline bool is_valid() const { return _handle && *_handle != REALLY_INVALID_SOCKET; }
     inline bool is_tcp() const { return _protocol.is_tcp(); }
     inline bool is_udp() const { return _protocol.is_udp(); }
     inline bool is_listen() const { return get_socket_option<int>(SO_ACCEPTCONN); }
 
-    inline SOCKET get_handle() const { return _handle; }
+    inline SOCKET get_handle() const { return (_handle ? *_handle : REALLY_INVALID_SOCKET); }
     inline const Protocol& get_protocol() const { return _protocol; }
 
     bool send_bytes(std::vector<char> bytes);

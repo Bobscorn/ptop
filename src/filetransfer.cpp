@@ -39,6 +39,8 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 
 	constexpr s_duration consecutive_sending_timeout = 2s;
 
+	std::vector<int32_t> sent_chunks{};
+
 	s_time start_sending = time_now();
 	while(socket->can_send_data() && (time_now() - start_sending < consecutive_sending_timeout)) {
 		auto iter = IterateNextChunk();
@@ -67,6 +69,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 					if (time_now() - chunk.last_send_time > ResendChunkInterval)
 					{
 						sendChunk(chunk, socket);
+						sent_chunks.push_back(_last_chunk_scan);
 						break;
 					}
 				}
@@ -82,6 +85,15 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		
 		auto& chunk = *iter;
 		sendChunk(chunk, socket);
+		sent_chunks.push_back(iter - _chunks.begin());
+	}
+
+	if (sent_chunks.size())
+	{
+		std::string ids = "";
+		for (auto& id : sent_chunks)
+			ids += std::to_string(id) + ", ";
+		std::cout << "Sent " << ids << std::endl;
 	}
 }
 
