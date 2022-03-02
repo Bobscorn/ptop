@@ -50,7 +50,7 @@ PtopSocket::~PtopSocket()
 {
 	if (is_valid())
 	{
-		auto lock = std::unique_lock(*_handle_mutex);
+		auto lock = std::unique_lock<std::shared_mutex>(*_handle_mutex);
 		std::cout << "Closing socket" << std::endl;
 		close(*_handle);
 		*_handle = REALLY_INVALID_SOCKET;
@@ -66,9 +66,9 @@ PtopSocket::~PtopSocket()
 PtopSocket& PtopSocket::set_non_blocking(bool value)
 {
 	try {		
-		int flags = fcntl(_handle, F_GETFL);
+		int flags = fcntl(*_handle, F_GETFL);
 		throw_if_socket_error(flags, "Failed to retrieve socket flags", LINE_CONTEXT);
-		int n = fcntl(_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
+		int n = fcntl(*_handle, F_SETFL, (value ? flags | O_NONBLOCK : flags & (~O_NONBLOCK)));
 		throw_if_socket_error(n, "Failed to set blocking value", LINE_CONTEXT);
 	}
 

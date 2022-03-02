@@ -47,7 +47,7 @@ void poll_thread_func(std::shared_ptr<SOCKET> handle, std::shared_ptr<std::share
 	{
 		while (!*thread_die)
 		{
-			auto handle_lock = std::shared_lock(*handle_mutex);
+			auto handle_lock = std::shared_lock<std::shared_mutex>(*handle_mutex);
 			if (*handle == REALLY_INVALID_SOCKET)
 				break;
 			if (select_for_socket(*handle))
@@ -56,7 +56,7 @@ void poll_thread_func(std::shared_ptr<SOCKET> handle, std::shared_ptr<std::share
 				auto data = proto.receive_bytes(*handle, endpoint);
 
 				{
-					auto lock = std::unique_lock(*mutex);
+					auto lock = std::unique_lock<std::shared_mutex>(*mutex);
 
 					msgs->push_back(udp_bytes{ std::move(data), endpoint });
 				}
@@ -258,7 +258,7 @@ bool PtopSocket::select_for(::select_for epic_for)
 	default:
 	case select_for::READ:
 	{
-		auto lock = std::shared_lock(*_message_obj_mutex);
+		auto lock = std::shared_lock<std::shared_mutex>(*_message_obj_mutex);
 
 		return _shared_message_obj->size();
 	}
@@ -325,7 +325,7 @@ bool PtopSocket::send_udp_bytes(udp_bytes bytes)
 }
 
 udp_bytes PtopSocket::receive_udp_bytes(){
-	auto lock = std::shared_lock(*_message_obj_mutex);
+	auto lock = std::shared_lock<std::shared_mutex>(*_message_obj_mutex);
 
 	if (_shared_message_obj->empty())
 		throw_new_exception("Trying to receive bytes when none are available", LINE_CONTEXT);
