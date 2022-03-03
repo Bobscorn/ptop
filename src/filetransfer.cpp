@@ -42,7 +42,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 	std::vector<int32_t> sent_chunks{};
 
 	s_time start_sending = time_now();
-	while(socket->can_send_data() && (time_now() - start_sending < consecutive_sending_timeout)) {
+	while(socket->can_send_data() && dynamic_cast<INegotiator*>(socket.get())->should_send_data(MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE) && (time_now() - start_sending < consecutive_sending_timeout)) {
 		auto iter = IterateNextChunk();
 		
 		// chunk will be empty if have sent all chunks
@@ -88,13 +88,10 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		sent_chunks.push_back(iter - _chunks.begin());
 	}
 
-	if (sent_chunks.size())
-	{
-		std::string ids = "";
-		for (auto& id : sent_chunks)
-			ids += std::to_string(id) + ", ";
-		std::cout << "Sent " << ids << std::endl;
-	}
+	if (_num_acked_chunks >= _header.num_chunks)
+		std::cout << "\rProgress: 100%" << std::endl;
+	else
+		std::cout << "\rProgress: " << (float)_num_acked_chunks / (float)_header.num_chunks * 100.f << "%";
 }
 
 FileSender::chunk_iter FileSender::IterateNextChunk()
@@ -105,12 +102,32 @@ FileSender::chunk_iter FileSender::IterateNextChunk()
 	return _chunks.begin() + index;
 }
 
+FileProgress FileSender::getProgress() const
+{
+	FileProgress prog;
+	prog.filename = _header.filename + "." + _header.extension;
+	prog.acknowledged_chunks = _num_acked_chunks;
+	prog.sent_chunks = numChunksSent();
+	prog.total_chunks = _header.num_chunks;
+
+	prog.received_chunks = 0;
+	return prog;
+}
+
 void FileSender::sendChunk(StreamChunkState& chunk, std::unique_ptr<IDataSocketWrapper>& socket)
 {
 	socket->send_message(chunk.chunk);
+	dynamic_cast<INegotiator*>(socket.get())->sent_data(MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE);
 	chunk.acknowledge_state = StreamChunkAcknowledge::SENT;
 	_last_send = chunk.last_send_time = time_now();
 	chunk.times_sent++;
+}
+
+std::string FileSender::getProgressString() const
+{
+	auto prog = getProgress();
+
+	return "File: " + prog.filename + " sent " + std::to_string(prog.sent_chunks) + " chunks, acknowledged " + std::to_string(prog.acknowledged_chunks) + " chunks out of " + std::to_string(prog.total_chunks) + " chunks";
 }
 
 StreamChunkState FileSender::GetTargetChunk(int index)
@@ -246,6 +263,25 @@ FileReceiver::FileReceiver(const Message& message)
 	_chunks.resize(_header.num_chunks, StreamChunk::empty);
 }
 
+FileProgress FileReceiver::getProgress() const
+{
+	FileProgress prog;
+	prog.filename = _header.filename + "." + _header.extension;
+	prog.received_chunks = _num_good_chunks;
+	prog.total_chunks = _header.num_chunks;
+
+	prog.sent_chunks = 0;
+	prog.acknowledged_chunks = 0;
+	return prog;
+}
+
+std::string FileReceiver::getProgressString() const
+{
+	auto prog = getProgress();
+
+	return "File " + prog.filename + " received " + std::to_string(prog.received_chunks) + " out of " + std::to_string(prog.total_chunks) + " chunks";
+}
+
 bool FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
 {
 	// auto from_msg_wc = from_message_with_crc<StreamChunk>();
@@ -342,6 +378,12 @@ int FileReceiver::numFileChunks() const
 
 std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket)
 {
+	if (!dynamic_cast<INegotiator*>(socket.get())->has_negotiated())
+	{
+		std::cout << "Please Negotiate before Transferring! (This will be automatic eventally)" << std::endl;
+		return nullptr;
+	}
+
 	std::ifstream file{ header.filename + "." + header.extension, std::ios::binary };
 
 	if(!file.good()) {

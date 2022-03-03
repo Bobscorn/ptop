@@ -5,12 +5,14 @@
 #include "filetransfer.h"
 
 #include <string.h>
+#include <string>
+#include <sstream>
 
 Commands Commands::_singleton = Commands();
 
 bool Commands::commandSaidQuit(
     std::string input_message, 
-    std::unique_ptr<IDataSocketWrapper>& peer_socket, 
+    std::unique_ptr<IDataSocketWrapper>& peer_socket,
     client_init_kit& i_kit,
     client_peer_kit& p_kit,
     std::unique_lock<std::shared_mutex>& take_message_lock) {
@@ -21,14 +23,15 @@ bool Commands::commandSaidQuit(
     auto debug_found = input_message.find(DEBUG);
     auto help_found = input_message.find(HELP);
     auto quit_found = input_message.find(QUIT);
+    auto negotiate_found = input_message.find(NEGOTIATE);
 
     if(msg_found != std::string::npos) {
-        auto text = input_message.substr(msg_found + strlen(MESSAGE));
+        auto text = input_message.substr(msg_found + 1 + strlen(MESSAGE));
         return handleMessage(text, peer_socket, i_kit);
     }
 
     else if(file_found != std::string::npos) {
-        auto text = input_message.substr(file_found + strlen(FILE));
+        auto text = input_message.substr(file_found + 1 + strlen(FILE));
         return handleFiles(text, p_kit);
     }
 
@@ -46,6 +49,32 @@ bool Commands::commandSaidQuit(
 
     else if(quit_found != std::string::npos) {
         return handleQuit(take_message_lock);
+    }
+
+    else if (negotiate_found != std::string::npos) {
+        float bandwidth = 0.f;
+        int num_packets = 0;
+        int packet_size = 8 * KILOBYTE;
+        try
+        {
+            auto remainder = input_message.substr(negotiate_found + 1 + strlen(NEGOTIATE));
+            std::vector<std::string> args;
+            std::istringstream stream{ remainder };
+            std::string s;
+            while (std::getline(stream, s, ' '))
+                args.push_back(s);
+
+            if (args.size() > 0)
+                bandwidth = std::stof(args[0]);
+            if (args.size() > 1)
+                num_packets = std::stoi(args[1]);
+            if (args.size() > 2)
+                packet_size = std::stoi(args[2]);
+        }
+        catch (std::invalid_argument& e) {}
+        catch (std::out_of_range& e) {}
+
+        return handleNegotiate(i_kit, p_kit, bandwidth, num_packets, packet_size);
     }
 
     else {
@@ -156,11 +185,11 @@ bool Commands::handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit) {
             else
                 std::cout << "Peer socket is: " << peer_kit.peer_socket->get_identifier_str() << std::endl;
             if (peer_kit.file_sender)
-                std::cout << "There is an active file sending, sent: " << peer_kit.file_sender->numChunksSent() << "/" << peer_kit.file_sender->numFileChunks() << ", acked: " << peer_kit.file_sender->numChunksAcked() << "/" << peer_kit.file_sender->numFileChunks() << std::endl;
+                std::cout << "There is an active file sending: " << peer_kit.file_sender->getProgressString() << std::endl;
             else
                 std::cout << "There is no active file sending" << std::endl;
             if (peer_kit.file_receiver)
-                std::cout << "There is an active file receiving, received: " << peer_kit.file_receiver->numReceived() << "/" << peer_kit.file_receiver->numFileChunks() << std::endl;
+                std::cout << "There is an active file receiving: " << peer_kit.file_receiver->getProgressString() << std::endl;
             else
                 std::cout << "There is no active file being received" << std::endl;
             break;
@@ -205,4 +234,17 @@ bool Commands::handleQuit(std::unique_lock<std::shared_mutex>& take_message_lock
     std::cout << "Quitting..." << std::endl;
     take_message_lock.unlock();
     return true;
+}
+
+bool Commands::handleNegotiate(client_init_kit& kit, client_peer_kit& peer_kit, float bandwidth, int num_packets, int packet_size)
+{
+    if (kit.status != EXECUTION_STATUS::PEER_CONNECTED || !peer_kit.peer_socket)
+    {
+        std::cout << "Can only negotiate if we're connected to a peer!" << std::endl;
+        return false;
+    }
+
+    dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->begin_negotiation(bandwidth, num_packets, packet_size);
+
+    return false;
 }

@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "interfaces.h"
 #include "time.h"
+#include "negotiation.h"
 
 #include <string>
 #include <vector>
@@ -39,6 +40,16 @@ struct FileHeader {
     int file_id = 0;
 };
 
+struct FileProgress
+{
+    std::string filename;
+    int received_chunks;
+    int sent_chunks;
+    int acknowledged_chunks;
+    int total_chunks;
+};
+
+constexpr int StreamChunk_OVERHEAD = sizeof(int32_t) * 3;
 struct StreamChunk {
     int32_t file_id;
     int32_t chunk_id;
@@ -86,6 +97,9 @@ class FileSender {
         int numChunksAcked() const;
         int numFileChunks() const;
 
+        FileProgress getProgress() const;
+        std::string getProgressString() const;
+
         static const s_duration ResendChunkInterval;
         static const s_duration MaxIdleWaitTime;
 
@@ -121,6 +135,9 @@ class FileReceiver {
 
         int numReceived() const;
         int numFileChunks() const;
+
+        FileProgress getProgress() const;
+        std::string getProgressString() const;
 
     private:
         FileReceiver(const Message& message);

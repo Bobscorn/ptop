@@ -7,6 +7,7 @@
 #include "ptop_socket.h"
 #include "interfaces.h"
 #include "time.h"
+#include "negotiation.h"
 
 
 #ifdef WIN32
@@ -36,6 +37,7 @@ struct UDPHandShakeStatus
 };
 
 bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket); // Returns successful handshake
+
 
 class Platform : public virtual ISocketWrapper {    
     protected:    
@@ -82,7 +84,7 @@ class PlatformListener : public Platform, public virtual IListenSocketWrapper {
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
+class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper, public virtual INegotiator {
 	std::queue<Message> _stored_messages;
 	void process_socket_data();
 	UDPHandShakeStatus _handshake_status;
@@ -149,7 +151,7 @@ namespace std
 
 class UDPListener;
 
-class UDPAcceptedConnector : public virtual IDataSocketWrapper
+class UDPAcceptedConnector : public virtual IDataSocketWrapper, public virtual INegotiator
 {
 	void throw_if_no_listener() const;
 

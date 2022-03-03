@@ -27,7 +27,7 @@
 
 using namespace std::chrono;
 
-bool select_for_socket(SOCKET handle)
+bool socket_has_data(SOCKET handle)
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
@@ -47,14 +47,21 @@ void poll_thread_func(std::shared_ptr<SOCKET> handle, std::shared_ptr<std::share
 	{
 		while (!*thread_die)
 		{
-			auto handle_lock = std::shared_lock<std::shared_mutex>(*handle_mutex);
-			if (*handle == REALLY_INVALID_SOCKET)
-				break;
-			if (select_for_socket(*handle))
+			raw_name_data endpoint{};
+			std::vector<char> data{};
 			{
-				raw_name_data endpoint{};
-				auto data = proto.receive_bytes(*handle, endpoint);
+				auto handle_lock = std::shared_lock<std::shared_mutex>(*handle_mutex);
+				if (*handle == REALLY_INVALID_SOCKET)
+					break;
 
+				if (socket_has_data(*handle))
+				{
+					data = proto.receive_bytes(*handle, endpoint);
+				}
+			}
+
+			if (endpoint.name_len > 0)
+			{
 				{
 					auto lock = std::unique_lock<std::shared_mutex>(*mutex);
 

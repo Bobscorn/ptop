@@ -21,7 +21,7 @@ enum class ConnectionStatus
 constexpr int KILOBYTE = 1024;
 constexpr int MEGABYTE = KILOBYTE * 1024;
 
-enum class MESSAGE_TYPE
+enum class MESSAGE_TYPE : int32_t
 {
 	NONE = 0,
 	MY_DATA,
@@ -36,9 +36,15 @@ enum class MESSAGE_TYPE
 	STREAM_CHUNK,
 	CHUNK_ERROR,
 	CHUNK_ACKNOWLEDGED,
+	NEGOTIATION_TEST, // The first packet in a negotiation test containing number of packets to be sent
+	NEGOTIATION_TEST_ACK, // The acknowledgement of a negotiation test indicator the receiver is now ready to test
+	NEGOTATION_TEST_DATA, // A packet to be sent containing an integer, and redundant data for testing bandwidth
+	NEGOTATION_REPORT, // The response packet in a negotation test containing the number of packets actually received and the delay
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
+
+constexpr int MESSAGE_OVERHEAD = sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH_T);
 
 struct Message
 {
@@ -126,6 +132,10 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 		case MESSAGE_TYPE::STREAM_CHUNK:		return  "STREAM_CHUNK: A chunk of a file";
 		case MESSAGE_TYPE::CHUNK_ERROR:			return  "CHUNK_ERROR: An erroneous chunk message";
 		case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:	return  "CHUNK_ACKNOWLEDGED: Acknowledgement of a file chunk";
+		case MESSAGE_TYPE::NEGOTATION_TEST_DATA:return  "NEGOTIATION_TEST_DATA: A Large data packet for negotiating bandwidth";
+		case MESSAGE_TYPE::NEGOTIATION_TEST:	return  "NEGOTIATION_TEST: A request to start negotiating bandwidth";
+		case MESSAGE_TYPE::NEGOTATION_REPORT:	return  "NEGOTIATION_REPORT: Results of a negotiated bandwidth";
+		case MESSAGE_TYPE::NEGOTIATION_TEST_ACK:return  "NEGOTIATION_TEST_ACK: Acknowledgement of Negotiation";
 
 		case MESSAGE_TYPE::NONE:
 		default:
