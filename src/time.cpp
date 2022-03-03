@@ -1,6 +1,7 @@
 #include "time.h"
 
 #include <stdio.h>
+#include <tgmath.h>
 
 std::string time_to_str(const s_time& time)
 {

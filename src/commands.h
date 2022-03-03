@@ -20,7 +20,7 @@ class Commands {
     const char* DEBUG = "debug";
     const char* HELP = "help";
     const char* QUIT = "quit";
-    const char* NEGOTIATE = "negotiate";
+    const char* NEGOTIATE = "negotiate:";
 
     inline Commands() {};
     static Commands _singleton;
