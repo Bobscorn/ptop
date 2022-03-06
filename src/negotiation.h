@@ -36,7 +36,7 @@
  * Either way it will do no more work, negotiating has either completed or failed.
  */
 
-constexpr float _KB_PER_SECOND = 3000;
+constexpr float _KB_PER_SECOND = 10000;
 constexpr int DEFAULT_NEGOTIATION_TEST_SIZE = 4 * KILOBYTE;
 
 class Negotiator
