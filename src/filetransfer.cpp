@@ -319,10 +319,10 @@ bool FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 	if (index < 0 || index >= _chunks.size())
 		return false;
 
+	socket->send_data(create_message(MESSAGE_TYPE::CHUNK_ACKNOWLEDGED, chunk.chunk_id));
 	if (_chunks[index] == StreamChunk::empty)
 	{
 		_num_good_chunks++;
-		socket->send_data(create_message(MESSAGE_TYPE::CHUNK_ACKNOWLEDGED, chunk.chunk_id));
 		if (_num_good_chunks >= _header.num_chunks)
 		{
 			_chunks[index] = chunk;
