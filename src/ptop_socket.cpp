@@ -31,7 +31,7 @@ bool socket_has_data(SOCKET handle)
 {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
-	timeout.tv_usec = 10000;
+	timeout.tv_usec = 0;
 
 	fd_set set;
 	FD_ZERO(&set);
@@ -68,6 +68,8 @@ void poll_thread_func(std::shared_ptr<SOCKET> handle, std::shared_ptr<std::share
 					msgs->push_back(udp_bytes{ std::move(data), endpoint });
 				}
 			}
+
+			std::this_thread::sleep_for(1ms);
 		}
 	}
 	catch (std::exception& e)

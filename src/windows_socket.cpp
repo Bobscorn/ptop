@@ -35,6 +35,9 @@ std::string socket_error_to_string(int err)
 
 PtopSocket::~PtopSocket()
 {
+	if (_thread_die)
+		*_thread_die = true;
+
 	if (is_valid())
 	{
 		auto lock = std::unique_lock(*_handle_mutex);
@@ -43,11 +46,9 @@ PtopSocket::~PtopSocket()
 		*_handle = REALLY_INVALID_SOCKET;
 		_handle = nullptr;
 	}
+
 	if (_thread_die)
-	{
-		*_thread_die = true;
 		_polling_thread.join();
-	}
 }
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)
