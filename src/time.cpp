@@ -1,6 +1,7 @@
 #include "time.h"
 
 #include <stdio.h>
+#include <tgmath.h>
 
 std::string time_to_str(const s_time& time)
 {
@@ -23,7 +24,7 @@ std::string duration_to_str(const s_duration& dur)
     auto hours_d = duration_cast<hours>(dur);
     auto minutes_d = duration_cast<minutes>(dur - hours_d);
     auto seconds_d = duration_cast<seconds>((dur - hours_d) - minutes_d);
-    auto millis_d = duration_cast<milliseconds>(((dur - hours_d) - minutes_d) - seconds_d);
+    auto millis_d = duration_cast<std::chrono::duration<double, std::milli>>(((dur - hours_d) - minutes_d) - seconds_d);
 
     auto num_hours = hours_d.count();
     auto num_minutes = minutes_d.count();
@@ -47,10 +48,10 @@ std::string duration_to_str(const s_duration& dur)
     if (num_seconds)
     {
         char buf[40];
-        std::snprintf(buf, 40, "%0u.%00u s", (int)num_seconds, (int)num_millis);
+        std::snprintf(buf, 40, "%0u.%00u s", (int)num_seconds, (int)roundf(num_millis));
         return std::string(buf);
     }
     char buf[20];
-    std::snprintf(buf, 20, "%.3u ms", (int)num_millis);
+    std::snprintf(buf, 20, "%1.3f ms", num_millis);
     return std::string(buf);
 }

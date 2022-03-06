@@ -35,18 +35,26 @@ std::string socket_error_to_string(int err)
 
 PtopSocket::~PtopSocket()
 {
-	if (_handle != REALLY_INVALID_SOCKET)
+	if (_thread_die)
+		*_thread_die = true;
+
+	if (is_valid())
 	{
+		auto lock = std::unique_lock(*_handle_mutex);
 		std::cout << "Closing socket" << std::endl;
-		closesocket(_handle);
-		_handle = REALLY_INVALID_SOCKET;
+		closesocket(*_handle);
+		*_handle = REALLY_INVALID_SOCKET;
+		_handle = nullptr;
 	}
+
+	if (_thread_die)
+		_polling_thread.join();
 }
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)
 {
 	u_long blockMode = value;
-	int result = ioctlsocket(_handle, FIONBIO, &blockMode);
+	int result = ioctlsocket(*_handle, FIONBIO, &blockMode);
 
 	throw_if_socket_error(result, "Failed to set non blocking state", LINE_CONTEXT);
 	return *this;

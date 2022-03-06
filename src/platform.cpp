@@ -229,8 +229,17 @@ bool UDPAcceptedConnector::send_data(const Message& message)
 {
 	throw_if_no_listener();
 
+#ifdef DATA_COUT
 	std::cout << "Sending " << mt_to_string(message.Type) << " " << message.Length << " bytes to " << convert_to_readable(_my_endpoint) << std::endl;
+#endif
 	return _listen->send_data(message, _my_endpoint);
+}
+
+bool UDPAcceptedConnector::can_send_data()
+{
+	throw_if_no_listener();
+
+	return _listen->can_send_data();
 }
 
 readable_ip_info UDPAcceptedConnector::get_peer_data() const
@@ -309,7 +318,9 @@ void process_into_messages(std::queue<Message>& message_queue, const std::vector
 	auto& recv_data = data;
 	if (recv_data.size() > 0)
 	{
+#ifdef DATA_COUT
 		std::cout << "Received (UDP) " << recv_data.size() << " bytes" << std::endl;
+#endif
 
 		int data_read = 0;
 
@@ -468,6 +479,11 @@ Message UDPListener::receive_message(raw_name_data from)
 	return tmp;
 }
 
+bool UDPListener::can_send_data()
+{
+	return _socket.select_for(select_for::WRITE);
+}
+
 raw_name_data UDPListener::my_data()
 {
 	return _socket.get_name_raw();
@@ -563,7 +579,9 @@ std::unique_ptr<IDataSocketWrapper> UDPListener::accept_connection()
 
 bool PlatformAnalyser::send_data(const Message& message)
 {
+#ifdef DATA_COUT
     std::cout << "Socket " << Platform::get_identifier_str() << " sending a Message of type: " << mt_to_string(message.Type) << " with length: " << message.Length << " bytes" << std::endl;
+#endif
     auto bytes = message.to_bytes();
     if (_socket.send_bytes(bytes))
     {
@@ -571,4 +589,9 @@ bool PlatformAnalyser::send_data(const Message& message)
         return true;
     }
     return false;
+}
+
+bool PlatformAnalyser::can_send_data()
+{
+	return _socket.select_for(select_for::WRITE);
 }

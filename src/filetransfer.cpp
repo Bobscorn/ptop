@@ -10,6 +10,13 @@
 #include <chrono>
 
 const StreamChunk StreamChunk::empty = StreamChunk{ -1, -1, -1, std::vector<char>() };
+const StreamChunkState StreamChunkState::empty = StreamChunkState{ StreamChunk::empty, s_time(), StreamChunkAcknowledge::NONE };
+
+const s_duration FileSender::ResendChunkInterval = 10s;
+const s_duration FileSender::MaxIdleWaitTime = 20s;
+
+const std::chrono::seconds FileTransfer::MaximumIdleWaitTime = 15s;
+
 
 bool StreamChunk::operator==(const StreamChunk& other) const
 {
@@ -19,84 +26,203 @@ bool StreamChunk::operator==(const StreamChunk& other) const
 		&& data == other.data;
 }
 
-bool FileSender::resendEndFile(std::unique_ptr<IDataSocketWrapper>& socket)
-{
-	s_time now = time_now();
-	if (is_real_time(_initial_end_send) && now - _initial_end_send > MaxEndAcknowledgeWaitTime)
-		return true;
-
-	if (is_real_time(_initial_end_send) && now - _last_end_send > ResendEndInterval)
-	{
-		socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END));
-		_last_end_send = time_now();
-		return false;
-	}
-
-	return false;
-}
-
 FileSender::FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket) : _header(header) {
 	processFileToChunks(file, _chunks);
 	_header.num_chunks = _chunks.size();
 	auto mess = to_message<FileHeader>()(_header);
 	socket->send_data(mess);
+	_negotiator = Negotiator{};
 }
 
 void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
-	std::cout << "Sending " << _chunks.size() << " chunks to peer" << std::endl;
-	bool sending = true;
+	if (!_received_initial_ack)
+		return;
 
-	while(sending) {
-		const auto& chunk = IterateNextChunk();
+	constexpr s_duration consecutive_sending_timeout = 2s;
+
+	std::vector<int32_t> sent_chunks{};
+
+	s_time start_sending = time_now();
+	const int data_size = MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE;
+	bool should_send = false;
+
+	do {
+		auto iter = IterateNextChunk();
 		
-		if(chunk == StreamChunk::empty) {
-			sending = false;
-			break;
+		// chunk will be empty if have sent all chunks
+		if(iter == _chunks.end()) {
+			// Look for an unacknowledged chunk instead
+
+			bool any_left_chunks = false;
+
+			auto initial_scan = _last_chunk_scan; // Use cached _last_chunk_scan to resume where we last left off
+			bool is_initial_scan = true;
+			for (; _last_chunk_scan != initial_scan || is_initial_scan; ++_last_chunk_scan, is_initial_scan = false) 
+			{
+				if (_last_chunk_scan >= _chunks.size()) // Stop searching if we have reached the end, reset _last_chunk_scan so it will start from the beginning again
+				{
+					_last_chunk_scan = -1;
+					continue;
+				}
+
+				auto& chunk = _chunks[_last_chunk_scan];
+
+				if (chunk.acknowledge_state != StreamChunkAcknowledge::ACKNOWLEDGED && chunk.times_sent < 3)
+				{
+					any_left_chunks = true;
+					if (time_now() - chunk.last_send_time > ResendChunkInterval)
+					{
+						sendChunk(chunk, socket);
+						sent_chunks.push_back(_last_chunk_scan);
+						break;
+					}
+				}
+			}
+
+			// Stop trying to send if all chunks have been acknowledged
+			if (!any_left_chunks)
+				break;
+
+			// Continue sending if aren't sure all chunks have been acknowledged
+			continue;
 		}
 		
-		socket->send_message(chunk);
+		auto& chunk = *iter;
+		sendChunk(chunk, socket);
+		sent_chunks.push_back(iter - _chunks.begin());
+		should_send = (time_now() - start_sending < consecutive_sending_timeout);
 	}
-	
-	socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END));
-	_initial_end_send = _last_end_send = time_now();
+	while(socket->can_send_data() && _negotiator.should_send_data(data_size) && should_send);
+	std::cout << "\r                                                                 ";
+
+	if (_num_acked_chunks >= _header.num_chunks)
+	{		
+		std::cout << "\rProgress: 100%" << std::endl;
+	}
+
+	else
+	{
+		std::cout << "\rProgress: " << (float)_num_acked_chunks / (float)_header.num_chunks * 100.f << "%";
+	}
 }
 
-const StreamChunk& FileSender::IterateNextChunk()
-{	
-	if (_next_chunk_send >= _chunks.size())	
-		return StreamChunk::empty;
-
+FileSender::chunk_iter FileSender::IterateNextChunk()
+{
 	auto index = _next_chunk_send++;
-	return _chunks[index];
+	if (index >= _chunks.size())
+		return _chunks.end();
+	return _chunks.begin() + index;
 }
 
-StreamChunk FileSender::GetTargetChunk(int index)
+FileProgress FileSender::getProgress() const
+{
+	FileProgress prog;
+	prog.filename = _header.filename + "." + _header.extension;
+	prog.acknowledged_chunks = _num_acked_chunks;
+	prog.sent_chunks = numChunksSent();
+	prog.total_chunks = _header.num_chunks;
+
+	prog.received_chunks = 0;
+	return prog;
+}
+
+void FileSender::sendChunk(StreamChunkState& chunk, std::unique_ptr<IDataSocketWrapper>& socket)
+{
+	socket->send_message(chunk.chunk);
+	_negotiator.sent_data();
+	chunk.acknowledge_state = StreamChunkAcknowledge::SENT;
+	_last_send = chunk.last_send_time = time_now();
+	chunk.times_sent++;
+}
+
+std::string FileSender::getProgressString() const
+{
+	auto prog = getProgress();
+
+	return "File: " + prog.filename + " sent " + std::to_string(prog.sent_chunks) + " chunks, acknowledged " + std::to_string(prog.acknowledged_chunks) + " chunks out of " + std::to_string(prog.total_chunks) + " chunks";
+}
+
+StreamChunkState FileSender::GetTargetChunk(int index)
 {
 	if (index < 0 || index >= _chunks.size())
-		return StreamChunk::empty;
+		return StreamChunkState::empty;
 	return _chunks[index];
 }
 
-bool FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket)
+void FileSender::onChunkError(const Message& mess, std::unique_ptr<IDataSocketWrapper>& socket)
 {
+	_last_activity = time_now();
 	int read_index = 0;
-	int missing_id = mess.read_type<int>(read_index);
+	int missing_id = mess.read_type<int32_t>(read_index);
 
 	if (missing_id < 0 || missing_id >= _header.num_chunks)
 	{
 		std::cerr << "Received CHUNK_ERROR on chunk id: " << missing_id << std::endl;
+		return;
 	}
 
-	if(FileTransfer::timeout_expired(_deadmanswitch)) {
-		return true;
-	}
 	auto chunk = _chunks[missing_id];
-	socket->send_message(chunk);
-	relieve_deadman();
+	sendChunk(chunk, socket);
+}
+
+bool FileSender::onChunkAck(const Message& mess)
+{
+	_last_activity = time_now();
+
+	int read_index = 0;
+	auto chunk_id = mess.read_type<int32_t>(read_index);
+
+	if (chunk_id < 0 || chunk_id >= _chunks.size())
+	{
+		std::cout << "Received acknowledgement with an invalid chunk index" << std::endl;
+		return false;
+	}
+
+	if (_chunks[chunk_id].acknowledge_state != StreamChunkAcknowledge::ACKNOWLEDGED)
+	{
+		_num_acked_chunks++;
+		_chunks[chunk_id].acknowledge_state = StreamChunkAcknowledge::ACKNOWLEDGED;
+		return _num_acked_chunks >= _chunks.size();
+	}
+
+	_chunks[chunk_id].acknowledge_state = StreamChunkAcknowledge::ACKNOWLEDGED;
+
 	return false;
 }
 
-void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk>& chunks)
+bool FileSender::hasExpired() const
+{
+	return is_real_time(_last_activity) && (time_now() - _last_activity > MaxIdleWaitTime);
+}
+
+int FileSender::numChunksSent() const
+{
+	int num = 0;
+	for (int i = 0; i < _chunks.size(); ++i)
+	{
+		if (_chunks[i].acknowledge_state != StreamChunkAcknowledge::NONE)
+			num++;
+	}
+	return num;
+}
+
+int FileSender::numChunksAcked() const
+{
+	int num = 0;
+	for (int i = 0; i < _chunks.size(); ++i)
+	{
+		if (_chunks[i].acknowledge_state == StreamChunkAcknowledge::ACKNOWLEDGED)
+			num++;
+	}
+	return num;
+}
+
+int FileSender::numFileChunks() const
+{
+	return _chunks.size();
+}
+
+void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunkState>& chunks)
 {
 	std::streamsize last_read_count = 0;
 #ifdef max
@@ -111,7 +237,8 @@ void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk
 	int running_id = 0;
 	while (last_read_count != max_size)
 	{
-		StreamChunk chunk;
+		StreamChunkState state{};
+		auto& chunk = state.chunk;
 		chunk.chunk_id = running_id++;
 		chunk.data = std::vector<char>(CHUNK_SIZE, (char)0);
 		ifs.read(chunk.data.data(), CHUNK_SIZE);
@@ -123,7 +250,7 @@ void FileSender::processFileToChunks(std::ifstream& ifs, std::vector<StreamChunk
 		chunk.data_length = last_read_count;
 		chunk.data.resize(last_read_count);
 
-		chunks.push_back(chunk);
+		chunks.push_back(state);
 	}
 }
 
@@ -148,39 +275,48 @@ FileReceiver::FileReceiver(const Message& message)
 	_chunks.resize(_header.num_chunks, StreamChunk::empty);
 }
 
-void FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
+FileProgress FileReceiver::getProgress() const
 {
-	// auto from_msg_wc = from_message_with_crc<StreamChunk>();
-	// uint32_t incoming_crc;
-	// auto chunk = from_msg_wc(message, incoming_crc);
+	FileProgress prog;
+	prog.filename = _header.filename + "." + _header.extension;
+	prog.received_chunks = _num_good_chunks;
+	prog.total_chunks = _header.num_chunks;
 
-	// uint32_t my_crc = 0;
-	// {
-	// 	auto crc_check_msg = to_message<StreamChunk>()(chunk);
-	// 	my_crc = crc_data(crc_check_msg.Data);
-	// }
+	prog.sent_chunks = 0;
+	prog.acknowledged_chunks = 0;
+	return prog;
+}
 
-	// if (my_crc != incoming_crc)
-	// {
-	// 	socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
-	// 	return;
-	// }
+std::string FileReceiver::getProgressString() const
+{
+	auto prog = getProgress();
+
+	return "File " + prog.filename + " received " + std::to_string(prog.received_chunks) + " out of " + std::to_string(prog.total_chunks) + " chunks";
+}
+
+bool FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
+{
 	relieve_deadman();
 
 	auto chunk = from_message<StreamChunk>()(message);
-	std::cout << "received chunk, chunk id: " << chunk.chunk_id << std::endl;
 	
 	auto index = chunk.chunk_id;
 	if (index < 0 || index >= _chunks.size())
-		return;
+		return false;
 
+	socket->send_data(create_message(MESSAGE_TYPE::CHUNK_ACKNOWLEDGED, chunk.chunk_id));
+	if (_chunks[index] == StreamChunk::empty)
+	{
+		_num_good_chunks++;
+		if (_num_good_chunks >= _header.num_chunks)
+		{
+			_chunks[index] = chunk;
+			write_to_file();
+			return true;
+		}
+	}
 	_chunks[index] = chunk;
-}
-
-void FileReceiver::onFileEnd(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
-{
-	std::cout << "Received File End for '" << _header.filename << "." << _header.extension << "', acknowledging" << std::endl;
-	socket->send_data(create_message(MESSAGE_TYPE::PEER_FILE_END_ACK));
+	return false;
 }
 
 bool FileTransfer::timeout_expired(std::chrono::system_clock::time_point deadmanswitch) // Returns whether we have written and should be destroyed
@@ -224,6 +360,16 @@ void FileReceiver::write_to_file() {
 		else
 			std::cout << "Successfully wrote file to disk" << std::endl;
 	}
+}
+
+int FileReceiver::numReceived() const
+{
+	return _num_good_chunks;
+}
+
+int FileReceiver::numFileChunks() const
+{
+	return _header.num_chunks;
 }
 
 std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket)

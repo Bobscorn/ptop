@@ -49,6 +49,7 @@ class IDataSocketWrapper : virtual public ISocketWrapper
 	virtual Message receive_message() = 0;
 	virtual bool has_message() = 0;
 
+	virtual bool can_send_data() = 0;
 	virtual bool send_data(const Message& message) = 0;
 
 	template<class T, class to_messager = to_message<T>>

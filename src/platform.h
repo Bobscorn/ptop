@@ -37,6 +37,7 @@ struct UDPHandShakeStatus
 
 bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket); // Returns successful handshake
 
+
 class Platform : public virtual ISocketWrapper {    
     protected:    
 	PtopSocket _socket;
@@ -95,6 +96,7 @@ class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	Message receive_message() override;
 	bool has_message() override;
 
+	bool can_send_data() override;
 	bool send_data(const Message& message) override;
 };
 
@@ -148,8 +150,7 @@ namespace std
 
 class UDPListener;
 
-class UDPAcceptedConnector : public virtual IDataSocketWrapper
-{
+class UDPAcceptedConnector : public virtual IDataSocketWrapper {
 	void throw_if_no_listener() const;
 
 	UDPListener* _listen;
@@ -166,6 +167,7 @@ public:
 	Message receive_message() override;
 	bool has_message() override;
 
+	bool can_send_data() override;
 	bool send_data(const Message& message) override;
 
 	// Inherited via IDataSocketWrapper
@@ -201,6 +203,7 @@ class UDPListener : public Platform, public virtual IListenSocketWrapper, public
 
 	void remove_connector(raw_name_data endpoint, UDPAcceptedConnector* conn);
 
+	bool can_send_data();
 	bool send_data(const Message& message, raw_name_data to);
 	bool has_message(raw_name_data from);
 	Message receive_message(raw_name_data from);

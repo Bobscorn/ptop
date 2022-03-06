@@ -15,16 +15,13 @@ enum class ConnectionStatus
 	FAILED = 2,
 };
 
-
-//uint32_t crc_data(const std::vector<char>& data);
-
 // Example Message Data: 
 // MESSAGE_TYPE | MESSAGE_LENGTH | MESSAGE_DATA
 // A Message will always be sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH) + MESSAGE_LENGTH bytes long
 constexpr int KILOBYTE = 1024;
 constexpr int MEGABYTE = KILOBYTE * 1024;
 
-enum class MESSAGE_TYPE
+enum class MESSAGE_TYPE : int32_t
 {
 	NONE = 0,
 	MY_DATA,
@@ -35,15 +32,15 @@ enum class MESSAGE_TYPE
 	UDP_SYN,
 	UDP_SYN_ACK,
 	UDP_ACK,
-	MISSING_CHUNK,
-	PEER_FILE_END,
-	PEER_FILE_END_ACK,
 	STREAM_ACKNOWLEDGED,
 	STREAM_CHUNK,
-	CHUNK_ERROR
+	CHUNK_ERROR,
+	CHUNK_ACKNOWLEDGED
 };
 
 typedef uint32_t MESSAGE_LENGTH_T;
+
+constexpr int MESSAGE_OVERHEAD = sizeof(MESSAGE_TYPE) + sizeof(MESSAGE_LENGTH_T);
 
 struct Message
 {
@@ -127,11 +124,10 @@ inline std::string mt_to_string(const MESSAGE_TYPE& t)
 		case MESSAGE_TYPE::UDP_SYN:				return  "UDP_SYN: UDP Handshake initial message";
 		case MESSAGE_TYPE::UDP_SYN_ACK:			return  "UDP_SYN_ACK: UDP Handshake response message";
 		case MESSAGE_TYPE::UDP_ACK:				return  "UDP_ACK: UDP Handshake final response";
-		case MESSAGE_TYPE::PEER_FILE_END:		return  "PEER_FILE_END: File end message";
-		case MESSAGE_TYPE::PEER_FILE_END_ACK:	return  "PEER_FILE_END_ACK: File end message acknowledgement";
 		case MESSAGE_TYPE::STREAM_ACKNOWLEDGED: return  "STREAM_ACKNOWLEDGED: File sending acknowledgement";
 		case MESSAGE_TYPE::STREAM_CHUNK:		return  "STREAM_CHUNK: A chunk of a file";
 		case MESSAGE_TYPE::CHUNK_ERROR:			return  "CHUNK_ERROR: An erroneous chunk message";
+		case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:	return  "CHUNK_ACKNOWLEDGED: Acknowledgement of a file chunk";
 
 		case MESSAGE_TYPE::NONE:
 		default:

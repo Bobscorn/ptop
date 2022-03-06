@@ -5,12 +5,14 @@
 #include "filetransfer.h"
 
 #include <string.h>
+#include <string>
+#include <sstream>
 
 Commands Commands::_singleton = Commands();
 
 bool Commands::commandSaidQuit(
     std::string input_message, 
-    std::unique_ptr<IDataSocketWrapper>& peer_socket, 
+    std::unique_ptr<IDataSocketWrapper>& peer_socket,
     client_init_kit& i_kit,
     client_peer_kit& p_kit,
     std::unique_lock<std::shared_mutex>& take_message_lock) {
@@ -23,12 +25,12 @@ bool Commands::commandSaidQuit(
     auto quit_found = input_message.find(QUIT);
 
     if(msg_found != std::string::npos) {
-        auto text = input_message.substr(msg_found + strlen(MESSAGE));
+        auto text = input_message.substr(msg_found + 1 + strlen(MESSAGE));
         return handleMessage(text, peer_socket, i_kit);
     }
 
     else if(file_found != std::string::npos) {
-        auto text = input_message.substr(file_found + strlen(FILE));
+        auto text = input_message.substr(file_found + 1 + strlen(FILE));
         return handleFiles(text, p_kit);
     }
 
@@ -155,6 +157,14 @@ bool Commands::handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit) {
                 std::cout << "Peer socket is null (a bug)" << std::endl;
             else
                 std::cout << "Peer socket is: " << peer_kit.peer_socket->get_identifier_str() << std::endl;
+            if (peer_kit.file_sender)
+                std::cout << "There is an active file sending: " << peer_kit.file_sender->getProgressString() << std::endl;
+            else
+                std::cout << "There is no active file sending" << std::endl;
+            if (peer_kit.file_receiver)
+                std::cout << "There is an active file receiving: " << peer_kit.file_receiver->getProgressString() << std::endl;
+            else
+                std::cout << "There is no active file being received" << std::endl;
             break;
         
         default:

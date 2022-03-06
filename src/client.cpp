@@ -1,4 +1,5 @@
 #include "client.h"
+
 #include "loop.h"
 #include "message.h"
 #include "ptop_socket.h"
@@ -7,6 +8,7 @@
 #include "ip.h"
 #include "error.h"
 #include "commands.h"
+#include "negotiation.h"
 
 #include <iostream>
 
@@ -224,45 +226,40 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         case MESSAGE_TYPE::STREAM_ACKNOWLEDGED:
         {
             std::cout << "Peer " << peer_kit.peer_socket->get_identifier_str() << " has acknowledged file, sending chunks." << std::endl;
-            peer_kit.file_sender->sendFile(peer_kit.peer_socket);
+            peer_kit.file_sender->startSending();
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
         
         case MESSAGE_TYPE::STREAM_CHUNK:
         {
             if (!peer_kit.file_receiver)
-            {
-                std::cerr << "Receiving the chunk of a file we don't have the header for!" << std::endl;
-            }
+                return EXECUTION_STATUS::PEER_CONNECTED;
 
-            else
-                peer_kit.file_receiver->onChunk(mess, peer_kit.peer_socket);
+            bool complete = peer_kit.file_receiver->onChunk(mess, peer_kit.peer_socket);
+
+            if (complete)
+            {
+                std::cout << "File has completed (" << peer_kit.file_receiver->getProgressString() << ") closing file receiver." << std::endl;
+                peer_kit.file_receiver = nullptr;
+            }
      
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
-        case MESSAGE_TYPE::PEER_FILE_END:
-        {
-            if (!peer_kit.file_receiver)
-            {
-                std::cerr << "Receiving file end when we don't have a file header!" << std::endl;
-                return EXECUTION_STATUS::PEER_CONNECTED;
-            }
-
-            peer_kit.file_receiver->onFileEnd(mess, peer_kit.peer_socket);
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
-
-        case MESSAGE_TYPE::PEER_FILE_END_ACK:
+        case MESSAGE_TYPE::CHUNK_ACKNOWLEDGED:
         {
             if (!peer_kit.file_sender)
-            {
-                std::cerr << "Received a file end acknowledgement when we aren't sending" << std::endl;
                 return EXECUTION_STATUS::PEER_CONNECTED;
+
+            
+            auto fully_acked = peer_kit.file_sender->onChunkAck(mess);
+
+            if (fully_acked)
+            {
+                std::cout << "File has been fully received by peer (" << peer_kit.file_sender->getProgressString() << ") closing file sender." << std::endl;
+                peer_kit.file_sender = nullptr;
             }
 
-            std::cout << "Peer has acknowledged file end, resetting current file transfer" << std::endl;
-            peer_kit.file_sender = nullptr;
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
 
@@ -274,10 +271,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
                 return EXECUTION_STATUS::PEER_CONNECTED;
             }
 
-            bool expired = peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
-
-            if(expired)
-                peer_kit.file_sender = nullptr;
+            peer_kit.file_sender->onChunkError(mess, peer_kit.peer_socket);
 
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
@@ -314,12 +308,6 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
         {
             std::string input_message = message_queue.messages.front();
             message_queue.messages.pop();
-            
-            if(peer_kit.file_receiver != nullptr) {
-                std::cout << "cannot enter commands while file transfer in progress." << std::endl;
-                take_message_lock.unlock();
-                return false;
-            }
 
             take_message_lock.unlock();
             return Commands::get().commandSaidQuit(input_message, peer_socket, i_kit, peer_kit, take_message_lock);
@@ -374,25 +362,42 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                 
             case EXECUTION_STATUS::PEER_CONNECTED:
             {
-                if (peer_kit.peer_socket->has_message())
+                constexpr s_duration max_msg_time = 1s;
+
+                s_time msg_start = time_now();
+                while (peer_kit.peer_socket->has_message() && (time_now() - msg_start < max_msg_time))
                 {
                     auto message = peer_kit.peer_socket->receive_message();
                     init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
 
-                if(peer_kit.file_sender != nullptr && peer_kit.file_sender->resendEndFile(peer_kit.peer_socket)) {
-                    peer_kit.file_sender = nullptr;
-                    std::cout << "Resetting file sender" << std::endl;
+                if(peer_kit.file_sender != nullptr)
+                {
+                    peer_kit.file_sender->sendFile(peer_kit.peer_socket);
+                    if (peer_kit.file_sender->hasExpired())
+                    {
+                        std::cout << "File sender (" << peer_kit.file_sender->getProgressString() << ") has expired, resetting" << std::endl;
+                        peer_kit.file_sender = nullptr;
+                    }
                 }
 
-                // else {
-                    //peer_kit.file_sender->send_file_chunk();
-                // }
+                if (peer_kit.file_receiver != nullptr)
+                {
+                    if (FileTransfer::timeout_expired(peer_kit.file_receiver->get_deadman()) == true) {
+                        std::cout << "File receiver (" << peer_kit.file_receiver->getProgressString() << ") expired, closing file receiver." << std::endl;
+                        peer_kit.file_receiver->write_to_file();
+                        peer_kit.file_receiver = nullptr;
+                    }
+                    else
+                    {
+                        auto progress = peer_kit.file_receiver->getProgress();
 
-                if(peer_kit.file_receiver != nullptr && FileTransfer::timeout_expired(peer_kit.file_receiver->get_deadman()) == true) {
-                    peer_kit.file_receiver->write_to_file();
-                    peer_kit.file_receiver = nullptr;
-                    std::cout << "Resetting file receiver" << std::endl;
+                        std::cout << "\r                                                                    ";
+                        if (progress.received_chunks >= progress.total_chunks)
+                            std::cout << "\rReceived progress: 100%" << std::endl;
+                        else
+                            std::cout << "\rReceiving progress: " << peer_kit.file_receiver->getProgressString();
+                    }
                 }
 
                 break;
@@ -402,6 +407,6 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
         if (do_user_input(message_queue, take_message_lock, peer_kit.peer_socket, init_kit, peer_kit))
             init_kit.status = EXECUTION_STATUS::COMPLETE;
         
-        std::this_thread::sleep_for(100ms);
+        std::this_thread::sleep_for(10ms);
     }
 }

@@ -80,6 +80,8 @@
         "shared_mutex": "cpp",
         "list": "cpp",
         "queue": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "cinttypes": "cpp",
+        "complex": "cpp"
     }
 }
