@@ -44,7 +44,7 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 
 	s_time start_sending = time_now();
 	const int data_size = MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE;
-	bool should_send;
+	bool should_send = false;
 
 	do {
 		auto iter = IterateNextChunk();
