@@ -275,34 +275,6 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
 
             return EXECUTION_STATUS::PEER_CONNECTED;
         }
-
-        case MESSAGE_TYPE::NEGOTIATION_TEST:
-        {
-            dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->on_receive_negotiation_begin(mess);
-
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
-
-        case MESSAGE_TYPE::NEGOTIATION_TEST_ACK:
-        {
-            dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->on_receive_negotiation_ack(mess);
-
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
-
-        case MESSAGE_TYPE::NEGOTATION_TEST_DATA:
-        {
-            dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->on_receive_data_packet(mess);
-
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
-
-        case MESSAGE_TYPE::NEGOTATION_REPORT:
-        {
-            dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->on_receive_report(mess);
-
-            return EXECUTION_STATUS::PEER_CONNECTED;
-        }
         
         case MESSAGE_TYPE::NONE:
         default:
@@ -398,10 +370,6 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     auto message = peer_kit.peer_socket->receive_message();
                     init_kit.status = process_peer_data(message, peer_kit.peer_socket, peer_kit);
                 }
-
-                auto negotiator = dynamic_cast<INegotiator*>(peer_kit.peer_socket.get());
-                if (negotiator->is_negotiating())
-                    negotiator->negotiate();
 
                 if(peer_kit.file_sender != nullptr)
                 {

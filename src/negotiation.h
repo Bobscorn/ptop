@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "message.h"
-#include "interfaces.h"
 #include "time.h"
 
 /**
@@ -37,115 +36,20 @@
  * Either way it will do no more work, negotiating has either completed or failed.
  */
 
-
+constexpr float _KB_PER_SECOND = 3000;
 constexpr int DEFAULT_NEGOTIATION_TEST_SIZE = 4 * KILOBYTE;
 
-extern const s_duration NEGOTIATION_PERIOD; // Amount of time a receiving negotiator will wait after the NegotiationBegin before sending the NegotiationReport message
-extern const s_duration NEGOTIATION_ACK_TIMEOUT;
-extern const s_duration NEGOTIATION_TIMEOUT; // Amount of time a sending negotiator will wait for a NegotiationReport before failing Negotiation
-
-struct NegotiatedConnection
-{
-	float BandwidthKBps; // Negotiated Bandwidth in KB/s
-	float ExpectedPacketLoss; // Decimal percentage 0..1
-};
-
-enum class NegotiationState
-{
-	NOT_NEGOTIATING = 0,
-
-	AWAITING_NEGOTIATION_ACK, // The state of a socket that has sent a NegotiationBegin message
-	NEGOTIATING, // The state of a socket that is sending NegotiationPacket messages
-	AWAITING_NEGOTIATION_REPORT, // The state if of a socket that has sent all NegotiationPacket messages and is waiting for a NegotiationReport message
-
-	COUNTING_PACKETS, // The state of a socket that is counting the incoming NegotiationPacket messages
-	DELAY_BEFORE_REPORTING, // The state of a socket that is waiting before sending a report back (to avoid congestion)
-
-	NEGOTIATED_AS_SENDER, // The state of a socket that has received a report, and will remain in this state until another negotiation
-	NEGOTIATED_AS_RECEIVER, // The state of a socket that has sent a report
-};
-
-struct NegotiationReport
-{
-	int packets_received; // Number of packets actually received
-	int packets_expected; // Number of packets that was expected (from a NegotiationBegin message)
-	float estimated_bandwidth; // The bandwidth we estimate from the packets we received, in KB/s
-	float packet_loss; // Percentage of packets lost (0..1)
-};
-
-struct NegotiationBegin
-{
-	int num_packets; // Number of NegotiationPacket messages that will be sent
-	int packet_byte_size; // Size of NegotiationPacket messages
-	float send_speed; // Speed at which the sender will send data at, in KB/s, speed of 0 indicates as fast as possible
-};
-
-struct NegotiationPacket
-{
-	int packet_id; // The index of this packet
-};
-
-struct NegotiationStatus
-{
-	NegotiationState state = NegotiationState::NOT_NEGOTIATING;
-
-	NegotiationBegin send_params;
-	int num_sent;
-	s_time_d last_send_time;
-
-	NegotiationReport receive_params;
-	s_time received_negotiation_begin_time;
-	s_time first_data_receive_time;
-	s_time last_data_receive_time;
-
-	s_time first_request_time;
-
-	static const NegotiationStatus BLANK_STATE;
-};
-
-bool is_already_negotiation_status(NegotiationState state);
-
-void begin_negotiation(IDataSocketWrapper& socket, NegotiationStatus& status, float bandwidth, int num_packets, int packet_size);
-void send_negotiation_packets(IDataSocketWrapper& socket, NegotiationStatus& status);
-
-void check_for_counting_timeout(IDataSocketWrapper& socket, NegotiationStatus& status);
-void check_for_ack_timeout(IDataSocketWrapper& socket, NegotiationStatus& status);
-void check_for_report_timeout(IDataSocketWrapper& socket, NegotiationStatus& status);
-
-void send_negotiation_ack(IDataSocketWrapper& socekt, NegotiationStatus& status);
-void send_negotiation_report(IDataSocketWrapper& socket, NegotiationStatus& status);
-
-Message create_negotiation_packet(int id, int packet_size);
-
-void on_receive_negotiation_begin(const Message& msg, IDataSocketWrapper& socket, NegotiationStatus& status);
-void on_receive_negotiation_ack(const Message& msg, IDataSocketWrapper& socket, NegotiationStatus& status);
-void on_receive_data_packet(const Message& msg, IDataSocketWrapper& socket, NegotiationStatus& status);
-void on_receive_report(const Message& msg, IDataSocketWrapper& socket, NegotiationStatus& status);
-
-std::string ns_to_str(NegotiationState status);
-
-struct INegotiator : virtual public IDataSocketWrapper
+class Negotiator
 {
 protected:
-	NegotiationStatus _negotiation_status;
 
 	s_time_d _last_data_send;
 
-public:
-	INegotiator();
-	bool should_send_data() const;
-	bool should_send_data(int data_size) const;
-	void sent_data(int data_size);
+	public:
+		Negotiator();
+		bool should_send_data(int data_size) const;
+		void sent_data();
 
-	bool is_negotiating() const;
-	bool has_negotiated() const;
+	private:
 
-	void begin_negotiation(float bandwidth, int num_packets, int packet_size);
-	bool negotiate(); // Returns whether negotiating has completed
-	NegotiationReport get_negotiation_report();
-
-	void on_receive_negotiation_begin(const Message& msg);
-	void on_receive_negotiation_ack(const Message& msg);
-	void on_receive_data_packet(const Message& msg);
-	void on_receive_report(const Message& msg);
 };

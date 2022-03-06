@@ -104,6 +104,8 @@ class FileSender {
         static const s_duration MaxIdleWaitTime;
 
     private:
+        Negotiator _negotiator;
+
         typedef std::vector<StreamChunkState>::iterator chunk_iter;
 
         FileSender(std::ifstream file, const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket);     

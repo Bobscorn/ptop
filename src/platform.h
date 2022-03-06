@@ -7,7 +7,6 @@
 #include "ptop_socket.h"
 #include "interfaces.h"
 #include "time.h"
-#include "negotiation.h"
 
 
 #ifdef WIN32
@@ -84,7 +83,7 @@ class PlatformListener : public Platform, public virtual IListenSocketWrapper {
 	std::unique_ptr<IDataSocketWrapper> accept_connection() override;
 };
 
-class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper, public virtual INegotiator {
+class PlatformAnalyser : public Platform, public virtual IDataSocketWrapper {
 	std::queue<Message> _stored_messages;
 	void process_socket_data();
 	UDPHandShakeStatus _handshake_status;
@@ -151,8 +150,7 @@ namespace std
 
 class UDPListener;
 
-class UDPAcceptedConnector : public virtual IDataSocketWrapper, public virtual INegotiator
-{
+class UDPAcceptedConnector : public virtual IDataSocketWrapper {
 	void throw_if_no_listener() const;
 
 	UDPListener* _listen;

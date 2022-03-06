@@ -31,6 +31,7 @@ FileSender::FileSender(std::ifstream file, const FileHeader& header, std::unique
 	_header.num_chunks = _chunks.size();
 	auto mess = to_message<FileHeader>()(_header);
 	socket->send_data(mess);
+	_negotiator = Negotiator{};
 }
 
 void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
@@ -42,7 +43,10 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 	std::vector<int32_t> sent_chunks{};
 
 	s_time start_sending = time_now();
-	while(socket->can_send_data() && dynamic_cast<INegotiator*>(socket.get())->should_send_data(MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE) && (time_now() - start_sending < consecutive_sending_timeout)) {
+	const int data_size = MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE;
+	bool should_send;
+
+	do {
 		auto iter = IterateNextChunk();
 		
 		// chunk will be empty if have sent all chunks
@@ -86,7 +90,9 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		auto& chunk = *iter;
 		sendChunk(chunk, socket);
 		sent_chunks.push_back(iter - _chunks.begin());
+		should_send = (time_now() - start_sending < consecutive_sending_timeout);
 	}
+	while(socket->can_send_data() && _negotiator.should_send_data(data_size) && should_send);
 
 	if (_num_acked_chunks >= _header.num_chunks)
 		std::cout << "\rProgress: 100%" << std::endl;
@@ -117,7 +123,7 @@ FileProgress FileSender::getProgress() const
 void FileSender::sendChunk(StreamChunkState& chunk, std::unique_ptr<IDataSocketWrapper>& socket)
 {
 	socket->send_message(chunk.chunk);
-	dynamic_cast<INegotiator*>(socket.get())->sent_data(MESSAGE_OVERHEAD + StreamChunk_OVERHEAD + CHUNK_SIZE);
+	_negotiator.sent_data();
 	chunk.acknowledge_state = StreamChunkAcknowledge::SENT;
 	_last_send = chunk.last_send_time = time_now();
 	chunk.times_sent++;
@@ -378,12 +384,6 @@ int FileReceiver::numFileChunks() const
 
 std::unique_ptr<FileSender> FileTransfer::BeginTransfer(const FileHeader& header, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	if (!dynamic_cast<INegotiator*>(socket.get())->has_negotiated())
-	{
-		std::cout << "Please Negotiate before Transferring! (This will be automatic eventally)" << std::endl;
-		return nullptr;
-	}
-
 	std::ifstream file{ header.filename + "." + header.extension, std::ios::binary };
 
 	if(!file.good()) {

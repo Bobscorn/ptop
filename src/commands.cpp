@@ -23,7 +23,6 @@ bool Commands::commandSaidQuit(
     auto debug_found = input_message.find(DEBUG);
     auto help_found = input_message.find(HELP);
     auto quit_found = input_message.find(QUIT);
-    auto negotiate_found = input_message.find(NEGOTIATE);
 
     if(msg_found != std::string::npos) {
         auto text = input_message.substr(msg_found + 1 + strlen(MESSAGE));
@@ -49,32 +48,6 @@ bool Commands::commandSaidQuit(
 
     else if(quit_found != std::string::npos) {
         return handleQuit(take_message_lock);
-    }
-
-    else if (negotiate_found != std::string::npos) {
-        float bandwidth = 0.f;
-        int num_packets = 0;
-        int packet_size = 8 * KILOBYTE;
-        try
-        {
-            auto remainder = input_message.substr(negotiate_found + 1 + strlen(NEGOTIATE));
-            std::vector<std::string> args;
-            std::istringstream stream{ remainder };
-            std::string s;
-            while (std::getline(stream, s, ' '))
-                args.push_back(s);
-
-            if (args.size() > 0)
-                bandwidth = std::stof(args[0]);
-            if (args.size() > 1)
-                num_packets = std::stoi(args[1]);
-            if (args.size() > 2)
-                packet_size = std::stoi(args[2]);
-        }
-        catch (std::invalid_argument& e) {}
-        catch (std::out_of_range& e) {}
-
-        return handleNegotiate(i_kit, p_kit, bandwidth, num_packets, packet_size);
     }
 
     else {
@@ -234,17 +207,4 @@ bool Commands::handleQuit(std::unique_lock<std::shared_mutex>& take_message_lock
     std::cout << "Quitting..." << std::endl;
     take_message_lock.unlock();
     return true;
-}
-
-bool Commands::handleNegotiate(client_init_kit& kit, client_peer_kit& peer_kit, float bandwidth, int num_packets, int packet_size)
-{
-    if (kit.status != EXECUTION_STATUS::PEER_CONNECTED || !peer_kit.peer_socket)
-    {
-        std::cout << "Can only negotiate if we're connected to a peer!" << std::endl;
-        return false;
-    }
-
-    dynamic_cast<INegotiator*>(peer_kit.peer_socket.get())->begin_negotiation(bandwidth, num_packets, packet_size);
-
-    return false;
 }

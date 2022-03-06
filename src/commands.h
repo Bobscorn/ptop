@@ -20,7 +20,6 @@ class Commands {
     const char* DEBUG = "debug";
     const char* HELP = "help";
     const char* QUIT = "quit";
-    const char* NEGOTIATE = "negotiate:";
 
     inline Commands() {};
     static Commands _singleton;
@@ -30,5 +29,4 @@ class Commands {
     bool handleDebug(client_init_kit& i_kit, client_peer_kit& peer_kit);
     bool handleHelp();
     bool handleQuit(std::unique_lock<std::shared_mutex>& take_message_lock);
-    bool handleNegotiate(client_init_kit& i_kit, client_peer_kit& peer_kit, float bandwidth = 0.f, int num_packets = 0, int packet_size = 8 * KILOBYTE);
 };
