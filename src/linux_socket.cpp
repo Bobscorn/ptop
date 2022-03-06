@@ -48,19 +48,20 @@ std::string get_last_error()
 
 PtopSocket::~PtopSocket()
 {
+	if (_thread_die)
+		*_thread_die = true;
+
 	if (is_valid())
 	{
-		auto lock = std::unique_lock<std::shared_mutex>(*_handle_mutex);
+		auto lock = std::unique_lock(*_handle_mutex);
 		std::cout << "Closing socket" << std::endl;
 		close(*_handle);
 		*_handle = REALLY_INVALID_SOCKET;
 		_handle = nullptr;
 	}
+
 	if (_thread_die)
-	{
-		*_thread_die = true;
 		_polling_thread.join();
-	}
 }
 
 PtopSocket& PtopSocket::set_non_blocking(bool value)
