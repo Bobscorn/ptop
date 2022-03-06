@@ -6,6 +6,7 @@ A Peer to Peer program suite for sending files directly to friends using the UDP
 
 + Install Cmake.
 + Add Cmake to your path environment variable.
++ Build the project.
 + Deploy to a server and run ptop_rendezvous.exe on it.
 + run ptop.exe and provide the IP address of the server.
 + wait until your friend has connected also. Hole punching will begin with the first person who connects.
