@@ -296,21 +296,6 @@ std::string FileReceiver::getProgressString() const
 
 bool FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWrapper>& socket)
 {
-	// auto from_msg_wc = from_message_with_crc<StreamChunk>();
-	// uint32_t incoming_crc;
-	// auto chunk = from_msg_wc(message, incoming_crc);
-
-	// uint32_t my_crc = 0;
-	// {
-	// 	auto crc_check_msg = to_message<StreamChunk>()(chunk);
-	// 	my_crc = crc_data(crc_check_msg.Data);
-	// }
-
-	// if (my_crc != incoming_crc)
-	// {
-	// 	socket->send_message(create_message(MESSAGE_TYPE::CHUNK_ERROR, chunk.chunk_id));
-	// 	return;
-	// }
 	relieve_deadman();
 
 	auto chunk = from_message<StreamChunk>()(message);
