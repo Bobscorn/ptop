@@ -50,6 +50,7 @@ Must include a colon and space. <br>
 ### **file**
 Send a file a to your peer. <br>
 Must include a colon and space. <br>
+Currently only files in the Current Working Directory are supported for transfer. <br>
 File name need not be quoted (quotes will be assumed part of the filename). <br>
 Currently file transfer is hard capped at 10 MB/s, you will probably observe slower speeds. To change this go to negotiation.h and modify the _KB_PER_SECOND variable.
 
