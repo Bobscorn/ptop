@@ -54,12 +54,7 @@ int main(int argc, char** argv) {
             std::this_thread::sleep_for(100ms); //epic optimization
             return 0;
         }
-
-        std::cout << "Please enter your protocol of choice:" << std::endl;
-        std::string possible_protocol{};
-
-        std::cin >> possible_protocol;
-        Protocol validated{ possible_protocol };
+        Protocol validated{ "udp" };
 
         client_loop(raw_ip, validated);
     }
