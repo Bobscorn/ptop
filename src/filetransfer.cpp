@@ -93,11 +93,17 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		should_send = (time_now() - start_sending < consecutive_sending_timeout);
 	}
 	while(socket->can_send_data() && _negotiator.should_send_data(data_size) && should_send);
+	std::cout << "\r                                                                 " << std::endl;
 
 	if (_num_acked_chunks >= _header.num_chunks)
+	{		
 		std::cout << "\rProgress: 100%" << std::endl;
+	}
+	
 	else
+	{
 		std::cout << "\rProgress: " << (float)_num_acked_chunks / (float)_header.num_chunks * 100.f << "%";
+	}
 }
 
 FileSender::chunk_iter FileSender::IterateNextChunk()
