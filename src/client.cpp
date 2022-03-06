@@ -391,6 +391,8 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
                     else
                     {
                         auto progress = peer_kit.file_receiver->getProgress();
+
+                        std::cout << "\r                                                                    ";
                         if (progress.received_chunks >= progress.total_chunks)
                             std::cout << "\rReceived progress: 100%" << std::endl;
                         else

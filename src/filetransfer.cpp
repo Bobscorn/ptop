@@ -314,7 +314,6 @@ bool FileReceiver::onChunk(const Message& message, std::unique_ptr<IDataSocketWr
 	relieve_deadman();
 
 	auto chunk = from_message<StreamChunk>()(message);
-	std::cout << "Received chunk: " << chunk.chunk_id << std::endl;
 	
 	auto index = chunk.chunk_id;
 	if (index < 0 || index >= _chunks.size())
