@@ -93,17 +93,8 @@ void FileSender::sendFile(std::unique_ptr<IDataSocketWrapper>& socket) {
 		should_send = (time_now() - start_sending < consecutive_sending_timeout);
 	}
 	while(socket->can_send_data() && _negotiator.should_send_data(data_size) && should_send);
-	std::cout << "\r                                                                 ";
 
-	if (_num_acked_chunks >= _header.num_chunks)
-	{		
-		std::cout << "\rProgress: 100%" << std::endl;
-	}
-
-	else
-	{
-		std::cout << "\rProgress: " << (float)_num_acked_chunks / (float)_header.num_chunks * 100.f << "%";
-	}
+	update_progress_print();
 }
 
 FileSender::chunk_iter FileSender::IterateNextChunk()
@@ -140,6 +131,21 @@ std::string FileSender::getProgressString() const
 	auto prog = getProgress();
 
 	return "File: " + prog.filename + " sent " + std::to_string(prog.sent_chunks) + " chunks, acknowledged " + std::to_string(prog.acknowledged_chunks) + " chunks out of " + std::to_string(prog.total_chunks) + " chunks";
+}
+
+void FileSender::update_progress_print()
+{
+	std::cout << "\r                                                                 ";
+
+	if (_num_acked_chunks >= _header.num_chunks)
+	{
+		std::cout << "\rProgress: 100%" << std::endl;
+	}
+
+	else
+	{
+		std::cout << "\rProgress: " << (float)_num_acked_chunks / (float)_header.num_chunks * 100.f << "%";
+	}
 }
 
 StreamChunkState FileSender::GetTargetChunk(int index)
@@ -182,7 +188,11 @@ bool FileSender::onChunkAck(const Message& mess)
 	{
 		_num_acked_chunks++;
 		_chunks[chunk_id].acknowledge_state = StreamChunkAcknowledge::ACKNOWLEDGED;
-		return _num_acked_chunks >= _chunks.size();
+
+		bool fully_acked = _num_acked_chunks >= _chunks.size();
+		if (fully_acked)
+			update_progress_print();
+		return fully_acked;
 	}
 
 	_chunks[chunk_id].acknowledge_state = StreamChunkAcknowledge::ACKNOWLEDGED;

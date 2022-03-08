@@ -115,6 +115,8 @@ class FileSender {
 
         void sendChunk(StreamChunkState& chunk, std::unique_ptr<IDataSocketWrapper>& socket);
 
+        void update_progress_print();
+
         FileHeader _header;
         std::vector<StreamChunkState> _chunks;
         s_time _last_send;

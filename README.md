@@ -2,6 +2,9 @@
 
 A Peer to Peer program suite for sending files directly to friends using the UDP protocol.
 
+## usage as peer: 
+![screen-gif](./doc/terminal.final.gif)
+
 ## getting started
 
 + Install Cmake.
