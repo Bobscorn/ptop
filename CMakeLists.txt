@@ -9,10 +9,24 @@ elseif(UNIX)
 set(srcs ${srcs} "src/linux_socket.cpp" "src/linux_platform.cpp")
 endif(WIN32)
 
+option(PTOP_PRINT_DEBUG "Print extra debugging information to the standard output" OFF)
+option(PTOP_SPOOF_IP "Insert fake ip addresses into the terminal instead of actual ones" OFF)
+
+if(PTOP_PRINT_DEBUG)
+	add_compile_definitions(DATA_COUT=1)
+endif()
+
+if(PTOP_SPOOF_IP)
+	add_compile_definitions(PTOP_SPOOF_IP=1 PTOP_SPOOF_SERVER="111.111.111.111" PTOP_SPOOF_PUBLIC="123.456.789.101" PTOP_SPOOF_PRIVATE="10.0.0.1" PTOP_SPOOF_ME="1.0.0.1")
+else()
+	add_compile_definitions(PTOP_SPOOF_SERVER="" PTOP_SPOOF_PUBLIC="" PTOP_SPOOF_PRIVATE="")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 add_executable(ptop ${PROJECT_SOURCE_DIR}/src/clientmain.cpp ${srcs})
 add_executable(ptop_rendezvous ${PROJECT_SOURCE_DIR}/src/servermain.cpp ${srcs})
+
 
 if(UNIX)
 set(THREADS_PREFER_PTHREAD_FLAG ON)

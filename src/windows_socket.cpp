@@ -41,7 +41,9 @@ PtopSocket::~PtopSocket()
 	if (is_valid())
 	{
 		auto lock = std::unique_lock(*_handle_mutex);
+#ifdef DATA_COUT
 		std::cout << "Closing socket" << std::endl;
+#endif
 		closesocket(*_handle);
 		*_handle = REALLY_INVALID_SOCKET;
 		_handle = nullptr;

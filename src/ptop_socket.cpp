@@ -79,7 +79,8 @@ void poll_thread_func(std::shared_ptr<SOCKET> handle, std::shared_ptr<std::share
 }
 
 PtopSocket::PtopSocket(SOCKET handle, Protocol proto, std::string name) 
-	: _handle(std::make_shared<SOCKET>(handle)), _protocol(proto)
+	: _handle(std::make_shared<SOCKET>(handle))
+	, _protocol(proto)
 	, _handle_mutex(std::make_shared<std::shared_mutex>())
 	, _name(name)
 	, _message_obj_mutex(std::make_shared<std::shared_mutex>())
@@ -88,8 +89,15 @@ PtopSocket::PtopSocket(SOCKET handle, Protocol proto, std::string name)
 	_polling_thread = std::thread(poll_thread_func, _handle, _handle_mutex, _shared_message_obj, _message_obj_mutex,  _protocol, _thread_die);
 }
 
+#ifdef PTOP_SPOOF_IP
+PtopSocket::PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, raw_name_data spoofpoint, std::string name) 
+#else
 PtopSocket::PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, std::string name) 
+#endif
 	: _handle(std::make_shared<SOCKET>(handle))
+#ifdef PTOP_SPOOF_IP
+	, _spoofpoint(spoofpoint)
+#endif
 	, _handle_mutex(std::make_shared<std::shared_mutex>())
 	, _protocol(proto)
 	, _endpoint(endpoint)
@@ -100,8 +108,15 @@ PtopSocket::PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, st
 	_polling_thread = std::thread(poll_thread_func, _handle, _handle_mutex, _shared_message_obj, _message_obj_mutex, _protocol, _thread_die);
 }
 
+#ifdef PTOP_SPOOF_IP
+PtopSocket::PtopSocket(Protocol proto, raw_name_data spoofpoint, std::string name) 
+#else
 PtopSocket::PtopSocket(Protocol proto, std::string name) 
+#endif
 	: _protocol(proto)
+#ifdef PTOP_SPOOF_IP
+	, _spoofpoint(spoofpoint)
+#endif
 	, _handle_mutex(std::make_shared<std::shared_mutex>())
 	, _name(std::move(name))
 	, _message_obj_mutex(std::make_shared<std::shared_mutex>())
@@ -175,7 +190,7 @@ PtopSocket PtopSocket::accept_data_socket()
 		{
 			throw_new_exception("Failed to accept incoming connection: " + get_last_error(), LINE_CONTEXT);
 		}
-		auto new_sock = PtopSocket(new_socket, _protocol, raw_name_data(client_addr));
+		auto new_sock = PtopSocket(new_socket, _protocol, raw_name_data(client_addr), raw_name_data{}, "Accepted Data Socket");
 		new_sock.set_socket_option(SO_KEEPALIVE, (int)1);
 		return new_sock;
 	}
@@ -294,6 +309,9 @@ bool PtopSocket::has_died()
 
 raw_name_data PtopSocket::get_peer_raw() const
 {
+#ifdef PTOP_SPOOF_IP
+	return _spoofpoint;
+#else
 	sockaddr_in peer_name;
 	socklen_t peer_size = sizeof(peer_name);
 	int n = getpeername(*_handle, (sockaddr*)&peer_name, &peer_size);
@@ -303,6 +321,7 @@ raw_name_data PtopSocket::get_peer_raw() const
 	raw_data.name = *(sockaddr*)&peer_name;
 	raw_data.name_len = peer_size;
 	return raw_data;
+#endif
 }
 
 raw_name_data PtopSocket::get_name_raw() const

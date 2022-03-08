@@ -37,26 +37,36 @@
 
 using namespace std::chrono;
 
+int clientmain()
+{
+
+#if defined(WIN32) | defined(_WIN64) // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order        
+    windows_internet wsa_wrapper(MAKEWORD(2, 2));
+#endif
+
+    std::cout << "Please enter the rendezvous server's IP:" << std::endl;
+    std::string raw_ip{};
+
+    std::cin >> raw_ip;
+    std::getline(std::cin, std::string()); // Discard the newline that confuses the next input
+
+    if (raw_ip == "") {
+        std::this_thread::sleep_for(100ms); //epic optimization
+        return 0;
+    }
+    Protocol validated{ "udp" };
+
+    client_loop(raw_ip, validated);
+}
+
 int main(int argc, char** argv) {
+
+    if (argc > 1 && !strcmp(argv[1], "no-catch"))
+        return clientmain();
 
     try
     {
-#if defined(WIN32) | defined(_WIN64) // windows_internet uses RAII to ensure WSAStartup and WSACleanup get called in the proper order        
-        windows_internet wsa_wrapper(MAKEWORD(2, 2));
-#endif
-
-        std::cout << "Please enter the rendezvous server's IP:" << std::endl;
-        std::string raw_ip{};
-
-        std::cin >> raw_ip;
-
-        if (raw_ip == "") {
-            std::this_thread::sleep_for(100ms); //epic optimization
-            return 0;
-        }
-        Protocol validated{ "udp" };
-
-        client_loop(raw_ip, validated);
+        clientmain();
     }
     catch (const std::exception& e)
     {

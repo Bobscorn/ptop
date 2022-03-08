@@ -10,6 +10,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/types.h> 
+#define zmem bzero
+#else
+#define zmem ZeroMemory
 #endif
 
 #include <string>
@@ -53,9 +56,46 @@ readable_ip_info convert_to_readable(const raw_name_data& data)
 	return out;
 }
 
+raw_name_data convert_to_raw(const readable_ip_info& data)
+{
+	struct addrinfo* result = NULL,
+		* ptr = NULL,
+		hints;
+
+#ifdef WIN32
+	ZeroMemory(&hints, sizeof(hints));
+#elif defined(__linux__)
+	bzero(&hints, sizeof(hints));
+#endif
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+
+	int n = getaddrinfo(data.ip_address.c_str(), data.port.c_str(), &hints, &result);
+
+	if (n == SOCKET_ERROR || result == 0)
+		return raw_name_data{};
+
+	return raw_name_data{ *result->ai_addr, (socklen_t)result->ai_addrlen };
+}
+
+raw_name_data Platform::get_peername_raw() const
+{
+	return _socket.get_peer_raw();
+}
+
+raw_name_data Platform::get_myname_raw() const
+{
+	return _socket.get_name_raw();
+}
+
 PtopSocket data_connect_construct(std::string peer_address, std::string peer_port, Protocol ip_proto, std::string name)
 {
+#ifdef PTOP_SPOOF_IP
+	std::cout << "[Data] Creating a Data Socket (named " << name << ")..." << std::endl;
+#else
 	std::cout << "[Data] Creating a Data Socket (named " << name << ") connecting to : " << peer_address << ":" << peer_port << std::endl;
+#endif
 
 	struct addrinfo* result = NULL,
 		* ptr = NULL,
@@ -74,8 +114,14 @@ PtopSocket data_connect_construct(std::string peer_address, std::string peer_por
 
 	if (n == SOCKET_ERROR)
 		throw_new_exception("Failed to get address info for: (" + name + ") " + peer_address + ":" + peer_port + " with: " + get_last_error(), LINE_CONTEXT);
+	if (result == 0)
+		throw_new_exception("Invalid IP Address supplied: " + name, LINE_CONTEXT);
 
+#ifdef PTOP_SPOOF_IP
+	auto conn_socket = PtopSocket(ip_proto, convert_to_raw(readable_ip_info{ std::string(PTOP_SPOOF_SERVER), ServerListenPort }), name);
+#else
 	auto conn_socket = PtopSocket(ip_proto, name);
+#endif
 	conn_socket.set_socket_reuse();
 	conn_socket.connect(result->ai_addr, result->ai_addrlen);
 
@@ -105,10 +151,80 @@ PlatformAnalyser::PlatformAnalyser(std::string peer_address, std::string peer_po
 
 Platform::~Platform()
 {
+#ifdef DATA_COUT
 	if (_socket.is_valid())
 		std::cout << "Closing socket: " << get_identifier_str() << std::endl;
 	else
 		std::cout << "Closing Dead socket" << std::endl;
+#endif
+}
+
+
+PtopSocket reuse_connection_construct(raw_name_data data, Protocol proto, std::string name, std::string spoof_ip)
+{
+	auto readable = convert_to_readable(data);
+#ifdef PTOP_SPOOF_IP
+	auto conn_socket = PtopSocket(proto, convert_to_raw(readable_ip_info{ spoof_ip, convert_to_readable(data).port }), name);
+#else
+	auto conn_socket = PtopSocket(proto, name);
+#endif
+
+	if (conn_socket.is_invalid())
+		throw_new_exception("[DataReuseNoB] Failed to create nonblocking socket: " + get_last_error(), LINE_CONTEXT);
+
+	conn_socket.set_non_blocking(true);
+	conn_socket.set_socket_reuse();
+
+	conn_socket.bind_socket(data, std::string("[DataReuseNoB] (") + name + ") Failed to bind");
+#ifdef PTOP_SPOOF_IP
+	std::cout << "[DataReuseNoB] Successfully created Data socket (" << name << ") bound to: " << readable.ip_address << ":" << readable.port << std::endl;
+#else
+	std::cout << "[DataReuseNoB] Successfully created Data socket (" << name << ") bound to: " << readable.ip_address << ":" << readable.port << std::endl;
+#endif
+
+	return conn_socket;
+}
+
+NonBlockingConnector::NonBlockingConnector(
+	raw_name_data data, std::string ip_address, std::string port, Protocol input_protocol, std::string name, std::string spoof_ip)
+	: Platform(
+		reuse_connection_construct(data, input_protocol, name, spoof_ip)
+	)
+{
+	connect(ip_address, port);
+}
+
+void NonBlockingConnector::connect(std::string ip_address, std::string port)
+{
+	try
+	{
+		struct addrinfo* results, hints;
+		zmem(&hints, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+
+		int iResult = 0;
+
+		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
+		if (iResult != 0)
+			throw_new_exception("Socket '" + get_name() + "' Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
+
+		if (results == nullptr)
+			throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "' (socket '" + get_name() + "')", LINE_CONTEXT);
+
+		_socket.connect(results->ai_addr, results->ai_addrlen);
+#ifdef PTOP_SPOOF_IP
+		std::cout << "[DataReuseNoB] (" << get_name() << ") Initiated Connection" << std::endl;
+#else
+		std::cout << "[DataReuseNoB] (" << get_name() << ") Initiated Connection to : " << ip_address << ":" << port << std::endl;
+#endif
+		try_update_endpoint_info();
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 bool do_udp_handshake(UDPHandShakeStatus& handshake_status, PtopSocket& socket)
@@ -494,16 +610,13 @@ PtopSocket construct_udp_listener(std::string port, Protocol proto, std::string 
 	if (!proto.is_udp())
 		throw_new_exception("UDP Listener must only be used with UDP", LINE_CONTEXT);
 
-	auto listen_socket = PtopSocket(proto, name);
+	auto listen_socket = PtopSocket(proto, raw_name_data{}, name);
 
 	struct sockaddr_in serv_addr;
 
 	int portno = atoi(port.c_str());
-#ifdef WIN32
-	ZeroMemory(&serv_addr, sizeof(serv_addr));
-#elif __linux__
-	bzero((char*)&serv_addr, sizeof(serv_addr));
-#endif
+	zmem(&serv_addr, sizeof(serv_addr));
+
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(portno);
@@ -516,12 +629,13 @@ PtopSocket construct_udp_listener(std::string port, Protocol proto, std::string 
 
 PtopSocket construct_udp_nonblocking_listener(raw_name_data bind_name, Protocol proto, std::string name)
 {
-	auto listen_socket = PtopSocket(proto, name);
+	auto listen_socket = PtopSocket(proto, convert_to_raw(readable_ip_info{ "0.0.0.0", "00000" }), name);
 	
 	listen_socket.set_non_blocking(true);
 	listen_socket.set_socket_reuse();
 	
 	listen_socket.bind_socket(bind_name);
+	std::cout << "[UDPListen] Created and bound UDP Listener (" << name << ") to port " << convert_to_readable(bind_name).port << " (the port we just had with the rendezvous server)" << std::endl;
 
 	return listen_socket;
 }

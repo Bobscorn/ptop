@@ -133,16 +133,6 @@ readable_ip_info Platform::get_peer_data() const
 	return out;
 }
 
-raw_name_data Platform::get_peername_raw() const
-{
-	return _socket.get_peer_raw();
-}
-
-raw_name_data Platform::get_myname_raw() const
-{
-	return _socket.get_name_raw();
-}
-
 PtopSocket listen_construct(std::string port, Protocol input_proto, std::string name)
 {
 	std::cout << "[Listen] Creating new Socket on port (with localhost, named: " << name << "): " << port << std::endl;
@@ -352,68 +342,6 @@ std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 
 	auto new_sock = _socket.accept_data_socket();
 	return std::make_unique<PlatformAnalyser>(std::move(new_sock));
-}
-
-PtopSocket reuse_connection_construct(raw_name_data data, Protocol proto, std::string name)
-{
-	auto readable = convert_to_readable(data);
-	std::cout << "[DataReuseNoB] Creating Connection socket '" << name << "' bound to : " << readable.ip_address << ":" << readable.port << std::endl;
-	auto conn_socket = PtopSocket(proto, name);
-
-	if (conn_socket.is_invalid())
-		throw_new_exception("[DataReuseNoB] Failed to create nonblocking socket: " + linux_error(), LINE_CONTEXT);
-
-	conn_socket.set_non_blocking(true);
-	conn_socket.set_socket_reuse();
-
-	conn_socket.bind_socket(data, std::string("[DataReuseNoB] (") + name + ") Failed to bind");
-	std::cout << "[DataReuseNoB] Successfully bound Data socket (" << name << ") to: " << readable.ip_address << ":" << readable.port << std::endl;
-
-	return conn_socket;
-}
-
-NonBlockingConnector::NonBlockingConnector(raw_name_data data, std::string ip_address, std::string port, Protocol proto, std::string name) 
-: Platform(reuse_connection_construct(data, proto, name))
-{
-	// if tcp?
-	try
-	{
-		this->connect(ip_address, port);
-	}
-	catch (const std::exception& e)
-	{
-		throw_with_context(e, LINE_CONTEXT);
-	}
-}
-
-void NonBlockingConnector::connect(std::string ip_address, std::string port)
-{
-	try
-	{
-		std::cout << "[DataReuseNoB] (" << get_name() << ") Trying to connect to : " << ip_address << ":" << port << std::endl;
-		struct addrinfo* results, hints;
-		bzero(&hints, sizeof(hints));
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
-
-		int iResult = 0;
-
-		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
-		if (iResult != 0)
-			throw_new_exception("Socket '" + get_name() + "' Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
-
-		if (results == nullptr)
-			throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "' (socket '" + get_name() + "')", LINE_CONTEXT);
-
-		_socket.connect(results->ai_addr, results->ai_addrlen);
-		std::cout << "[DataReuseNoB] (" << get_name() << ") Successfully BEGUN Connection to : " << ip_address << ":" << port << std::endl;
-		try_update_endpoint_info();
-	}
-	catch (const std::exception& e)
-	{
-		throw_with_context(e, LINE_CONTEXT);
-	}
 }
 
 #endif
