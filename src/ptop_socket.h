@@ -41,9 +41,6 @@ class PtopSocket
     std::shared_ptr<SOCKET> _handle;
     Protocol _protocol;
     raw_name_data _endpoint;
-#ifdef PTOP_SPOOF_IP
-    raw_name_data _spoofpoint;
-#endif
     std::string _name;
     std::thread _polling_thread;
     std::shared_ptr<std::shared_mutex> _handle_mutex;
@@ -53,19 +50,11 @@ class PtopSocket
     std::shared_ptr<bool> _thread_die = std::make_shared<bool>(false);
 
     PtopSocket(SOCKET handle, Protocol proto, std::string name = "");
-#ifdef PTOP_SPOOF_IP
-    PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, raw_name_data spoofpoint, std::string name = "");
-#else
     PtopSocket(SOCKET handle, Protocol proto, raw_name_data endpoint, std::string name = "");
-#endif
 
     public:
 
-#ifdef PTOP_SPOOF_IP
-    explicit PtopSocket(Protocol proto, raw_name_data spoofpoint, std::string name = "");
-#else
     explicit PtopSocket(Protocol proto, std::string name = "");
-#endif
 
     PtopSocket(PtopSocket&& other);
     ~PtopSocket();

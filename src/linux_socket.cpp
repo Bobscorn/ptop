@@ -53,10 +53,8 @@ PtopSocket::~PtopSocket()
 
 	if (is_valid())
 	{
-		auto lock = std::unique_lock<std::shared_mutex>(*_handle_mutex);
-#ifdef DATA_COUT
+		auto lock = std::unique_lock(*_handle_mutex);
 		std::cout << "Closing socket" << std::endl;
-#endif
 		close(*_handle);
 		*_handle = REALLY_INVALID_SOCKET;
 		_handle = nullptr;

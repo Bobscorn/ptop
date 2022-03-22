@@ -30,26 +30,23 @@ std::unique_ptr<IDataSocketWrapper>& client_init_kit::get_server_socket() {
 
 void client_init_kit::set_server_socket(std::unique_ptr<IDataSocketWrapper>&& input) {
     _server_socket = std::move(input);
+
+    if(input == nullptr)
+        std::cout << "client_init_kit: connection socket set to nullptr mmk?" << std::endl;
 }
 
 client_peer_kit::client_peer_kit() {
-    
+        
 }
 
 void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data, int next_data_index, MESSAGE_LENGTH_T data_len) {
     public_info = read_peer_data(data, next_data_index, data_len);
     private_info = read_peer_data(data, next_data_index, data_len);
-#ifdef PTOP_SPOOF_IP
-    std::cout << "Target is: " << PTOP_SPOOF_PRIVATE << ":" << private_info.port << "/" << PTOP_SPOOF_PUBLIC << ":" << public_info.port << " priv/pub" << std::endl;
-#else
     std::cout << "Target is: " << private_info.ip_address << ":" << private_info.port << "/" << public_info.ip_address << ":" << public_info.port << " priv/pub" << std::endl;
-#endif
 
     old_privatename = init_kit.get_server_socket()->get_myname_raw();
-    std::cout << "Closing socket to server" << std::endl;
     init_kit.set_server_socket(nullptr); //need to close the server socket HERE to maintain the same session in the peer sockets
 
-    std::cout << "Creating the listen socket..." << std::endl;
     if (init_kit.protocol.is_udp())
         listen_sock = std::make_unique<UDPListener>(old_privatename, init_kit.protocol, "HolePunch-Listen");
     else
@@ -57,9 +54,8 @@ void client_peer_kit::set_peer_data(client_init_kit& init_kit, const char* data,
 
     listen_sock->listen();
 
-    std::cout << "Creating Connectors to the public and private targets..." << std::endl;
-    public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol, "HolePunch-Public", PTOP_SPOOF_PUBLIC);
-    private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol, "HolePunch-Private", PTOP_SPOOF_PRIVATE);
+    public_connector = std::make_unique<NonBlockingConnector>(old_privatename, public_info.ip_address, public_info.port, init_kit.protocol, "HolePunch-Public");
+    private_connector = std::make_unique<NonBlockingConnector>(old_privatename, private_info.ip_address, private_info.port, init_kit.protocol, "HolePunch-Private");
         
 
     peer_connect_start_time = std::chrono::system_clock::now();
@@ -79,7 +75,7 @@ EXECUTION_STATUS connect_public(client_init_kit& init_kit, client_peer_kit& peer
     {
         std::cout << "Public Connection Failed, Retrying connection..." << std::endl;
         peer_kit.public_connector = nullptr;
-        peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol, "HolePunch-Public", PTOP_SPOOF_PUBLIC);
+        peer_kit.public_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.public_info.ip_address, peer_kit.public_info.port, init_kit.protocol, "HolePunch-Public");
     }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
@@ -98,7 +94,7 @@ EXECUTION_STATUS connect_private(client_init_kit& init_kit, client_peer_kit& pee
     {
         std::cout << "Private Connection attempt failed, retrying..." << std::endl;
         peer_kit.private_connector = nullptr;
-        peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol, "HolePunch-Private", PTOP_SPOOF_PRIVATE);
+        peer_kit.private_connector = std::make_unique<NonBlockingConnector>(peer_kit.old_privatename, peer_kit.private_info.ip_address, peer_kit.private_info.port, init_kit.protocol, "HolePunch-Private");
     }
     return EXECUTION_STATUS::HOLE_PUNCH;
 }
@@ -144,12 +140,6 @@ EXECUTION_STATUS hole_punch(client_init_kit& init_kit, client_peer_kit& peer_kit
             return EXECUTION_STATUS::FAILED;
         }
         
-        if (status == EXECUTION_STATUS::PEER_CONNECTED)
-        {
-            std::cout << "We have hole punched to the peer!" << std::endl;
-            std::cout << "Try sending a message with 'msg: [text]' or a file with 'file: [filename]'" << std::endl;
-        }
-
         return status;
     }
     catch (const std::exception& e)
@@ -178,7 +168,6 @@ EXECUTION_STATUS process_server_data(client_init_kit& init_kit, client_peer_kit&
         {
         case MESSAGE_TYPE::CONNECT_TO_PEER:
         {
-            std::cout << "Rendezvous server has responded, we are now attempting to hole punch..." << std::endl;
             if (init_kit.do_delay)
             {
                 std::cout << "Delaying hole punching by 5s..." << std::endl;
@@ -289,9 +278,7 @@ EXECUTION_STATUS process_peer_data(const Message& mess, const std::unique_ptr<ID
         
         case MESSAGE_TYPE::NONE:
         default:
-#ifdef DATA_COUT
             std::cout << __func__ << "(" << __LINE__ << "): Ignoring Message with Type: " << mt_to_string(msg_type) << std::endl;
-#endif
             return EXECUTION_STATUS::PEER_CONNECTED;
     }
     return EXECUTION_STATUS::PEER_CONNECTED;
@@ -333,11 +320,7 @@ bool do_user_input(thread_queue& message_queue, std::unique_lock<std::shared_mut
 void client_loop(std::string server_address_pair, Protocol input_protocol)
 {
     std::cout << "Starting ptop!" << std::endl;
-#ifdef PTOP_SPOOF_IP
-    std::cout << "Connecting to rendezvous server: " << PTOP_SPOOF_SERVER << std::endl;
-#else
     std::cout << "Connecting to rendezvous server: " << server_address_pair << std::endl;
-#endif
     client_init_kit init_kit{ server_address_pair, input_protocol };
     client_peer_kit peer_kit{};    
     auto& connection_socket = init_kit.get_server_socket();
@@ -349,7 +332,6 @@ void client_loop(std::string server_address_pair, Protocol input_protocol)
     std::unique_lock<std::shared_mutex> take_message_lock(message_queue.queue_mutex, std::defer_lock);
     
     init_kit.status = EXECUTION_STATUS::RENDEZVOUS;
-    std::cout << "Connected to rendezvous server, now awaiting another peer..." << std::endl;
 
     while (init_kit.status != EXECUTION_STATUS::COMPLETE && init_kit.status != EXECUTION_STATUS::FAILED) //listen at the start of protocol
     {

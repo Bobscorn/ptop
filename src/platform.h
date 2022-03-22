@@ -17,7 +17,6 @@
 using namespace std::chrono_literals;
 
 readable_ip_info convert_to_readable(const raw_name_data&);
-raw_name_data convert_to_raw(const readable_ip_info& info);
 
 struct UDPHandShakeStatus
 {
@@ -113,8 +112,8 @@ class NonBlockingListener : public Platform, public virtual INonBlockingListener
 class NonBlockingConnector : public Platform, public virtual INonBlockingConnector {
 	UDPHandShakeStatus _handshake_status;
 
-public:
-	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, Protocol input_protocol, std::string name, std::string spoof_ip);
+	public:
+	NonBlockingConnector(raw_name_data private_binding, std::string ip_address, std::string port, Protocol input_protocol, std::string);
 
 	void connect(std::string ip_address, std::string port) override; // Called in constructor, can be called again if it fails
 	ConnectionStatus has_connected() override;

@@ -19,6 +19,7 @@ Platform::Platform(PtopSocket&& socket)
     // big chungus
 
     if(_socket.is_udp()) {
+        std::cout << "Platform constructed for UDP" << std::endl;
         return;
     }
 
@@ -156,6 +157,39 @@ readable_ip_info Platform::get_peer_data() const
     return out;
 }
 
+raw_name_data Platform::get_peername_raw() const
+{
+    sockaddr_in peer_name;
+    socklen_t peer_size = sizeof(peer_name);
+    int n = getpeername(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
+    if (n != 0) {
+        auto error = std::string("[Socket] (" + get_name() + ") Failed to getpeername : ") + get_last_error();      
+        throw_new_exception(error, LINE_CONTEXT);
+    }
+
+    raw_name_data raw_data;
+    raw_data.name = *(sockaddr*)&peer_name;
+    raw_data.name_len = peer_size;
+    return raw_data;
+}
+
+raw_name_data Platform::get_myname_raw() const
+{
+    sockaddr_in peer_name;
+    socklen_t peer_size = sizeof(peer_name);
+    int n = getsockname(_socket.get_handle(), (sockaddr*)&peer_name, &peer_size);
+
+    if (n != 0) {
+        auto error = std::string("[Socket] (" + get_name() + ") Failed to getsockname : ") + get_last_error();        
+        throw_new_exception(error, LINE_CONTEXT);
+    }
+
+    raw_name_data raw_data;
+    raw_data.name = *(sockaddr*)&peer_name;
+    raw_data.name_len = peer_size;
+    return raw_data;
+}
+
 PtopSocket construct_windowslistensocket(std::string port, Protocol input_protocol, std::string name) {
     try
     {
@@ -175,7 +209,7 @@ PtopSocket construct_windowslistensocket(std::string port, Protocol input_protoc
             throw std::exception((std::string("[Listen] (" + name + ") Failed to create windows socket : getaddrinfo failed with") + std::to_string(iResult)).c_str());
         }
 
-        PtopSocket conn_socket = PtopSocket(input_protocol, raw_name_data{}, name);
+        PtopSocket conn_socket = PtopSocket(input_protocol, name);
 
         if (conn_socket.is_invalid())
         {
@@ -267,9 +301,7 @@ void PlatformAnalyser::process_socket_data()
             data_read += length;
             auto new_message = Message{ type, length, std::move(data) };
             _stored_messages.push(new_message);
-#ifdef DATA_COUT
             std::cout << "Socket " << Platform::get_identifier_str() << " Received " << "a Message of type: " << mt_to_string(new_message.Type) << " with length: " << new_message.Length << " bytes (+ " << sizeof(type) + sizeof(length) << " type/length bytes)" << std::endl;
-#endif
         }
     }
     else
@@ -335,7 +367,7 @@ PtopSocket windows_reuse_nb_listen_construct(raw_name_data data, Protocol proto,
         auto readable = convert_to_readable(data);
         std::cout << "[ListenReuseNoB] Creating Reusable Listen Socket '" << name << "' on: " << readable.ip_address << ":" << readable.port << std::endl;
 
-        PtopSocket listen_socket = PtopSocket(proto, raw_name_data{}, name);
+        PtopSocket listen_socket = PtopSocket(proto, name);
         if (listen_socket.is_invalid())
             throw_new_exception("[ListenReuseNoB] (" + name + ") " + readable.ip_address + ":" + readable.port + " Failed to create reusable nonblocking listen socket: " + get_last_error(), LINE_CONTEXT);
 
@@ -375,6 +407,68 @@ std::unique_ptr<IDataSocketWrapper> NonBlockingListener::accept_connection()
 
     auto new_sock = _socket.accept_data_socket();
     return std::make_unique<PlatformAnalyser>(std::move(new_sock));
+}
+
+PtopSocket windows_reuse_nb_construct(raw_name_data data, Protocol proto, std::string name)
+{
+	try {
+		auto readable = convert_to_readable(data);
+        std::cout << "[DataReuseNoB] Creating Connection socket '" << name << "' bound to : " << readable.ip_address << ":" << readable.port << std::endl;
+		auto conn_socket = PtopSocket(proto, name);
+		if (conn_socket.is_invalid())
+			throw_new_exception(std::string("[DataReuseNoB] Failed to create nonblocking socket (" + name + "): ") + get_last_error(), LINE_CONTEXT);
+
+		conn_socket.set_non_blocking(true);
+		conn_socket.set_socket_reuse();
+
+		conn_socket.bind_socket(data, "[DataReuseNoB] '" + name + "' Failed to bind");
+		std::cout << "[DataReuseNoB] Successfully bound Data socket (" << name << ") to: " << readable.ip_address << " : " << readable.port << std::endl;
+
+		return conn_socket;
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
+}
+
+NonBlockingConnector::NonBlockingConnector(
+    raw_name_data data, std::string ip_address, std::string port, Protocol input_protocol, std::string name) 
+    : Platform(
+        windows_reuse_nb_construct(data, input_protocol, name)
+    )
+{
+    connect(ip_address, port);
+}
+
+void NonBlockingConnector::connect(std::string ip_address, std::string port)
+{
+	try
+	{
+        std::cout << "[DataReuseNoB] (" << get_name() << ") Trying to connect to : " << ip_address << ":" << port << std::endl;
+		struct addrinfo* results, hints;
+		ZeroMemory(&hints, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+
+		int iResult = 0;
+
+		iResult = getaddrinfo(ip_address.c_str(), port.c_str(), &hints, &results);
+		if (iResult != 0)
+            throw_new_exception("Socket '" + get_name() + "' Failed to getaddrinfo, error: " + std::to_string(iResult), LINE_CONTEXT);
+
+		if (results == nullptr)
+            throw_new_exception(("No possible sockets found for '") + ip_address + ":" + port + "' (socket '" + get_name() + "')", LINE_CONTEXT);
+
+		_socket.connect(results->ai_addr, (socklen_t)results->ai_addrlen);
+        std::cout << "[DataReuseNoB] (" << get_name() << ") Successfully BEGUN Connection to : " << ip_address << ":" << port << std::endl;
+        try_update_endpoint_info();
+	}
+	catch (const std::exception& e)
+	{
+		throw_with_context(e, LINE_CONTEXT);
+	}
 }
 
 #endif
